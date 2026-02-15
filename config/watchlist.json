@@ -1,0 +1,16 @@
+{
+  "symbols": [
+    "BTCUSDT",
+    "ETHUSDT",
+    "SOLUSDT",
+    "BNBUSDT",
+    "DOGEUSDT",
+    "PEPEUSDT",
+    "SHIBUSDT",
+    "WIFUSDT",
+    "BONKUSDT",
+    "FLOKIUSDT"
+  ],
+  "updated_at": "2026-02-15",
+  "notes": "Core meme coin watchlist for price monitoring. Add tokens as strategies identify them."
+}
