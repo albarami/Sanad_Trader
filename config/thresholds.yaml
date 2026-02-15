@@ -1,0 +1,86 @@
+risk:
+  max_single_token_pct: 0.10
+  max_meme_allocation_pct: 0.30
+  daily_loss_limit_pct: 0.05
+  max_drawdown_pct: 0.15
+  stop_loss_default_pct: 0.15
+  take_profit_default_pct: 0.30
+
+sanad:
+  minimum_trade_score: 70
+  minimum_source_grade: "C"
+  tawatur_sources: 3
+  mashhur_sources: 2
+  signal_max_age_minutes: 30
+
+sizing:
+  kelly_fraction: 0.50
+  kelly_min_trades: 30
+  kelly_default_pct: 0.02
+  max_position_pct: 0.10
+
+learning:
+  ucb1_cold_start_signals: 5
+  thompson_exploration_days: 30
+  genius_memory_min_trades: 30
+  change_budget_per_week: 3
+
+circuit_breakers:
+  binance_api: {trip_errors: 5, trip_window_seconds: 60, cooldown_seconds: 300}
+  mexc_api: {trip_errors: 5, trip_window_seconds: 60, cooldown_seconds: 300}
+  helius_rpc: {trip_errors: 3, trip_window_seconds: 60, cooldown_seconds: 180}
+  bubblemaps_api: {trip_errors: 3, trip_window_seconds: 60, cooldown_seconds: 600}
+  perplexity_api: {trip_errors: 5, trip_window_seconds: 120, cooldown_seconds: 600}
+  debate_agents: {trip_errors: 3, trip_window_seconds: 0, cooldown_seconds: 300}
+  anthropic_api: {trip_errors: 5, trip_window_seconds: 120, cooldown_seconds: 600}
+  simultaneous_trip_pause: 3
+
+data_quality:
+  timestamp_skew_warn_seconds: 30
+  timestamp_skew_block_seconds: 60
+  cross_feed_deviation_warn_pct: 0.02
+  cross_feed_deviation_block_pct: 0.05
+  outlier_rejection_pct: 0.15
+  stale_consecutive_polls: 5
+
+budget:
+  daily_llm_spend_limit_usd: 15.00
+  monthly_llm_spend_limit_usd: 300.00
+  cost_per_trade_alert_usd: 2.00
+
+graduation:
+  min_paper_days: 90
+  min_paper_trades: 30
+  min_win_rate: 0.52
+  max_drawdown_during_paper: 0.15
+  min_sharpe_ratio: 0.80
+
+policy_gates:
+  price_max_age_sec: 300
+  onchain_max_age_sec: 1800
+  reconciliation_max_age_sec: 900
+  max_slippage_bps: 300
+  max_spread_bps: 200
+  cooldown_minutes: 120
+  token_min_age_hours: 1
+  volatility_halt_pct: 0.25
+  volatility_halt_window_minutes: 30
+  exchange_error_rate_pct: 0.05
+  exchange_error_window_minutes: 15
+  max_concurrent_positions: 3
+
+scoring:
+  min_trust_score: 70
+  min_confidence_score: 60
+  recency_decay_per_hour: 5
+
+execution:
+  jito_tip_max_sol: 0.01
+  shadow_mode_budget_usd: 50
+  max_execution_latency_cex_sec: 30
+  max_execution_latency_dex_sec: 60
+
+learning_advanced:
+  edge_percentile_threshold: 95
+  win_rate_revert_threshold_pct: 10
+  max_changes_per_strategy_per_week: 1

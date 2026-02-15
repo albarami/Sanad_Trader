@@ -1,0 +1,26 @@
+# Sanad Trader .gitignore — Phase 12.6
+
+# Secrets and credentials
+.env
+.env.*
+secrets/
+*.key
+*.pem
+
+# Burner wallet keypairs
+burner-wallets/
+*.keypair
+
+# OS and editor
+.DS_Store
+*.swp
+*.swo
+*~
+
+# Node
+node_modules/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
