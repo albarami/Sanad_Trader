@@ -551,7 +551,7 @@ Conviction: {bull_result.get('conviction', 'N/A')}/100
 Thesis: {bull_result.get('thesis', 'N/A')}
 Evidence: {json.dumps(bull_result.get('supporting_evidence', []))}
 
-Argue AGAINST this trade. Attack the Bull's thesis. Return valid JSON:
+Argue AGAINST this trade. Attack the Bull's thesis. Apply your Muḥāsibī pre-reasoning discipline first, then return your final analysis as valid JSON (you may include reasoning text before the JSON block):
 {{
   "conviction": <0-100 where 100 means absolutely do NOT trade>,
   "attack_points": ["<attack1>", "<attack2>", ...],
@@ -564,7 +564,7 @@ Argue AGAINST this trade. Attack the Bull's thesis. Return valid JSON:
         system_prompt=BEAR_PROMPT,
         user_message=bear_message,
         model="claude-opus-4-6",
-        max_tokens=1500,
+        max_tokens=3000,
     )
     bear_result = _parse_json_response(bear_response) if bear_response else None
     if not bear_result:
@@ -640,7 +640,7 @@ Execute your 6-point checklist and return valid JSON:
         system_prompt=JUDGE_PROMPT,
         user_message=judge_message,
         model="gpt-5.2",
-        max_tokens=2000,
+        max_tokens=4000,
     )
 
     judge_result = _parse_json_response(judge_response) if judge_response else None
@@ -659,6 +659,22 @@ Execute your 6-point checklist and return valid JSON:
     print(f"  Verdict: {verdict}")
     print(f"  Confidence: {confidence}/100")
     print(f"  Reasoning: {judge_result.get('reasoning', 'N/A')[:100]}...")
+
+    # Print Muḥāsibī framework details if present
+    if judge_result.get("khawatir"):
+        print(f"\n  ── Muḥāsibī Reasoning ──")
+        for k in judge_result["khawatir"]:
+            print(f"    Khawāṭir: [{k.get('classification','?')}] {k.get('impulse','')[:80]}")
+    if judge_result.get("muraqaba_biases_caught"):
+        for b in judge_result["muraqaba_biases_caught"]:
+            print(f"    Bias caught: {b[:80]}")
+    if judge_result.get("mujahada_uncomfortable_truth"):
+        print(f"    Uncomfortable truth: {judge_result['mujahada_uncomfortable_truth'][:120]}")
+    if judge_result.get("checklist"):
+        print(f"    Checklist:")
+        for check, data in judge_result["checklist"].items():
+            if isinstance(data, dict):
+                print(f"      {check}: {data.get('rating','?')} (conviction {data.get('conviction','?')}/10)")
 
     return judge_result, None
 
