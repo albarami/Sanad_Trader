@@ -1,19 +1,17 @@
 #!/usr/bin/env python3
 """
-Birdeye API Client — Sprint 3.3
+Birdeye API Client — Sprint 3.3 (Lite Tier)
 Deterministic Python. No LLMs.
 Two modes: standalone cron job AND importable module.
 
-Free tier endpoints available:
-  - /defi/token_trending  (trending Solana tokens)
-  - /defi/token_overview   (detailed token data per address)
-
-Paid tier endpoints (implemented but gracefully degrade if 404):
-  - /defi/meme_token_list
-  - /defi/token_new_listing
-  - /defi/smart_money/token_list
-  - /defi/token_holder_distribution
-  - /defi/token_creation_info
+Available endpoints (Lite tier):
+  - /defi/v3/token/meme/list       (meme token radar)
+  - /defi/token_trending            (trending Solana tokens)
+  - /defi/v2/tokens/new_listing     (new token listings)
+  - /defi/token_overview            (detailed token data)
+  - /defi/token_security            (rug detection: top10 holder %, creator %, metadata)
+  - /holder/v1/distribution         (top holder wallets + percentages)
+  - /defi/token_creation_info       (token age, creator wallet)
 """
 
 import json
@@ -39,8 +37,8 @@ WATCHLIST_PATH = BASE_DIR / "config" / "watchlist.json"
 BASE_URL = "https://public-api.birdeye.so"
 DEFAULT_HEADERS = {"x-chain": "solana", "accept": "application/json"}
 
-# Rate limiting — Birdeye free tier is very strict (~10 req/min observed)
-MAX_CALLS_PER_MINUTE = 10
+# Rate limiting — Lite tier ~15 req/min observed safe
+MAX_CALLS_PER_MINUTE = 12
 _call_timestamps: list[float] = []
 
 # Circuit breaker
@@ -113,124 +111,84 @@ def _reset_circuit():
 # ---------------------------------------------------------------------------
 # HTTP helper
 # ---------------------------------------------------------------------------
-def _get(path: str, params: dict | None = None, allow_404: bool = False) -> dict | list | None:
-    """
-    GET request to Birdeye API.
-    If allow_404=True, returns None on 404 (paid-tier endpoint).
-    """
+def _get(path: str, params: dict | None = None) -> dict | list:
     _check_circuit()
     _rate_limit()
     url = f"{BASE_URL}{path}"
     headers = {**DEFAULT_HEADERS, "X-API-KEY": API_KEY}
     try:
         resp = requests.get(url, headers=headers, params=params, timeout=10)
-        if resp.status_code == 404 and allow_404:
-            return None
         if resp.status_code in (401, 403):
-            body = resp.json() if resp.headers.get("content-type", "").startswith("application/json") else {}
-            msg = body.get("message", f"HTTP {resp.status_code}")
-            if "upgrade" in msg.lower() or "permissions" in msg.lower():
-                if allow_404:
-                    return None
-            _log(f"API key error ({resp.status_code}): {msg}")
+            _log(f"API key error ({resp.status_code})")
             _record_failure()
-            raise RuntimeError(f"Auth error: {msg}")
+            raise RuntimeError(f"Auth error HTTP {resp.status_code}")
         if resp.status_code == 429:
             _log("Rate limited (429) — sleeping 60s and retrying once")
             time.sleep(60)
             resp = requests.get(url, headers=headers, params=params, timeout=10)
         resp.raise_for_status()
-        data = resp.json()
-        # Birdeye returns {"success": false, "message": "Not found"} as 200 sometimes
-        if isinstance(data, dict) and data.get("success") is False:
-            msg = data.get("message", "")
-            if "not found" in msg.lower() or "permissions" in msg.lower() or "upgrade" in msg.lower():
-                if allow_404:
-                    return None
-                raise RuntimeError(f"API error: {msg}")
         _reset_circuit()
-        return data
+        return resp.json()
     except requests.exceptions.RequestException as e:
         _record_failure()
         raise RuntimeError(f"API error on {url}: {e}") from e
 
 
 # ---------------------------------------------------------------------------
-# Core API functions — FREE TIER
+# Core API functions
 # ---------------------------------------------------------------------------
+def get_meme_token_list(sort_by="volume_24h_usd", sort_type="desc", limit=20) -> list[dict]:
+    """GET /defi/v3/token/meme/list — meme token radar.
+    Valid sort_by: volume_24h_usd, market_cap, price_change_24h_percent, liquidity.
+    """
+    data = _get("/defi/v3/token/meme/list", params={
+        "sort_by": sort_by, "sort_type": sort_type,
+        "offset": 0, "limit": limit,
+    })
+    return (data.get("data") or {}).get("items", []) if isinstance(data, dict) else []
+
+
 def get_trending_tokens(sort_by="rank", sort_type="asc", limit=20) -> list[dict]:
-    """GET /defi/token_trending — trending Solana tokens (FREE)."""
+    """GET /defi/token_trending — trending Solana tokens."""
     data = _get("/defi/token_trending", params={
         "sort_by": sort_by, "sort_type": sort_type,
         "offset": 0, "limit": limit,
     })
-    if not data or not isinstance(data, dict):
-        return []
-    tokens = (data.get("data") or {}).get("tokens", [])
-    # Fallback: data.data.items
-    if not tokens:
-        tokens = (data.get("data") or {}).get("items", [])
-    return tokens
+    return (data.get("data") or {}).get("tokens", []) if isinstance(data, dict) else []
+
+
+def get_new_listing(limit=20) -> list[dict]:
+    """GET /defi/v2/tokens/new_listing — newly listed tokens."""
+    data = _get("/defi/v2/tokens/new_listing", params={"limit": limit})
+    return (data.get("data") or {}).get("items", []) if isinstance(data, dict) else []
 
 
 def get_token_overview(address: str) -> dict:
-    """GET /defi/token_overview — detailed token data (FREE)."""
+    """GET /defi/token_overview — detailed token data."""
     data = _get("/defi/token_overview", params={"address": address})
-    if not data or not isinstance(data, dict):
-        return {}
-    return data.get("data", {})
+    return data.get("data", {}) if isinstance(data, dict) else {}
 
 
-# ---------------------------------------------------------------------------
-# Core API functions — PAID TIER (gracefully degrade)
-# ---------------------------------------------------------------------------
-def get_meme_token_list(sort_by="v24hUSD", sort_type="desc", limit=20) -> list[dict] | None:
-    """GET /defi/meme_token_list — meme token radar (PAID)."""
-    data = _get("/defi/meme_token_list", params={
-        "sort_by": sort_by, "sort_type": sort_type,
-        "offset": 0, "limit": limit,
-    }, allow_404=True)
-    if data is None:
-        return None
-    return (data.get("data") or {}).get("items", [])
+def get_token_security(address: str) -> dict:
+    """GET /defi/token_security — rug detection data.
+    Returns: top10HolderPercent, creatorPercentage, mutableMetadata, fakeToken, etc.
+    """
+    data = _get("/defi/token_security", params={"address": address})
+    return data.get("data", {}) if isinstance(data, dict) else {}
 
 
-def get_new_listing(sort_by="createdAt", sort_type="desc", limit=20) -> list[dict] | None:
-    """GET /defi/token_new_listing — newly listed tokens (PAID)."""
-    data = _get("/defi/token_new_listing", params={
-        "sort_by": sort_by, "sort_type": sort_type,
-        "offset": 0, "limit": limit,
-    }, allow_404=True)
-    if data is None:
-        return None
-    return (data.get("data") or {}).get("items", [])
+def get_holder_distribution(token_address: str) -> dict:
+    """GET /holder/v1/distribution — top holder wallets.
+    Returns: summary.percent_of_supply (top 10), holders[] with wallet, holding, percent_of_supply.
+    """
+    data = _get("/holder/v1/distribution", params={"token_address": token_address})
+    return data.get("data", {}) if isinstance(data, dict) else {}
 
 
-def get_token_holder_distribution(address: str) -> dict | None:
-    """GET /defi/token_holder_distribution — rug detection (PAID)."""
-    data = _get("/defi/token_holder_distribution", params={"address": address}, allow_404=True)
-    if data is None:
-        return None
-    return data.get("data", {})
-
-
-def get_smart_money_token_list(sort_by="v24hUSD", sort_type="desc", limit=20) -> list[dict] | None:
-    """GET /defi/smart_money/token_list — whale tracking (PAID)."""
-    data = _get("/defi/smart_money/token_list", params={
-        "sort_by": sort_by, "sort_type": sort_type,
-        "offset": 0, "limit": limit,
-    }, allow_404=True)
-    if data is None:
-        return None
-    return (data.get("data") or {}).get("items", [])
-
-
-def get_token_creation_info(address: str) -> dict | None:
-    """GET /defi/token_creation_info — token age (PAID)."""
-    data = _get("/defi/token_creation_info", params={"address": address}, allow_404=True)
-    if data is None:
-        return None
-    return data.get("data", {})
+def get_token_creation_info(address: str) -> dict:
+    """GET /defi/token_creation_info — token age, creator wallet."""
+    data = _get("/defi/token_creation_info", params={"address": address})
+    return data.get("data", {}) if isinstance(data, dict) else {}
 
 
 # ---------------------------------------------------------------------------
@@ -259,8 +217,23 @@ def _sf(val, default=0.0) -> float:
         return default
 
 
+def _normalize_meme(t: dict) -> dict:
+    """Normalize meme list v3 response."""
+    return {
+        "address": t.get("address") or "",
+        "symbol": (t.get("symbol") or "").upper(),
+        "name": t.get("name") or "",
+        "price": _sf(t.get("price")),
+        "volume_24h": _sf(t.get("volume_24h_usd") or t.get("volume24hUSD") or t.get("v24hUSD")),
+        "price_change_24h_pct": _sf(t.get("price_change_24h_percent") or t.get("price24hChangePercent") or t.get("v24hChangePercent")),
+        "market_cap": _sf(t.get("market_cap") or t.get("mc") or t.get("fdv")),
+        "liquidity": _sf(t.get("liquidity")),
+        "holder_count": int(_sf(t.get("holder") or t.get("holder_count"))),
+    }
+
+
 def _normalize_trending(t: dict) -> dict:
-    """Normalize trending token response to standard fields."""
+    """Normalize trending response."""
     return {
         "address": t.get("address") or "",
         "symbol": (t.get("symbol") or "").upper(),
@@ -268,11 +241,21 @@ def _normalize_trending(t: dict) -> dict:
         "price": _sf(t.get("price")),
         "volume_24h": _sf(t.get("volume24hUSD") or t.get("v24hUSD")),
         "price_change_24h_pct": _sf(t.get("price24hChangePercent") or t.get("v24hChangePercent")),
-        "volume_change_24h_pct": _sf(t.get("volume24hChangePercent") or t.get("v24hChangePercent")),
-        "market_cap": _sf(t.get("marketcap") or t.get("mc") or t.get("realMc")),
-        "liquidity": _sf(t.get("liquidity") or t.get("liquidityUsd")),
-        "fdv": _sf(t.get("fdv")),
+        "market_cap": _sf(t.get("marketcap") or t.get("mc")),
+        "liquidity": _sf(t.get("liquidity")),
         "rank": t.get("rank"),
+    }
+
+
+def _normalize_new_listing(t: dict) -> dict:
+    """Normalize new listing v2 response."""
+    return {
+        "address": t.get("address") or "",
+        "symbol": (t.get("symbol") or "").upper(),
+        "name": t.get("name") or "",
+        "liquidity": _sf(t.get("liquidity")),
+        "source": t.get("source") or "",
+        "listed_at": t.get("liquidityAddedAt") or "",
     }
 
 
@@ -291,7 +274,6 @@ def _normalize_overview(o: dict) -> dict:
         "holder_count": int(_sf(o.get("holder") or o.get("holderCount"))),
         "trade_count_24h": int(_sf(o.get("trade24h") or o.get("uniqueWallet24h"))),
         "fdv": _sf(o.get("fdv")),
-        "last_trade_time": o.get("lastTradeUnixTime"),
     }
 
 
@@ -304,15 +286,64 @@ def _passes_filter(t: dict) -> bool:
     )
 
 
+def _token_age_hours_from_creation(creation_data: dict) -> float | None:
+    """Calculate age from creation info."""
+    ts = creation_data.get("blockUnixTime")
+    if not ts:
+        return None
+    try:
+        return (time.time() - float(ts)) / 3600
+    except Exception:
+        return None
+
+
+# ---------------------------------------------------------------------------
+# Security analysis (rug detection)
+# ---------------------------------------------------------------------------
+def _analyze_security(address: str) -> tuple[float | None, list[str], dict]:
+    """
+    Get token security data. Returns (top10_pct, rug_flags, security_data).
+    """
+    rug_flags: list[str] = []
+    try:
+        sec = get_token_security(address)
+    except Exception as e:
+        return None, ["security_data_unavailable"], {}
+
+    if not sec:
+        return None, ["security_data_unavailable"], {}
+
+    top10_pct = _sf(sec.get("top10HolderPercent")) * 100  # API returns decimal
+    creator_pct = _sf(sec.get("creatorPercentage")) * 100
+    mutable = sec.get("mutableMetadata")
+    fake = sec.get("fakeToken")
+
+    if top10_pct > 90:
+        rug_flags.append(f"skip_high_concentration: top 10 hold {top10_pct:.0f}%")
+    elif top10_pct > 80:
+        rug_flags.append(f"high_concentration: top 10 hold {top10_pct:.0f}%")
+
+    if creator_pct > 10:
+        rug_flags.append(f"high_creator_holding: creator holds {creator_pct:.1f}%")
+
+    if mutable is True:
+        rug_flags.append("mutable_metadata")
+
+    if fake is True:
+        rug_flags.append("skip_fake_token")
+
+    return top10_pct, rug_flags, sec
+
+
 # ---------------------------------------------------------------------------
 # Signal builder
 # ---------------------------------------------------------------------------
 def _build_signal(
     token: dict,
     signal_type: str,
-    smart_money: bool,
     top10_pct: float | None,
     rug_flags: list[str],
+    age_hours: float | None,
 ) -> dict:
     now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S+00:00")
     sym = token.get("symbol", "UNKNOWN")
@@ -328,15 +359,18 @@ def _build_signal(
     parts = [f"{sym} {signal_type.lower().replace('_', ' ')} on Birdeye"]
     if pct24:
         parts.append(f"{'+' if pct24 > 0 else ''}{pct24:.0f}% 24h")
-    if smart_money:
-        parts.append("Smart money active")
     parts.append(f"Volume ${vol/1e6:.1f}M" if vol >= 1e6 else f"Volume ${vol/1e3:.0f}K")
     parts.append(f"liquidity ${liq/1e3:.0f}K")
-    if top10_pct is not None:
+    if top10_pct is not None and top10_pct > 0:
         health = "healthy" if top10_pct < 60 else "moderate" if top10_pct < 80 else "concentrated"
         parts.append(f"Holder distribution {health} (top 10 = {top10_pct:.0f}%)")
     if holders:
         parts.append(f"{holders:,} holders")
+    if age_hours is not None:
+        if age_hours < 24:
+            parts.append(f"Token age: {age_hours:.1f}h")
+        else:
+            parts.append(f"Token age: {age_hours/24:.0f}d")
 
     # Confidence
     confidence = "low"
@@ -344,10 +378,8 @@ def _build_signal(
     if not skip_rug:
         if vol > 500_000 and liq > 100_000 and (top10_pct is None or top10_pct < 70):
             confidence = "medium"
-        if vol > 1_000_000 and liq > 200_000 and (top10_pct is None or top10_pct < 60):
+        if vol > 1_000_000 and liq > 200_000 and (top10_pct is None or top10_pct < 60) and holders > 1000:
             confidence = "high"
-        if smart_money and confidence != "high":
-            confidence = "medium"
 
     return {
         "source": "birdeye_meme_radar",
@@ -363,8 +395,8 @@ def _build_signal(
         "liquidity_usd": liq,
         "holder_count": holders,
         "top10_holder_pct": top10_pct,
-        "smart_money_signal": smart_money,
-        "token_age_hours": None,
+        "smart_money_signal": False,
+        "token_age_hours": round(age_hours, 1) if age_hours else None,
         "trade_count_24h": trades,
         "timestamp": now,
         "thesis": ". ".join(parts) + ".",
@@ -383,24 +415,18 @@ def run_scan():
 
     _log(now.strftime("%Y-%m-%dT%H:%M:%S+00:00"))
 
-    paid_available = True  # will be set False if first paid call returns None
-
-    # --- 1. Meme token list (PAID) ---
-    meme_raw = None
+    # --- 1. Meme token list ---
+    meme_raw = []
     meme_filtered = []
     try:
-        meme_raw = get_meme_token_list(sort_by="v24hChangePercent", sort_type="desc", limit=20)
-        if meme_raw is None:
-            _log("Meme tokens: SKIPPED (paid tier endpoint)")
-            paid_available = False
-        else:
-            meme_norm = [_normalize_trending(t) for t in meme_raw]
-            meme_filtered = [t for t in meme_norm if _passes_filter(t)]
-            _log(f"Meme tokens: {len(meme_raw)} fetched, {len(meme_filtered)} passed filters")
+        meme_raw = get_meme_token_list(sort_by="price_change_24h_percent", sort_type="desc", limit=20)
+        meme_norm = [_normalize_meme(t) for t in meme_raw]
+        meme_filtered = [t for t in meme_norm if _passes_filter(t)]
+        _log(f"Meme tokens: {len(meme_raw)} fetched, {len(meme_filtered)} passed filters")
     except Exception as e:
         _log(f"ERROR fetching meme tokens: {e}")
 
-    # --- 2. Trending tokens (FREE) ---
+    # --- 2. Trending tokens ---
     trending_raw = []
     trending_filtered = []
     try:
@@ -411,40 +437,18 @@ def run_scan():
     except Exception as e:
         _log(f"ERROR fetching trending: {e}")
 
-    # --- 3. Smart money (PAID) ---
-    smart_raw = None
-    smart_addresses: set[str] = set()
-    if paid_available:
-        try:
-            smart_raw = get_smart_money_token_list(limit=20)
-            if smart_raw is None:
-                _log("Smart money: SKIPPED (paid tier endpoint)")
-            else:
-                smart_addresses = {t.get("address", "") for t in smart_raw if t.get("address")}
-                _log(f"Smart money: {len(smart_raw)} fetched")
-        except Exception as e:
-            _log(f"ERROR fetching smart money: {e}")
-    else:
-        _log("Smart money: SKIPPED (paid tier)")
-
-    # --- 4. New listings (PAID) ---
-    new_raw = None
+    # --- 3. New listings ---
+    new_raw = []
     new_filtered = []
-    if paid_available:
-        try:
-            new_raw = get_new_listing(limit=20)
-            if new_raw is None:
-                _log("New listings: SKIPPED (paid tier endpoint)")
-            else:
-                new_norm = [_normalize_trending(t) for t in new_raw]
-                new_filtered = [t for t in new_norm if t.get("volume_24h", 0) > 50_000 and t.get("liquidity", 0) > 50_000]
-                _log(f"New listings: {len(new_raw)} fetched, {len(new_filtered)} passed filters")
-        except Exception as e:
-            _log(f"ERROR fetching new listings: {e}")
-    else:
-        _log("New listings: SKIPPED (paid tier)")
+    try:
+        new_raw = get_new_listing(limit=20)
+        new_norm = [_normalize_new_listing(t) for t in new_raw]
+        new_filtered = [t for t in new_norm if t.get("liquidity", 0) > 50_000]
+        _log(f"New listings: {len(new_raw)} fetched, {len(new_filtered)} passed liquidity filter")
+    except Exception as e:
+        _log(f"ERROR fetching new listings: {e}")
 
-    # --- 5. Merge candidates (deduplicate by address) ---
+    # --- 4. Merge candidates (deduplicate by address) ---
     seen: set[str] = set()
     candidates: list[tuple[dict, str]] = []
 
@@ -466,79 +470,74 @@ def run_scan():
             seen.add(addr)
             candidates.append((t, "NEW_LISTING"))
 
-    # --- 6. Enrich top 5 with token_overview (FREE) ---
-    _log(f"Enriching top {min(5, len(candidates))} candidates with token_overview...")
-    enriched_candidates: list[tuple[dict, str]] = []
+    _log(f"Total candidates after dedup: {len(candidates)}")
 
-    for i, (token, stype) in enumerate(candidates):
+    # --- 5. Enrich top 5 with overview + security + creation ---
+    _log(f"Enriching top {min(5, len(candidates))} with overview + security + creation info...")
+
+    signals = []
+    enriched = 0
+
+    for token, stype in candidates:
         addr = token.get("address", "")
-        if i < 5 and addr:
+        top10_pct = None
+        rug_flags: list[str] = []
+        age_hours = None
+
+        if enriched < 5 and addr:
+            # Token overview for detailed data
             try:
                 overview = get_token_overview(addr)
                 if overview:
-                    enriched = _normalize_overview(overview)
-                    # Keep original signal_type
-                    enriched_candidates.append((enriched, stype))
-                    continue
+                    enriched_data = _normalize_overview(overview)
+                    # Merge: keep signal_type, overlay enriched fields
+                    for k, v in enriched_data.items():
+                        if v and (k not in token or not token[k]):
+                            token[k] = v
+                    # Override price/volume/etc from overview (fresher)
+                    if enriched_data.get("price"):
+                        token["price"] = enriched_data["price"]
+                    if enriched_data.get("volume_24h"):
+                        token["volume_24h"] = enriched_data["volume_24h"]
+                    if enriched_data.get("market_cap"):
+                        token["market_cap"] = enriched_data["market_cap"]
+                    if enriched_data.get("holder_count"):
+                        token["holder_count"] = enriched_data["holder_count"]
+                    if enriched_data.get("price_change_1h_pct"):
+                        token["price_change_1h_pct"] = enriched_data["price_change_1h_pct"]
+                    if enriched_data.get("price_change_24h_pct"):
+                        token["price_change_24h_pct"] = enriched_data["price_change_24h_pct"]
             except Exception as e:
                 _log(f"  Overview error for {token.get('symbol', '?')}: {e}")
-        enriched_candidates.append((token, stype))
 
-    # --- 7. Holder distribution for top 5 (PAID — graceful degrade) ---
-    holder_checked = False
-    if paid_available:
-        _log("Checking holder distribution for top candidates...")
-    signals = []
-    checked = 0
-
-    for token, stype in enriched_candidates:
-        addr = token.get("address", "")
-        is_smart = addr in smart_addresses
-
-        top10_pct = None
-        rug_flags: list[str] = []
-
-        # Try holder distribution for top 5 (PAID)
-        if checked < 5 and addr and paid_available:
+            # Token security (rug detection)
             try:
-                dist = get_token_holder_distribution(addr)
-                if dist is None:
-                    rug_flags.append("holder_data_unavailable (paid tier)")
-                    if not holder_checked:
-                        _log("Holder distribution: SKIPPED (paid tier endpoint)")
-                        paid_available = False  # stop trying
-                else:
-                    holder_checked = True
-                    # Parse distribution
-                    holders_list = dist if isinstance(dist, list) else dist.get("items") or dist.get("holders") or []
-                    if isinstance(holders_list, list) and holders_list:
-                        top10 = holders_list[:10]
-                        top10_pct = sum(
-                            _sf(h.get("pct") or h.get("percentage") or h.get("uiAmountPercent"))
-                            for h in top10
-                        )
-                    if top10_pct and top10_pct > 90:
-                        rug_flags.append(f"skip_high_concentration: top 10 hold {top10_pct:.0f}%")
-                    elif top10_pct and top10_pct > 80:
-                        rug_flags.append(f"high_concentration: top 10 hold {top10_pct:.0f}%")
-            except Exception:
-                rug_flags.append("holder_data_unavailable")
-            checked += 1
-        elif addr:
-            rug_flags.append("holder_data_not_checked")
+                top10_pct, rug_flags, _sec = _analyze_security(addr)
+            except Exception as e:
+                rug_flags = ["security_data_error"]
+                _log(f"  Security error for {token.get('symbol', '?')}: {e}")
 
-        # Low holder count flag
-        hc = token.get("holder_count", 0)
-        if 0 < hc < 200:
-            rug_flags.append(f"low_holder_count: only {hc} holders")
+            # Creation info (token age)
+            try:
+                creation = get_token_creation_info(addr)
+                if creation:
+                    age_hours = _token_age_hours_from_creation(creation)
+            except Exception as e:
+                _log(f"  Creation info error for {token.get('symbol', '?')}: {e}")
 
-        # Skip if top10 > 90%
+            enriched += 1
+        else:
+            rug_flags = ["not_enriched"]
+
+        # Skip fake or extremely concentrated tokens
         if any("skip_" in f for f in rug_flags):
+            sym = token.get("symbol", "?")
+            _log(f"  SKIPPED {sym}: {', '.join(f for f in rug_flags if 'skip_' in f)}")
             continue
 
-        signals.append(_build_signal(token, stype, is_smart, top10_pct, rug_flags))
+        signals.append(_build_signal(token, stype, top10_pct, rug_flags, age_hours))
 
-    # --- 8. Log results ---
+    # --- 6. Log results ---
     _log(f"Signals: {len(signals)} found")
     for i, s in enumerate(signals, 1):
         sym = s["token"]
@@ -548,7 +547,7 @@ def run_scan():
         liq = s.get("liquidity_usd") or 0
         holders = s.get("holder_count") or 0
         top10 = s.get("top10_holder_pct")
-        smart = " 🐋" if s.get("smart_money_signal") else ""
+        age = s.get("token_age_hours")
 
         vol_str = f"vol ${vol/1e6:.1f}M" if vol >= 1e6 else f"vol ${vol/1e3:.0f}K"
         liq_str = f"liq ${liq/1e3:.0f}K"
@@ -560,16 +559,26 @@ def run_scan():
         else:
             t10_str = "top10=N/A"
 
-        pct_str = f"{'+' if pct > 0 else ''}{pct:.0f}%"
-        _log(f"  {i}. {sym} — {stype} {pct_str}, {vol_str}, {liq_str}, {h_str}, {t10_str}{smart}")
+        age_str = ""
+        if age is not None:
+            age_str = f", age {age:.0f}h" if age < 24 else f", age {age/24:.0f}d"
 
-    # --- 9. Save ---
+        pct_str = f"{'+' if pct > 0 else ''}{pct:.0f}%"
+        flags = s.get("rug_flags", [])
+        flag_str = ""
+        if any("high_concentration" in f for f in flags):
+            flag_str = " ⛔ FLAGGED"
+        elif any("high_creator" in f or "mutable" in f for f in flags):
+            flag_str = " ⚠️"
+
+        _log(f"  {i}. {sym} — {stype} {pct_str}, {vol_str}, {liq_str}, {h_str}, {t10_str}{age_str}{flag_str}")
+
+    # --- 7. Save ---
     raw_output = {
         "timestamp": now.isoformat(),
-        "tier": "free" if not holder_checked and meme_raw is None else "paid",
-        "trending_raw": trending_raw,
+        "tier": "lite",
         "meme_tokens_raw": meme_raw,
-        "smart_money_raw": smart_raw,
+        "trending_raw": trending_raw,
         "new_listings_raw": new_raw,
         "signals": signals,
     }
