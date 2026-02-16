@@ -706,6 +706,16 @@ Return valid JSON with these exact keys:
         bull_result = {"conviction": 50, "thesis": "Parse failed", "supporting_evidence": []}
 
     print(f"  Bull Conviction: {bull_result.get('conviction', 'N/A')}/100")
+    print(f"  Bull Thesis: {bull_result.get('thesis', 'N/A')}")
+    print(f"  Bull Entry: {bull_result.get('entry_price', 'N/A')}")
+    print(f"  Bull Target: {bull_result.get('target_price', 'N/A')}")
+    print(f"  Bull Stop-Loss: {bull_result.get('stop_loss', 'N/A')}")
+    print(f"  Bull R:R: {bull_result.get('risk_reward_ratio', 'N/A')}")
+    print(f"  Bull Timeframe: {bull_result.get('timeframe', 'N/A')}")
+    print(f"  Bull Evidence: {json.dumps(bull_result.get('supporting_evidence', []), indent=4)}")
+    print(f"  Bull Catalyst: {bull_result.get('catalyst_timeline', 'N/A')}")
+    print(f"  Bull Invalidation: {bull_result.get('invalidation_point', 'N/A')}")
+    print(f"  Bull Risk Ack: {bull_result.get('risk_acknowledgment', 'N/A')}")
 
     # ── BEAR (Al-Dahhak) — NEVER SKIP ──
     print("  [4b] Bear Al-Dahhak arguing AGAINST...")
@@ -757,6 +767,14 @@ Apply your Muḥāsibī pre-reasoning discipline (Khawāṭir → Murāqaba → 
         return None, None, "Bear agent failed — fail closed (never skip Bear)"
 
     print(f"  Bear Conviction (against): {bear_result.get('conviction', 'N/A')}/100")
+    print(f"  Bear Thesis: {bear_result.get('thesis', 'N/A')}")
+    print(f"  Bear Attack Points: {json.dumps(bear_result.get('attack_points', []), indent=4)}")
+    print(f"  Bear Worst Case: {bear_result.get('worst_case_scenario', 'N/A')}")
+    print(f"  Bear Hidden Risks: {json.dumps(bear_result.get('hidden_risks', []), indent=4)}")
+    print(f"  Bear Historical Parallels: {bear_result.get('historical_parallels', 'N/A')}")
+    print(f"  Bear Liquidity: {bear_result.get('liquidity_assessment', 'N/A')}")
+    print(f"  Bear Timing: {bear_result.get('timing_assessment', 'N/A')}")
+    print(f"  Bear Must Be True: {bear_result.get('what_must_be_true', 'N/A')}")
 
     return bull_result, bear_result, None
 
