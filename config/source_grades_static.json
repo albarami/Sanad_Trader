@@ -1,0 +1,57 @@
+{
+  "coingecko": {
+    "grade": "B",
+    "score": 65,
+    "label": "Saduq"
+  },
+  "dexscreener": {
+    "grade": "B",
+    "score": 60,
+    "label": "Saduq"
+  },
+  "birdeye": {
+    "grade": "C",
+    "score": 50,
+    "label": "Maqbul"
+  },
+  "pumpfun": {
+    "grade": "C",
+    "score": 45,
+    "label": "Maqbul"
+  },
+  "perplexity": {
+    "grade": "B",
+    "score": 60,
+    "label": "Saduq"
+  },
+  "binance_listings": {
+    "grade": "A",
+    "score": 80,
+    "label": "Thiqah"
+  },
+  "telegram_alpha": {
+    "grade": "D",
+    "score": 30,
+    "label": "Da'if"
+  },
+  "onchain_analytics": {
+    "grade": "C",
+    "score": 50,
+    "label": "Maqbul"
+  },
+  "whale_alert": {
+    "grade": "C",
+    "score": 45,
+    "label": "Maqbul"
+  },
+  "sentiment_scanner": {
+    "grade": "C",
+    "score": 50,
+    "label": "Maqbul"
+  },
+  "meme_radar": {
+    "grade": "C",
+    "score": 50,
+    "label": "Maqbul"
+  }
+}
