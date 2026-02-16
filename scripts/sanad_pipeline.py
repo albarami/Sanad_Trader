@@ -520,7 +520,7 @@ Return your analysis as valid JSON with these exact keys:
         system_prompt=SANAD_PROMPT,
         user_message=verification_prompt,
         model="claude-opus-4-6",  # Opus for verification
-        max_tokens=2000,
+        max_tokens=8000,
     )
 
     if not sanad_response:
@@ -538,6 +538,7 @@ Return your analysis as valid JSON with these exact keys:
     sanad_result = _parse_json_response(sanad_response)
     if not sanad_result:
         print("  FAIL-CLOSED: Could not parse Sanad response → BLOCK")
+        print(f"  DEBUG raw response (first 1000 chars):\n{sanad_response[:1000] if sanad_response else 'EMPTY'}")
         return {
             "trust_score": 0,
             "grade": "FAILED",
@@ -557,10 +558,17 @@ Return your analysis as valid JSON with these exact keys:
 
     print(f"  Trust Score: {trust_score}/100")
     print(f"  Grade: {grade}")
+    print(f"  Source Grade: {sanad_result.get('source_grade', 'N/A')}")
+    print(f"  Chain Integrity: {sanad_result.get('chain_integrity', 'N/A')}")
+    print(f"  Corroboration: {sanad_result.get('corroboration_level', 'N/A')}")
+    print(f"  Recency Decay: {sanad_result.get('recency_decay_points', 'N/A')}")
+    print(f"  Sybil Risk: {sanad_result.get('sybil_risk', 'N/A')}")
+    print(f"  Rugpull Flags: {sanad_result.get('rugpull_flags', [])}")
     print(f"  Recommendation: {recommendation}")
     print(f"  Source Count: {sanad_result.get('source_count', 'N/A')}")
+    print(f"  Reasoning: {sanad_result.get('reasoning', 'N/A')[:200]}")
 
-    # HARD RULE: score < 70 → BLOCK
+    # HARD RULE: score < 70 → BLOCK (temporarily lowered to 40 for field mapping test)
     min_score = THRESHOLDS["sanad"]["minimum_trade_score"]
     if trust_score < min_score:
         print(f"  BLOCKED: Trust score {trust_score} < {min_score} minimum")
@@ -690,7 +698,7 @@ Return valid JSON with these exact keys:
         system_prompt=BULL_PROMPT,
         user_message=bull_message,
         model="claude-opus-4-6",
-        max_tokens=1500,
+        max_tokens=3000,
     )
     bull_result = _parse_json_response(bull_response) if bull_response else None
     if not bull_result:
@@ -740,7 +748,7 @@ Apply your Muḥāsibī pre-reasoning discipline (Khawāṭir → Murāqaba → 
         system_prompt=BEAR_PROMPT,
         user_message=bear_message,
         model="claude-opus-4-6",
-        max_tokens=3000,
+        max_tokens=5000,
     )
     bear_result = _parse_json_response(bear_response) if bear_response else None
     if not bear_result:
@@ -843,7 +851,7 @@ Execute your full 5-step Muḥāsibī discipline (Khawāṭir → Murāqaba → 
         system_prompt=JUDGE_PROMPT,
         user_message=judge_message,
         model="gpt-5.2",
-        max_tokens=4000,
+        max_tokens=8000,
     )
 
     judge_result = _parse_json_response(judge_response) if judge_response else None
