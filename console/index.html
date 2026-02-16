@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sanad Trader v3.0 Console</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Inter:wght@400;500;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; background: #0a0e17; color: #e2e8f0; }
+        .mono { font-family: 'JetBrains Mono', monospace; }
+        .glass { background: rgba(15, 23, 42, 0.8); border: 1px solid rgba(148, 163, 184, 0.1); backdrop-filter: blur(12px); }
+        .glow-green { box-shadow: 0 0 15px rgba(34, 197, 94, 0.2); }
+        .glow-red { box-shadow: 0 0 15px rgba(239, 68, 68, 0.2); }
+        .glow-amber { box-shadow: 0 0 15px rgba(245, 158, 11, 0.2); }
+        .pulse-dot { animation: pulse 2s infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #0f172a; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
+    </style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useEffect, useCallback } = React;
+
+// ── Config ──
+const API_BASE = window.location.hostname === 'localhost'
+    ? 'http://localhost:8100'
+    : `${window.location.origin}`;
+const REFRESH_MS = 10000;
+
+// ── API Client ──
+// Auth: prompt for key, store in localStorage
+const API_KEY = localStorage.getItem('sanad_api_key') || prompt('Enter API key:');
+if (API_KEY) localStorage.setItem('sanad_api_key', API_KEY);
+const authHeaders = () => API_KEY ? { 'X-API-Key': API_KEY } : {};
+
+async function api(path) {
+    try {
+        const r = await fetch(`${API_BASE}${path}`, { headers: authHeaders() });
+        if (r.status === 401) { localStorage.removeItem('sanad_api_key'); location.reload(); }
+        if (!r.ok) return null;
+        return await r.json();
+    } catch { return null; }
+}
+
+async function apiPost(path, body) {
+    try {
+        const r = await fetch(`${API_BASE}${path}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...authHeaders() },
+            body: JSON.stringify(body),
+        });
+        if (r.status === 401) { localStorage.removeItem('sanad_api_key'); location.reload(); }
+        return await r.json();
+    } catch { return null; }
+}
+
+// ── Components ──
+function Badge({ text, color = 'slate' }) {
+    const colors = {
+        green: 'bg-green-900/50 text-green-400 border-green-700/50',
+        red: 'bg-red-900/50 text-red-400 border-red-700/50',
+        amber: 'bg-amber-900/50 text-amber-400 border-amber-700/50',
+        blue: 'bg-blue-900/50 text-blue-400 border-blue-700/50',
+        slate: 'bg-slate-800/50 text-slate-400 border-slate-600/50',
+        purple: 'bg-purple-900/50 text-purple-400 border-purple-700/50',
+    };
+    return <span className={`px-2 py-0.5 rounded text-xs font-medium border ${colors[color] || colors.slate}`}>{text}</span>;
+}
+
+function StatCard({ label, value, sub, color = 'slate' }) {
+    return (
+        <div className="glass rounded-lg p-4">
+            <div className="text-xs text-slate-500 uppercase tracking-wider mb-1">{label}</div>
+            <div className={`text-2xl font-bold mono ${
+                color === 'green' ? 'text-green-400' :
+                color === 'red' ? 'text-red-400' :
+                color === 'amber' ? 'text-amber-400' : 'text-white'
+            }`}>
+                {value}
+            </div>
+            {sub && <div className="text-xs text-slate-500 mt-1">{sub}</div>}
+        </div>
+    );
+}
+
+// ── 8.1.1 System Status ──
+function SystemStatus({ data }) {
+    if (!data) return <div className="text-slate-500">Loading...</div>;
+    const isHealthy = data.status === 'HEALTHY' && !data.kill_switch_active;
+    return (
+        <div className={`glass rounded-xl p-6 ${isHealthy ? 'glow-green' : 'glow-red'}`}>
+            <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-semibold">System Status</h2>
+                <div className="flex items-center gap-2">
+                    <div className={`w-2.5 h-2.5 rounded-full pulse-dot ${isHealthy ? 'bg-green-500' : 'bg-red-500'}`}></div>
+                    <Badge text={data.kill_switch_active ? 'KILL SWITCH' : data.status} color={isHealthy ? 'green' : 'red'} />
+                </div>
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <StatCard label="Mode" value={data.mode?.toUpperCase()} color={data.mode === 'live' ? 'amber' : 'blue'} />
+                <StatCard label="Balance" value={`$${Number(data.portfolio_balance || 0).toLocaleString()}`} />
+                <StatCard label="Open Positions" value={data.open_positions || 0} />
+                <StatCard label="Policy Gates" value={`${data.policy_gates_passed}/${data.policy_gates_total}`}
+                    color={data.policy_gates_passed === data.policy_gates_total ? 'green' : 'amber'} />
+            </div>
+        </div>
+    );
+}
+
+// ── 8.1.2 Live Positions ──
+function LivePositions({ data }) {
+    const positions = data?.positions || [];
+    return (
+        <div className="glass rounded-xl p-6">
+            <h2 className="text-lg font-semibold mb-4">Live Positions ({positions.length})</h2>
+            {positions.length === 0 ? (
+                <div className="text-slate-500 text-sm py-8 text-center">No open positions</div>
+            ) : (
+                <div className="space-y-2">
+                    {positions.map((p, i) => (
+                        <div key={i} className="flex items-center justify-between p-3 rounded-lg bg-slate-800/50">
+                            <div>
+                                <span className="font-medium">{p.symbol || p.token}</span>
+                                <span className="text-xs text-slate-500 ml-2">{p.strategy}</span>
+                            </div>
+                            <div className="flex items-center gap-4">
+                                <span className="mono text-sm">${p.entry_price}</span>
+                                <span className={`mono text-sm font-medium ${(p.pnl_pct || 0) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                    {(p.pnl_pct || 0) >= 0 ? '+' : ''}{(p.pnl_pct || 0).toFixed(2)}%
+                                </span>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+}
+
+// ── 8.1.4 Trade History ──
+function TradeHistory({ data }) {
+    const trades = data?.trades || [];
+    return (
+        <div className="glass rounded-xl p-6">
+            <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-semibold">Trade History</h2>
+                <div className="flex gap-2">
+                    <Badge text={`${data?.wins || 0}W`} color="green" />
+                    <Badge text={`${data?.losses || 0}L`} color="red" />
+                    <Badge text={`${((data?.win_rate || 0) * 100).toFixed(0)}% WR`} color="blue" />
+                </div>
+            </div>
+            {trades.length === 0 ? (
+                <div className="text-slate-500 text-sm py-8 text-center">No completed trades</div>
+            ) : (
+                <div className="space-y-1 max-h-64 overflow-y-auto">
+                    {trades.map((t, i) => (
+                        <div key={i} className="flex items-center justify-between p-2 rounded hover:bg-slate-800/50 text-sm">
+                            <div className="flex items-center gap-2">
+                                <div className={`w-1.5 h-1.5 rounded-full ${(t.pnl_pct || 0) > 0 ? 'bg-green-500' : 'bg-red-500'}`}></div>
+                                <span>{t.token || t.symbol}</span>
+                                <span className="text-xs text-slate-500">{t.strategy}</span>
+                            </div>
+                            <span className={`mono font-medium ${(t.pnl_pct || 0) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                {(t.pnl_pct || 0) >= 0 ? '+' : ''}{(t.pnl_pct || 0).toFixed(2)}%
+                            </span>
+                        </div>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+}
+
+// ── 8.1.5 Signal Feed ──
+function SignalFeed({ data }) {
+    const signals = data?.signals || [];
+    return (
+        <div className="glass rounded-xl p-6">
+            <h2 className="text-lg font-semibold mb-4">Signal Feed ({signals.length})</h2>
+            <div className="space-y-1 max-h-64 overflow-y-auto">
+                {signals.length === 0 ? (
+                    <div className="text-slate-500 text-sm py-8 text-center">No recent signals</div>
+                ) : signals.slice(0, 15).map((s, i) => (
+                    <div key={i} className="flex items-center justify-between p-2 rounded hover:bg-slate-800/50 text-sm">
+                        <div className="flex items-center gap-2">
+                            <span className="font-medium">{s.token || s.symbol || '?'}</span>
+                            <Badge text={s._source_dir || s.source || '?'} />
+                        </div>
+                        <span className="text-xs text-slate-500 mono">{(s.timestamp || '').slice(11, 19)}</span>
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+}
+
+// ── 8.1.6 Strategy Dashboard ──
+function Strategies({ data }) {
+    const strategies = data?.strategies || [];
+    return (
+        <div className="glass rounded-xl p-6">
+            <h2 className="text-lg font-semibold mb-4">Strategies</h2>
+            <div className="space-y-2">
+                {strategies.map((s, i) => (
+                    <div key={i} className="flex items-center justify-between p-3 rounded-lg bg-slate-800/50">
+                        <div>
+                            <span className="font-medium text-sm">{s.name}</span>
+                            <Badge text={s.active ? 'ACTIVE' : 'PAUSED'} color={s.active ? 'green' : 'amber'} />
+                        </div>
+                        <div className="flex gap-4 text-sm mono">
+                            <span>{s.trades} trades</span>
+                            <span className={s.win_rate >= 0.5 ? 'text-green-400' : 'text-red-400'}>
+                                {(s.win_rate * 100).toFixed(0)}% WR
+                            </span>
+                        </div>
+                    </div>
+                ))}
+                {strategies.length === 0 && <div className="text-slate-500 text-sm py-4 text-center">No strategy data</div>}
+            </div>
+        </div>
+    );
+}
+
+// ── 8.1.7 Genius Memory ──
+function GeniusMemory({ data }) {
+    if (!data) return null;
+    const regime = data.regime || {};
+    const review = data.statistical_review || {};
+    return (
+        <div className="glass rounded-xl p-6">
+            <h2 className="text-lg font-semibold mb-4">Genius Memory</h2>
+            <div className="grid grid-cols-2 gap-3">
+                <StatCard label="Market Regime" value={regime.regime || 'UNKNOWN'}
+                    color={regime.regime === 'BULL' ? 'green' : regime.regime === 'BEAR' ? 'red' : 'amber'} />
+                <StatCard label="GPT Verdict" value={review.gpt_validation?.verdict || 'N/A'}
+                    color={review.gpt_validation?.verdict === 'HEALTHY' ? 'green' : 'amber'} />
+            </div>
+            {data.patterns?.analysis?.winning_patterns && (
+                <div className="mt-3 text-xs text-slate-400">
+                    <span className="text-slate-500">Patterns found:</span> {data.patterns.analysis.winning_patterns.length} winning, {(data.patterns.analysis.losing_patterns || []).length} losing
+                </div>
+            )}
+        </div>
+    );
+}
+
+// ── 8.1.10 Health ──
+function DataHealth({ data }) {
+    if (!data) return null;
+    return (
+        <div className="glass rounded-xl p-6">
+            <h2 className="text-lg font-semibold mb-4">Data & Circuit Health</h2>
+            <div className="grid grid-cols-2 gap-3 mb-3">
+                <StatCard label="Price Feeds" value={data.price_feeds || 0} />
+                <StatCard label="Cron Jobs" value={Object.keys(data.cron_jobs || {}).length} />
+            </div>
+            <div className="space-y-1">
+                {Object.entries(data.circuit_breakers || {}).map(([name, info]) => (
+                    <div key={name} className="flex items-center justify-between text-xs p-1.5">
+                        <span className="text-slate-400">{name.replace(/_/g, ' ')}</span>
+                        <Badge text={info?.state || info || 'OK'} color={info?.state === 'OPEN' ? 'red' : 'green'} />
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+}
+
+// ── 8.1.12 + 8.3 Controls ──
+function Controls({ onAction }) {
+    const [confirming, setConfirming] = useState(null);
+    const actions = [
+        { id: 'kill_switch', label: 'Kill Switch', color: 'red', icon: '🚨', params: { reason: 'Manual' } },
+        { id: 'mode_switch', label: 'Paper Mode', color: 'blue', icon: '📋', params: { mode: 'paper' } },
+        { id: 'mode_switch_shadow', label: 'Shadow Mode', color: 'amber', icon: '👁', params: { mode: 'shadow' } },
+    ];
+
+    const handleClick = (action) => {
+        if (confirming === action.id) {
+            onAction(action.id === 'mode_switch_shadow' ? 'mode_switch' : action.id, action.params);
+            setConfirming(null);
+        } else {
+            setConfirming(action.id);
+            setTimeout(() => setConfirming(null), 3000);
+        }
+    };
+
+    return (
+        <div className="glass rounded-xl p-6">
+            <h2 className="text-lg font-semibold mb-4">Controls</h2>
+            <div className="flex flex-wrap gap-2">
+                {actions.map(a => (
+                    <button key={a.id} onClick={() => handleClick(a)}
+                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                            confirming === a.id ? 'bg-red-600 text-white animate-pulse' :
+                            a.color === 'red' ? 'bg-red-900/30 text-red-400 border border-red-700/50 hover:bg-red-900/50' :
+                            a.color === 'amber' ? 'bg-amber-900/30 text-amber-400 border border-amber-700/50 hover:bg-amber-900/50' :
+                            'bg-blue-900/30 text-blue-400 border border-blue-700/50 hover:bg-blue-900/50'
+                        }`}>
+                        {a.icon} {confirming === a.id ? 'CONFIRM?' : a.label}
+                    </button>
+                ))}
+            </div>
+        </div>
+    );
+}
+
+// ── Main App ──
+function App() {
+    const [tab, setTab] = useState('dashboard');
+    const [status, setStatus] = useState(null);
+    const [positions, setPositions] = useState(null);
+    const [trades, setTrades] = useState(null);
+    const [signals, setSignals] = useState(null);
+    const [strategies, setStrategies] = useState(null);
+    const [genius, setGenius] = useState(null);
+    const [health, setHealth] = useState(null);
+    const [lastUpdate, setLastUpdate] = useState(null);
+    const [connected, setConnected] = useState(false);
+
+    const refresh = useCallback(async () => {
+        const s = await api('/api/status');
+        if (s) { setStatus(s); setConnected(true); setLastUpdate(new Date()); }
+        else { setConnected(false); }
+        setPositions(await api('/api/positions'));
+        setTrades(await api('/api/trades'));
+        setSignals(await api('/api/signals'));
+        setStrategies(await api('/api/strategies'));
+        setGenius(await api('/api/genius'));
+        setHealth(await api('/api/health'));
+    }, []);
+
+    useEffect(() => {
+        refresh();
+        const interval = setInterval(refresh, REFRESH_MS);
+        return () => clearInterval(interval);
+    }, [refresh]);
+
+    const handleAction = async (action, params) => {
+        const result = await apiPost('/api/control', { action, params, confirmed: true });
+        if (result) { refresh(); }
+    };
+
+    const tabs = [
+        { id: 'dashboard', label: 'Dashboard' },
+        { id: 'trades', label: 'Trades' },
+        { id: 'signals', label: 'Signals' },
+        { id: 'genius', label: 'Genius' },
+        { id: 'health', label: 'Health' },
+        { id: 'controls', label: 'Controls' },
+    ];
+
+    return (
+        <div className="min-h-screen">
+            {/* Header */}
+            <header className="glass border-b border-slate-700/50 sticky top-0 z-50">
+                <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                        <span className="text-xl font-bold">⚖️ Sanad Trader</span>
+                        <Badge text="v3.0" color="purple" />
+                        {status?.mode && <Badge text={status.mode.toUpperCase()} color={status.mode === 'live' ? 'amber' : 'blue'} />}
+                    </div>
+                    <div className="flex items-center gap-3">
+                        <div className={`w-2 h-2 rounded-full ${connected ? 'bg-green-500 pulse-dot' : 'bg-red-500'}`}></div>
+                        <span className="text-xs text-slate-500 mono">
+                            {lastUpdate ? lastUpdate.toLocaleTimeString() : '--:--:--'}
+                        </span>
+                    </div>
+                </div>
+                {/* Tabs */}
+                <div className="max-w-7xl mx-auto px-4 flex gap-1 pb-1">
+                    {tabs.map(t => (
+                        <button key={t.id} onClick={() => setTab(t.id)}
+                            className={`px-4 py-2 text-sm rounded-t-lg transition-all ${
+                                tab === t.id ? 'bg-slate-800 text-white font-medium' : 'text-slate-500 hover:text-slate-300'
+                            }`}>
+                            {t.label}
+                        </button>
+                    ))}
+                </div>
+            </header>
+
+            {/* Content */}
+            <main className="max-w-7xl mx-auto px-4 py-6 space-y-6">
+                {tab === 'dashboard' && <>
+                    <SystemStatus data={status} />
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <LivePositions data={positions} />
+                        <TradeHistory data={trades} />
+                    </div>
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <SignalFeed data={signals} />
+                        <Strategies data={strategies} />
+                    </div>
+                </>}
+                {tab === 'trades' && <TradeHistory data={trades} />}
+                {tab === 'signals' && <SignalFeed data={signals} />}
+                {tab === 'genius' && <GeniusMemory data={genius} />}
+                {tab === 'health' && <DataHealth data={health} />}
+                {tab === 'controls' && <Controls onAction={handleAction} />}
+            </main>
+
+            {/* Footer */}
+            <footer className="text-center py-4 text-xs text-slate-600">
+                Sanad Trader v3.0 — Built on Islamic principles of verification (Takhrij) and self-accountability (Muhasaba)
+            </footer>
+        </div>
+    );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>
