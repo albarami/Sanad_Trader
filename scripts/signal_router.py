@@ -16,6 +16,13 @@ import time
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
 
+# Signal normalizer (Sprint 11.1.5) — canonical schema conversion
+try:
+    from signal_normalizer import normalize_signal
+    HAS_NORMALIZER = True
+except ImportError:
+    HAS_NORMALIZER = False
+
 # ---------------------------------------------------------------------------
 # Paths
 # ---------------------------------------------------------------------------
@@ -253,6 +260,14 @@ def _score_signal(signal: dict, age_minutes: float, is_cross_source: bool) -> in
 # Convert signal to pipeline format
 # ---------------------------------------------------------------------------
 def _to_pipeline_signal(signal: dict, cross_sources: list[str] | None = None) -> dict:
+    # Normalize to canonical schema first (Sprint 11.1.5)
+    if HAS_NORMALIZER:
+        normalized = normalize_signal(signal)
+        if normalized:
+            # Merge normalized fields into signal (don't lose router-specific fields)
+            for k, v in normalized.items():
+                if v and not signal.get(k):
+                    signal[k] = v
     token = signal.get("token", "UNKNOWN")
     chain = signal.get("chain", "")
     address = signal.get("token_address", "")
