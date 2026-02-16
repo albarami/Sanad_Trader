@@ -298,6 +298,136 @@ def stage_1_signal_intake(signal):
 
 
 # ─────────────────────────────────────────────
+# ON-CHAIN ENRICHMENT (pre-Stage 2)
+# ─────────────────────────────────────────────
+
+def enrich_signal_with_onchain_data(signal: dict) -> dict:
+    """
+    For Solana tokens with a token_address, fetch Birdeye security + RugCheck data
+    and append it to the signal as on-chain verification evidence.
+    """
+    import time as _time
+
+    address = signal.get("token_address") or signal.get("address") or ""
+    chain = signal.get("chain", "").lower()
+    if not address or chain != "solana":
+        return signal
+
+    print("  [2pre] Enriching with on-chain verification data...")
+    onchain_evidence = {}
+
+    # 1. RugCheck safety
+    try:
+        sys.path.insert(0, str(Path(__file__).resolve().parent))
+        from rugcheck_client import check_token_safety
+        safety = check_token_safety(address)
+        onchain_evidence["rugcheck"] = {
+            "score": safety.get("rugcheck_score", 0),
+            "risk_level": safety.get("risk_level", "Unknown"),
+            "risks": safety.get("risks", []),
+            "lp_locked_pct": safety.get("lp_locked_pct", 0),
+            "safe_to_trade": safety.get("safe_to_trade", False),
+        }
+        print(f"    RugCheck: score {safety.get('rugcheck_score')}/100 ({safety.get('risk_level')})")
+    except Exception as e:
+        onchain_evidence["rugcheck"] = {"error": str(e)}
+        print(f"    RugCheck: error — {e}")
+
+    _time.sleep(2)  # respect Birdeye rate limits
+
+    # 2. Birdeye security + overview + creation
+    try:
+        from birdeye_client import get_token_security, get_token_overview, get_token_creation_info
+        security = get_token_security(address)
+        if security:
+            onchain_evidence["birdeye_security"] = {
+                "top10_holder_pct": round(security.get("top10HolderPercent", 0) * 100, 2) if security.get("top10HolderPercent") else None,
+                "creator_pct": round(security.get("creatorPercentage", 0) * 100, 4) if security.get("creatorPercentage") else None,
+                "mutable_metadata": security.get("mutableMetadata"),
+                "is_fake_token": security.get("fakeToken"),
+            }
+            print(f"    Birdeye security: top10={onchain_evidence['birdeye_security']['top10_holder_pct']}%")
+
+        _time.sleep(2)
+
+        overview = get_token_overview(address)
+        if overview:
+            onchain_evidence["birdeye_overview"] = {
+                "holder_count": overview.get("holder"),
+                "volume_24h": overview.get("v24hUSD"),
+                "liquidity": overview.get("liquidity"),
+                "market_cap": overview.get("mc") or overview.get("marketCap"),
+                "trade_count_24h": overview.get("trade24h"),
+                "unique_wallets_24h": overview.get("uniqueWallet24h"),
+            }
+            print(f"    Birdeye overview: holders={overview.get('holder')}, liq=${overview.get('liquidity', 0):,.0f}")
+
+        _time.sleep(2)
+
+        creation = get_token_creation_info(address)
+        if creation:
+            created_ts = creation.get("blockUnixTime", 0)
+            age_hours = ((_time.time() - created_ts) / 3600) if created_ts else None
+            onchain_evidence["token_creation"] = {
+                "created_at": creation.get("blockHumanTime"),
+                "creator_wallet": creation.get("creator"),
+                "age_hours": round(age_hours, 1) if age_hours else None,
+            }
+            print(f"    Token age: {age_hours:.1f}h" if age_hours else "    Token age: unknown")
+    except Exception as e:
+        onchain_evidence["birdeye_error"] = str(e)
+        print(f"    Birdeye: error — {e}")
+
+    # 3. Build verification summary
+    rc = onchain_evidence.get("rugcheck", {})
+    bs = onchain_evidence.get("birdeye_security", {})
+    bo = onchain_evidence.get("birdeye_overview", {})
+    tc = onchain_evidence.get("token_creation", {})
+
+    def _fmt(v, prefix="", suffix="", fmt_str="{}", default="N/A"):
+        if v is None or v == "":
+            return default
+        return f"{prefix}{fmt_str.format(v)}{suffix}"
+
+    evidence_summary = f"""
+ON-CHAIN VERIFICATION DATA (treat as credible primary sources):
+
+Source 1 — RugCheck (rugcheck.xyz, independent Solana token auditor):
+  Safety Score: {_fmt(rc.get('score'), suffix='/100')}  (higher = safer)
+  Risk Level: {rc.get('risk_level', 'N/A')}
+  Risks Found: {', '.join(rc.get('risks', [])) or 'None'}
+  LP Locked: {_fmt(rc.get('lp_locked_pct'), suffix='%')}
+  Safe to Trade: {rc.get('safe_to_trade', 'N/A')}
+
+Source 2 — Birdeye (birdeye.so, Solana chain analytics):
+  Top 10 Holders: {_fmt(bs.get('top10_holder_pct'), suffix='% of supply')}
+  Creator Holdings: {_fmt(bs.get('creator_pct'), suffix='%')}
+  Mutable Metadata: {bs.get('mutable_metadata', 'N/A')}
+  Fake Token Flag: {bs.get('is_fake_token', 'N/A')}
+  Holders: {_fmt(bo.get('holder_count'))}
+  24h Volume: {_fmt(bo.get('volume_24h'), prefix='$', fmt_str='{:,.0f}')}
+  Liquidity: {_fmt(bo.get('liquidity'), prefix='$', fmt_str='{:,.0f}')}
+  Market Cap: {_fmt(bo.get('market_cap'), prefix='$', fmt_str='{:,.0f}')}
+  24h Trades: {_fmt(bo.get('trade_count_24h'))}
+  Unique Wallets 24h: {_fmt(bo.get('unique_wallets_24h'))}
+
+Source 3 — Token Creation (on-chain):
+  Created: {tc.get('created_at', 'N/A')}
+  Age: {_fmt(tc.get('age_hours'), suffix=' hours')}
+  Creator Wallet: {tc.get('creator_wallet', 'N/A')}
+
+IMPORTANT FOR SANAD SCORING:
+- RugCheck and Birdeye are independent on-chain verification sources (count as 2 separate sources)
+- If RugCheck score > 70 AND Birdeye shows healthy holder distribution (top 10 < 50%), this token has 2 credible verifications
+- On-chain data is MORE reliable than news for meme tokens — it shows what's actually happening, not what's being reported
+"""
+
+    signal["onchain_evidence"] = onchain_evidence
+    signal["onchain_evidence_summary"] = evidence_summary.strip()
+    return signal
+
+
+# ─────────────────────────────────────────────
 # STAGE 2: SANAD VERIFICATION
 # ─────────────────────────────────────────────
 
@@ -311,6 +441,9 @@ def stage_2_sanad_verification(signal):
     print(f"\n{'='*60}")
     print(f"STAGE 2: SANAD VERIFICATION (Takhrij)")
     print(f"{'='*60}")
+
+    # Step 0: Enrich with on-chain data for Solana tokens
+    signal = enrich_signal_with_onchain_data(signal)
 
     # Step 1: Gather real-time intelligence via Perplexity
     print("  [2a] Gathering real-time intelligence via Perplexity...")
@@ -358,6 +491,8 @@ REAL-TIME INTELLIGENCE (from Perplexity):
 
 EXCHANGE DATA:
 {price_context}
+
+{signal.get('onchain_evidence_summary', '')}
 
 Execute the full 6-step Takhrij process as specified in your instructions.
 Return your analysis as valid JSON with these exact keys:
