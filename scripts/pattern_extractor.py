@@ -163,8 +163,6 @@ def call_opus(prompt: str) -> dict | None:
 
         import env_loader; api_key = env_loader.get_key("ANTHROPIC_API_KEY") or ""
         if not api_key:
-
-        if not api_key:
             _log("No ANTHROPIC_API_KEY — trying OpenClaw relay")
             return _call_via_openclaw(prompt)
 
