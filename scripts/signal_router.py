@@ -1,0 +1,547 @@
+#!/usr/bin/env python3
+"""
+Signal Router — Sprint 3.x
+Reads CoinGecko + DexScreener signals, ranks them, feeds the best
+candidate into sanad_pipeline.py. Deterministic Python. No LLMs.
+Designed to run as a cron job every 15 minutes.
+"""
+
+import hashlib
+import json
+import os
+import subprocess
+import sys
+import tempfile
+import time
+from datetime import datetime, timezone, timedelta
+from pathlib import Path
+
+# ---------------------------------------------------------------------------
+# Paths
+# ---------------------------------------------------------------------------
+SCRIPT_DIR = Path(__file__).resolve().parent
+BASE_DIR = SCRIPT_DIR.parent  # /data/.openclaw/workspace/trading
+SIGNALS_CG = BASE_DIR / "signals" / "coingecko"
+SIGNALS_DEX = BASE_DIR / "signals" / "dexscreener"
+STATE_DIR = BASE_DIR / "state"
+POSITIONS_PATH = STATE_DIR / "positions.json"
+PORTFOLIO_PATH = STATE_DIR / "portfolio.json"
+TRADE_HISTORY_PATH = STATE_DIR / "trade_history.json"
+ROUTER_STATE_PATH = STATE_DIR / "signal_router_state.json"
+PIPELINE_SCRIPT = SCRIPT_DIR / "sanad_pipeline.py"
+
+# ---------------------------------------------------------------------------
+# Constants
+# ---------------------------------------------------------------------------
+MAX_POSITIONS = 3
+STALE_THRESHOLD_MIN = 30
+COOLDOWN_HOURS = 2
+MAX_DAILY_RUNS = 8
+CROSS_SOURCE_BONUS = 25
+
+
+def _log(msg: str):
+    print(f"[SIGNAL ROUTER] {msg}")
+
+
+def _now() -> datetime:
+    return datetime.now(timezone.utc)
+
+
+# ---------------------------------------------------------------------------
+# State I/O (atomic writes)
+# ---------------------------------------------------------------------------
+def _load_json(path: Path, default=None):
+    if not path.exists():
+        return default if default is not None else {}
+    try:
+        return json.loads(path.read_text())
+    except Exception:
+        return default if default is not None else {}
+
+
+def _save_json_atomic(path: Path, data: dict):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_suffix(".tmp")
+    tmp.write_text(json.dumps(data, indent=2, default=str))
+    tmp.rename(path)
+
+
+# ---------------------------------------------------------------------------
+# Load latest signal files
+# ---------------------------------------------------------------------------
+def _latest_signal_file(directory: Path, exclude_names: set[str] | None = None) -> tuple[Path | None, list[dict], float]:
+    """Return (path, signals_list, age_minutes) for the most recent file."""
+    if not directory.exists():
+        return None, [], 999
+    exclude = exclude_names or set()
+    files = sorted(
+        [f for f in directory.glob("*.json") if f.name not in exclude],
+        key=lambda f: f.stat().st_mtime,
+        reverse=True,
+    )
+    if not files:
+        return None, [], 999
+    latest = files[0]
+    age_min = (time.time() - latest.stat().st_mtime) / 60
+    if age_min > STALE_THRESHOLD_MIN:
+        return latest, [], age_min
+    data = _load_json(latest, {})
+    signals = data.get("signals", [])
+    return latest, signals, age_min
+
+
+# ---------------------------------------------------------------------------
+# Load system state
+# ---------------------------------------------------------------------------
+def _load_open_tokens() -> set[str]:
+    pos = _load_json(POSITIONS_PATH, {"positions": []})
+    return {p["token"].upper() for p in pos.get("positions", []) if p.get("status") == "OPEN"}
+
+
+def _load_cooldown_tokens() -> dict[str, float]:
+    """Return {TOKEN: remaining_minutes} for tokens traded within cooldown period."""
+    hist = _load_json(TRADE_HISTORY_PATH, {"trades": []})
+    now = _now()
+    cooldowns: dict[str, float] = {}
+    for t in hist.get("trades", []):
+        ts_str = t.get("timestamp", "")
+        try:
+            ts = datetime.fromisoformat(ts_str)
+            elapsed = (now - ts).total_seconds() / 60
+            remaining = COOLDOWN_HOURS * 60 - elapsed
+            if remaining > 0:
+                token = t.get("token", "").upper()
+                cooldowns[token] = max(cooldowns.get(token, 0), remaining)
+        except Exception:
+            continue
+    return cooldowns
+
+
+def _is_daily_loss_hit() -> bool:
+    pf = _load_json(PORTFOLIO_PATH, {})
+    # If daily PnL is worse than -5%, stop
+    daily_pnl = pf.get("daily_pnl_pct", 0)
+    return daily_pnl <= -5.0
+
+
+def _load_router_state() -> dict:
+    return _load_json(ROUTER_STATE_PATH, {
+        "last_run": None,
+        "processed_hashes": [],
+        "daily_pipeline_runs": 0,
+        "daily_reset_date": None,
+    })
+
+
+def _signal_hash(signal: dict) -> str:
+    key = f"{signal.get('token', '')}|{signal.get('signal_type', '')}|{signal.get('source', '')}"
+    return hashlib.sha256(key.encode()).hexdigest()[:12]
+
+
+# ---------------------------------------------------------------------------
+# Scoring
+# ---------------------------------------------------------------------------
+def _score_signal(signal: dict, age_minutes: float, is_cross_source: bool) -> int:
+    score = 0
+    stype = signal.get("signal_type", "")
+    source = signal.get("source", "")
+
+    # Source type score
+    if stype == "BOOSTED_TOKEN":
+        score += 20
+    elif stype in ("TRENDING_GAINER",):
+        score += 20
+    elif stype in ("WATCHLIST_TRENDING", "WATCHLIST_GAINER"):
+        score += 15
+    elif stype == "COMMUNITY_TAKEOVER":
+        score += 10
+    elif stype == "MAJOR_GAINER":
+        score += 15
+
+    # Volume
+    vol = signal.get("volume_24h") or signal.get("volume_24h") or 0
+    if vol > 1_000_000:
+        score += 20
+    elif vol > 500_000:
+        score += 10
+    elif vol > 100_000:
+        score += 5
+
+    # Price momentum (prefer 1h, fall back to 24h)
+    pct_1h = signal.get("price_change_1h_pct") or 0
+    pct_24h = signal.get("price_change_24h_pct") or 0
+    momentum = pct_1h if pct_1h else pct_24h / 4  # rough proxy
+    if momentum > 20:
+        score += 15
+    elif momentum > 10:
+        score += 10
+    elif momentum > 5:
+        score += 5
+
+    # Liquidity
+    liq = signal.get("liquidity_usd") or 0
+    if liq > 200_000:
+        score += 15
+    elif liq > 100_000:
+        score += 10
+    elif liq > 50_000:
+        score += 5
+
+    # Buy/sell ratio
+    bsr = signal.get("buy_sell_ratio") or 0
+    if bsr > 2.0:
+        score += 15
+    elif bsr > 1.5:
+        score += 10
+    elif bsr > 1.0:
+        score += 5
+
+    # Recency
+    if age_minutes < 10:
+        score += 10
+    elif age_minutes < 20:
+        score += 5
+
+    # Cross-source Tawatur bonus
+    if is_cross_source:
+        score += CROSS_SOURCE_BONUS
+
+    return score
+
+
+# ---------------------------------------------------------------------------
+# Convert signal to pipeline format
+# ---------------------------------------------------------------------------
+def _to_pipeline_signal(signal: dict, cross_sources: list[str] | None = None) -> dict:
+    token = signal.get("token", "UNKNOWN")
+    chain = signal.get("chain", "")
+    address = signal.get("token_address", "")
+    stype = signal.get("signal_type", "")
+    source_parts = []
+
+    # Build human-readable source
+    if "dexscreener" in signal.get("source", ""):
+        boost = signal.get("boost_amount")
+        if boost:
+            source_parts.append(f"DexScreener boost ({boost}x)")
+        elif stype == "COMMUNITY_TAKEOVER":
+            source_parts.append("DexScreener community takeover")
+        else:
+            source_parts.append("DexScreener")
+
+    if "coingecko" in signal.get("source", ""):
+        rank = signal.get("trending_rank")
+        if rank is not None:
+            source_parts.append(f"CoinGecko trending #{rank + 1}")
+        else:
+            source_parts.append("CoinGecko top gainer")
+
+    if cross_sources:
+        for cs in cross_sources:
+            if cs not in " ".join(source_parts).lower():
+                source_parts.append(cs)
+
+    source_str = " + ".join(source_parts) if source_parts else signal.get("source", "unknown")
+
+    # Determine venue
+    if chain == "solana" and address:
+        venue = "DEX"
+        exchange = "raydium"
+    else:
+        venue = "CEX"
+        exchange = "binance"
+
+    result = {
+        "token": token,
+        "source": source_str,
+        "thesis": signal.get("thesis", ""),
+        "venue": venue,
+        "exchange": exchange,
+    }
+    if chain:
+        result["chain"] = chain
+    if address:
+        result["token_address"] = address
+
+    return result
+
+
+# ---------------------------------------------------------------------------
+# Main run
+# ---------------------------------------------------------------------------
+def run_router():
+    now = _now()
+    now_str = now.strftime("%Y-%m-%dT%H:%M:%S+00:00")
+    _log(now_str)
+
+    # --- Load router state ---
+    state = _load_router_state()
+
+    # Reset daily counters at midnight UTC
+    today = now.strftime("%Y-%m-%d")
+    if state.get("daily_reset_date") != today:
+        state["daily_pipeline_runs"] = 0
+        state["daily_reset_date"] = today
+        state["processed_hashes"] = []  # also reset processed hashes daily
+
+    # --- Budget check ---
+    if state["daily_pipeline_runs"] >= MAX_DAILY_RUNS:
+        _log(f"Daily pipeline budget exhausted ({state['daily_pipeline_runs']}/{MAX_DAILY_RUNS} runs). Skipping.")
+        state["last_run"] = now_str
+        _save_json_atomic(ROUTER_STATE_PATH, state)
+        return
+
+    # --- Load signals ---
+    cg_path, cg_signals, cg_age = _latest_signal_file(SIGNALS_CG, exclude_names={"global_latest.json"})
+    dex_path, dex_signals, dex_age = _latest_signal_file(SIGNALS_DEX)
+
+    cg_label = f"{len(cg_signals)} signals ({cg_age:.0f}min ago)" if cg_signals else f"0 signals ({cg_age:.0f}min ago, stale)" if cg_path else "no files"
+    dex_label = f"{len(dex_signals)} signals ({dex_age:.0f}min ago)" if dex_signals else f"0 signals ({dex_age:.0f}min ago, stale)" if dex_path else "no files"
+    _log(f"Loading signals: CoinGecko {cg_label}, DexScreener {dex_label}")
+
+    all_signals = []
+    for s in cg_signals:
+        s["_source_age_min"] = cg_age
+        s["_origin"] = "coingecko"
+        all_signals.append(s)
+    for s in dex_signals:
+        s["_source_age_min"] = dex_age
+        s["_origin"] = "dexscreener"
+        all_signals.append(s)
+
+    if not all_signals:
+        _log("No actionable signals — no recent data from either source.")
+        state["last_run"] = now_str
+        _save_json_atomic(ROUTER_STATE_PATH, state)
+        return
+
+    # --- Load system state ---
+    open_tokens = _load_open_tokens()
+    cooldowns = _load_cooldown_tokens()
+    daily_loss = _is_daily_loss_hit()
+    processed_hashes = set(state.get("processed_hashes", []))
+    open_count = len(open_tokens)
+    available_slots = MAX_POSITIONS - open_count
+
+    _log(f"Open positions: {open_count} ({', '.join(sorted(open_tokens)) or 'none'}). Available slots: {available_slots}")
+
+    if daily_loss:
+        _log("Daily loss limit hit — skipping ALL signals.")
+        state["last_run"] = now_str
+        _save_json_atomic(ROUTER_STATE_PATH, state)
+        return
+
+    if available_slots <= 0:
+        _log(f"Max positions reached ({MAX_POSITIONS}). Skipping ALL signals.")
+        state["last_run"] = now_str
+        _save_json_atomic(ROUTER_STATE_PATH, state)
+        return
+
+    # --- Detect cross-source tokens ---
+    cg_tokens = {s.get("token", "").upper() for s in cg_signals}
+    dex_tokens = {s.get("token", "").upper() for s in dex_signals}
+    cross_source_tokens = cg_tokens & dex_tokens
+    if cross_source_tokens:
+        _log(f"Cross-source (Tawatur) matches: {', '.join(sorted(cross_source_tokens))}")
+
+    # --- Filter ---
+    filtered_reasons: list[str] = []
+    candidates: list[tuple[dict, float]] = []  # (signal, score)
+
+    for s in all_signals:
+        token = (s.get("token") or "").upper()
+        shash = _signal_hash(s)
+
+        if token in open_tokens:
+            filtered_reasons.append(f"{token} (already open)")
+            continue
+        if token in cooldowns:
+            filtered_reasons.append(f"{token} (cooldown {cooldowns[token]:.0f}min remaining)")
+            continue
+        if shash in processed_hashes:
+            continue  # silently skip already-processed
+
+        is_cross = token in cross_source_tokens
+        age = s.get("_source_age_min", 30)
+        score = _score_signal(s, age, is_cross)
+        candidates.append((s, score))
+
+    if filtered_reasons:
+        _log(f"Filtered: {', '.join(filtered_reasons)}")
+
+    if not candidates:
+        _log("No actionable signals after filtering.")
+        state["last_run"] = now_str
+        state["signals_scanned"] = len(all_signals)
+        state["signals_filtered"] = len(all_signals)
+        _save_json_atomic(ROUTER_STATE_PATH, state)
+        return
+
+    # --- Rank ---
+    candidates.sort(key=lambda x: x[1], reverse=True)
+    _log(f"Scoring {len(candidates)} candidates...")
+
+    for i, (s, score) in enumerate(candidates[:10], 1):
+        token = s.get("token", "?")
+        stype = s.get("signal_type", "")
+        origin = s.get("_origin", "")
+        is_cross = token.upper() in cross_source_tokens
+        extras = []
+        if s.get("boost_amount"):
+            extras.append(f"boost {s['boost_amount']}x")
+        if s.get("trending_rank") is not None:
+            extras.append(f"trending #{s['trending_rank'] + 1}")
+        pct_1h = s.get("price_change_1h_pct")
+        pct_24h = s.get("price_change_24h_pct")
+        if pct_1h:
+            extras.append(f"{'+' if pct_1h > 0 else ''}{pct_1h:.0f}% 1h")
+        elif pct_24h:
+            extras.append(f"{'+' if pct_24h > 0 else ''}{pct_24h:.1f}% 24h")
+        vol = s.get("volume_24h") or 0
+        if vol >= 1e6:
+            extras.append(f"vol ${vol/1e6:.1f}M")
+        elif vol > 0:
+            extras.append(f"vol ${vol/1e3:.0f}K")
+        detail = ", ".join(extras)
+        cross_tag = " ← CROSS-SOURCE" if is_cross else ""
+        _log(f"  {i}. {token} — score {score} ({origin} {stype}, {detail}){cross_tag}")
+
+    # --- Select top signal ---
+    selected, selected_score = candidates[0]
+    selected_token = selected.get("token", "?")
+    _log(f"Selected: {selected_token} (score {selected_score}) → feeding to pipeline")
+
+    # --- Convert to pipeline format ---
+    cross_labels = []
+    if selected_token.upper() in cross_source_tokens:
+        # Find cross-source info
+        for s in all_signals:
+            if s.get("token", "").upper() == selected_token.upper() and s.get("_origin") != selected.get("_origin"):
+                if s.get("_origin") == "coingecko":
+                    rank = s.get("trending_rank")
+                    cross_labels.append(f"CoinGecko trending #{rank + 1}" if rank is not None else "CoinGecko gainer")
+                else:
+                    boost = s.get("boost_amount")
+                    cross_labels.append(f"DexScreener boost ({boost}x)" if boost else "DexScreener")
+
+    pipeline_signal = _to_pipeline_signal(selected, cross_labels)
+
+    # --- Write temp signal file ---
+    tmp_dir = BASE_DIR / "tmp"
+    tmp_dir.mkdir(parents=True, exist_ok=True)
+    signal_file = tmp_dir / f"router_signal_{now.strftime('%Y%m%d_%H%M%S')}.json"
+    signal_file.write_text(json.dumps(pipeline_signal, indent=2))
+
+    # --- Call pipeline ---
+    try:
+        result = subprocess.run(
+            ["python3", str(PIPELINE_SCRIPT), str(signal_file)],
+            capture_output=True,
+            text=True,
+            timeout=300,
+        )
+        stdout = result.stdout.strip()
+        stderr = result.stderr.strip()
+
+        # Try to parse pipeline result from stdout
+        pipeline_action = "UNKNOWN"
+        pipeline_reason = ""
+        for line in reversed(stdout.splitlines()):
+            if '"final_action"' in line:
+                try:
+                    # Try to parse the summary JSON block
+                    pass
+                except Exception:
+                    pass
+            if "APPROVE" in line.upper():
+                pipeline_action = "APPROVE"
+            elif "REJECT" in line.upper():
+                pipeline_action = "REJECT"
+            elif "REVISE" in line.upper():
+                pipeline_action = "REVISE"
+
+        # Better: look for the SUMMARY block
+        if "SUMMARY" in stdout:
+            summary_start = stdout.index("SUMMARY")
+            summary_text = stdout[summary_start:]
+            for line in summary_text.splitlines():
+                if '"final_action"' in line:
+                    if "APPROVE" in line:
+                        pipeline_action = "APPROVE"
+                    elif "REJECT" in line:
+                        pipeline_action = "REJECT"
+                    elif "REVISE" in line:
+                        pipeline_action = "REVISE"
+                if '"reason"' in line or '"rejection_reason"' in line:
+                    pipeline_reason = line.split(":", 1)[-1].strip().strip('",')
+
+        _log(f"Pipeline result: {pipeline_action}" + (f" ({pipeline_reason})" if pipeline_reason else ""))
+
+        if stdout:
+            # Print last 20 lines of pipeline output for visibility
+            lines = stdout.splitlines()
+            if len(lines) > 20:
+                _log("Pipeline output (last 20 lines):")
+                for l in lines[-20:]:
+                    print(f"  | {l}")
+            else:
+                _log("Pipeline output:")
+                for l in lines:
+                    print(f"  | {l}")
+
+        if stderr:
+            _log(f"Pipeline stderr: {stderr[:500]}")
+
+        if result.returncode != 0:
+            _log(f"Pipeline exited with code {result.returncode}")
+
+    except subprocess.TimeoutExpired:
+        _log("Pipeline TIMEOUT (>5min) — aborting. Will not retry.")
+        pipeline_action = "TIMEOUT"
+        pipeline_reason = "Pipeline exceeded 5 minute timeout"
+    except Exception as e:
+        _log(f"Pipeline ERROR: {e}")
+        pipeline_action = "ERROR"
+        pipeline_reason = str(e)
+
+    # --- Update state ---
+    shash = _signal_hash(selected)
+    processed = list(processed_hashes)
+    processed.append(shash)
+    state["last_run"] = now_str
+    state["signals_scanned"] = len(all_signals)
+    state["signals_filtered"] = len(all_signals) - len(candidates)
+    state["signal_selected"] = {
+        "token": selected_token,
+        "score": selected_score,
+        "source": selected.get("source", ""),
+        "signal_type": selected.get("signal_type", ""),
+    }
+    state["pipeline_result"] = pipeline_action
+    state["pipeline_reason"] = pipeline_reason
+    state["processed_hashes"] = processed
+    state["daily_pipeline_runs"] = state.get("daily_pipeline_runs", 0) + 1
+    daily_runs = state["daily_pipeline_runs"]
+    _log(f"Daily runs: {daily_runs}/{MAX_DAILY_RUNS}")
+
+    _save_json_atomic(ROUTER_STATE_PATH, state)
+
+    # Cleanup temp file
+    try:
+        signal_file.unlink()
+    except Exception:
+        pass
+
+    return pipeline_action
+
+
+# ---------------------------------------------------------------------------
+# Entry point
+# ---------------------------------------------------------------------------
+if __name__ == "__main__":
+    try:
+        run_router()
+    except Exception as e:
+        _log(f"FATAL: {e}")
+        sys.exit(1)
