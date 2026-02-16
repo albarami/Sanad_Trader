@@ -349,6 +349,14 @@ def close_position(position, current_price, reason, detail=""):
     except Exception as e:
         print(f"    WARNING: trade_history update failed: {e}")
 
+    # ── Post-trade analysis (Genius Memory) ──
+    try:
+        import post_trade_analyzer
+        post_trade_analyzer.analyze_trade(position)
+        print(f"    Genius Memory: post-trade analysis complete")
+    except Exception as e:
+        print(f"    WARNING: Post-trade analysis failed: {e}")
+
     return net_pnl_usd
 
 
