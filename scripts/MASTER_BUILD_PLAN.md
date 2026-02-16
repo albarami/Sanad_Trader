@@ -570,13 +570,13 @@
 | # | Component | Status | Notes |
 |---|-----------|--------|-------|
 | 9.1.1 | Red Team prompt | ✅ | prompts/red-team-aljassas.md — 8 attack vector categories |
-| 9.1.2 | Red Team attack framework | ❌ | scripts/red_team.py |
-| 9.1.3 | Fake signal injection test | ❌ | Test pipeline catches manipulation |
-| 9.1.4 | Prompt injection test | ❌ | Sanad must reject instruction-like content |
-| 9.1.5 | Extreme volatility simulation | ❌ | Test emergency logic |
-| 9.1.6 | Concurrent duplicate signals | ❌ | Test mutex lock |
-| 9.1.7 | Attack results logging | ❌ | red-team/ folder |
-| 9.1.8 | Weekly Red Team cron | ❌ | Saturday 02:00 Qatar |
+| 9.1.2 | Red Team attack framework | ✅ | scripts/red_team.py |
+| 9.1.3 | Fake signal injection test | ✅ | Test pipeline catches manipulation |
+| 9.1.4 | Prompt injection test | ✅ | Sanad must reject instruction-like content |
+| 9.1.5 | Extreme volatility simulation | ✅ | Test emergency logic |
+| 9.1.6 | Concurrent duplicate signals | ✅ | Test mutex lock |
+| 9.1.7 | Attack results logging | ✅ | red-team/ folder |
+| 9.1.8 | Weekly Red Team cron | ✅ | Saturday 02:00 Qatar |
 
 ### 9.2 Threat Auto-Response
 
@@ -584,10 +584,10 @@
 |---|--------|--------|
 | 9.2.1 | Stale data | 🔧 | Gate 3 checks exist |
 | 9.2.2 | API rate limiting | 🔧 | Circuit breakers on all clients |
-| 9.2.3 | API key compromise | ❌ |
-| 9.2.4 | VPS compromise | ❌ |
-| 9.2.5 | Prompt injection via web | ❌ |
-| 9.2.6 | DEX sandwich / MEV | ❌ |
+| 9.2.3 | API key compromise | ✅ |
+| 9.2.4 | VPS compromise | ✅ |
+| 9.2.5 | Prompt injection via web | ✅ |
+| 9.2.6 | DEX sandwich / MEV | ✅ |
 | 9.2.7 | Flash crash | ✅ | heartbeat.py + position_monitor |
 | 9.2.8 | Coordinated pump/dump | 🔧 | Sybil detection via Helius |
 
@@ -596,8 +596,8 @@
 | # | Component | Status |
 |---|-----------|--------|
 | 9.3.1 | Event hash chain | ✅ | SHA-256 in supabase_client.py |
-| 9.3.2 | Daily root hash to GitHub | ❌ |
-| 9.3.3 | Hash chain verification (every 6h) | ❌ |
+| 9.3.2 | Daily root hash to GitHub | ✅ |
+| 9.3.3 | Hash chain verification (every 6h) | ✅ |
 
 ### 9.4 Security Crons — ALL ❌
 
