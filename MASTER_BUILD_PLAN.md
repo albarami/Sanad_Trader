@@ -502,12 +502,12 @@
 
 | # | Component | Status | Notes |
 |---|-----------|--------|-------|
-| 7.4.1 | Burner wallet generator | ❌ | scripts/burner_wallets.py |
-| 7.4.2 | Master vault → burner transfer | ❌ | Exact trade amount |
-| 7.4.3 | Execute via Jito bundle | ❌ | Buy in burner |
-| 7.4.4 | Sweep back on exit | ❌ | Proceeds to master vault |
-| 7.4.5 | SOL rent recovery | ❌ | Recover rent |
-| 7.4.6 | Wallet abandonment | ❌ | Never reuse |
+| 7.4.1 | Burner wallet generator | ✅ | burner_wallets.py — Ed25519 via solders/nacl/CSPRNG fallback |
+| 7.4.2 | Master vault → burner transfer | ✅ | fund_burner() — exact amount + rent + priority fee + buffer |
+| 7.4.3 | Execute via Helius sendSmartTransaction | ✅ | execute_swap() — Jupiter quote + Helius landing + jitodontfront |
+| 7.4.4 | Sweep back on exit | ✅ | sweep_to_vault() — close token accounts + transfer SOL |
+| 7.4.5 | SOL rent recovery | ✅ | recover_rent() — closes token accounts, recovers ~0.002 SOL each |
+| 7.4.6 | Wallet abandonment | ✅ | abandon_wallet() — wipes secret key, marks ABANDONED |
 
 ### 7.5 Rugpull Database
 
