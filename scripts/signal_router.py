@@ -24,6 +24,7 @@ BASE_DIR = SCRIPT_DIR.parent  # /data/.openclaw/workspace/trading
 SIGNALS_CG = BASE_DIR / "signals" / "coingecko"
 SIGNALS_DEX = BASE_DIR / "signals" / "dexscreener"
 SIGNALS_BE = BASE_DIR / "signals" / "birdeye"
+FEAR_GREED_PATH = BASE_DIR / "signals" / "market" / "fear_greed_latest.json"
 STATE_DIR = BASE_DIR / "state"
 POSITIONS_PATH = STATE_DIR / "positions.json"
 PORTFOLIO_PATH = STATE_DIR / "portfolio.json"
@@ -411,6 +412,25 @@ def run_router():
     if cross_source_tokens:
         _log(f"Cross-source (Tawatur) matches: {', '.join(sorted(cross_source_tokens))}")
 
+    # --- Load market regime ---
+    regime_adjustment = 0
+    fg = _load_json(FEAR_GREED_PATH, {})
+    fg_value = fg.get("value")
+    fg_regime = fg.get("regime", "UNKNOWN")
+    if fg_regime == "EXTREME_GREED":
+        regime_adjustment = -15
+    elif fg_regime == "GREED":
+        regime_adjustment = -5
+    elif fg_regime == "FEAR":
+        regime_adjustment = 5
+    elif fg_regime == "EXTREME_FEAR":
+        regime_adjustment = 15
+    if fg_value is not None:
+        adj_str = f"+{regime_adjustment}" if regime_adjustment > 0 else str(regime_adjustment)
+        _log(f"Market regime: {fg_regime} ({fg_value}) — applying {adj_str} to all scores")
+    else:
+        _log("Market regime: UNKNOWN (no fear/greed data)")
+
     # --- Filter ---
     filtered_reasons: list[str] = []
     candidates: list[tuple[dict, float]] = []  # (signal, score)
@@ -430,7 +450,7 @@ def run_router():
 
         is_cross = token in cross_source_tokens
         age = s.get("_source_age_min", 30)
-        score = _score_signal(s, age, is_cross)
+        score = _score_signal(s, age, is_cross) + regime_adjustment
         candidates.append((s, score))
 
     if filtered_reasons:
