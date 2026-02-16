@@ -1,0 +1,21 @@
+{
+  "description": "Scheduled exchange maintenance windows. Suppress false-positive alerts during these windows.",
+  "windows": [
+    {
+      "exchange": "binance",
+      "schedule": "ad-hoc",
+      "typical_duration_min": 30,
+      "notes": "Binance announces maintenance via API status. No fixed schedule.",
+      "suppress_alerts": ["stale_price", "exchange_health", "reconciliation_mismatch"]
+    },
+    {
+      "exchange": "mexc",
+      "schedule": "ad-hoc",
+      "typical_duration_min": 60,
+      "notes": "MEXC maintenance windows are longer and less predictable.",
+      "suppress_alerts": ["stale_price", "exchange_health", "reconciliation_mismatch"]
+    }
+  ],
+  "active_overrides": [],
+  "last_updated": "2026-02-16T00:00:00Z"
+}
