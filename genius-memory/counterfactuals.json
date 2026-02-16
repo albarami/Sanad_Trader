@@ -1,0 +1,70 @@
+{
+  "total_trades_analyzed": 4,
+  "significant_edges": 2,
+  "significance_rate": 50.0,
+  "avg_edge_vs_nothing": 0.57,
+  "avg_edge_percentile": 50.0,
+  "by_strategy": {
+    "unknown": {
+      "trades": 4,
+      "significant": 2,
+      "avg_edge": 0.57,
+      "significance_rate": 50.0
+    }
+  },
+  "counterfactuals": [
+    {
+      "trade_id": "unknown",
+      "token": "BTC",
+      "strategy": "unknown",
+      "actual_pnl_pct": 31.56,
+      "edge_vs_nothing": 31.56,
+      "edge_percentile": 100.0,
+      "random_baseline_mean": -0.22,
+      "random_baseline_std": 2.92,
+      "is_significant": true,
+      "hold_hours": 24,
+      "analyzed_at": "2026-02-16T18:23:48.979634+00:00"
+    },
+    {
+      "trade_id": "unknown",
+      "token": "BTC",
+      "strategy": "unknown",
+      "actual_pnl_pct": -36.87,
+      "edge_vs_nothing": -36.87,
+      "edge_percentile": 0.0,
+      "random_baseline_mean": -0.16,
+      "random_baseline_std": 3.05,
+      "is_significant": false,
+      "hold_hours": 24,
+      "analyzed_at": "2026-02-16T18:23:48.979857+00:00"
+    },
+    {
+      "trade_id": "unknown",
+      "token": "BTC",
+      "strategy": "unknown",
+      "actual_pnl_pct": -6.9,
+      "edge_vs_nothing": -6.9,
+      "edge_percentile": 0.0,
+      "random_baseline_mean": 0.26,
+      "random_baseline_std": 3.17,
+      "is_significant": false,
+      "hold_hours": 24,
+      "analyzed_at": "2026-02-16T18:23:48.980048+00:00"
+    },
+    {
+      "trade_id": "unknown",
+      "token": "BTC",
+      "strategy": "unknown",
+      "actual_pnl_pct": 14.5,
+      "edge_vs_nothing": 14.5,
+      "edge_percentile": 100.0,
+      "random_baseline_mean": 0.65,
+      "random_baseline_std": 3.05,
+      "is_significant": true,
+      "hold_hours": 24,
+      "analyzed_at": "2026-02-16T18:23:48.980230+00:00"
+    }
+  ],
+  "analyzed_at": "2026-02-16T18:23:48.980269+00:00"
+}

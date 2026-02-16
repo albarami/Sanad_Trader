@@ -1,0 +1,92 @@
+{
+  "ST_d16112030da5f39a": {
+    "client_order_id": "ST_d16112030da5f39a",
+    "exchange_order_id": "paper_ST_d1611",
+    "symbol": "BTCUSDT",
+    "side": "BUY",
+    "quantity": 0.001,
+    "price": 68000.0,
+    "order_type": "LIMIT",
+    "time_in_force": "GTC",
+    "strategy": "test-strategy",
+    "correlation_id": "test-001",
+    "exchange": "binance",
+    "paper_mode": true,
+    "state": "FILLED",
+    "filled_quantity": 0.001,
+    "avg_fill_price": 68018.73840350688,
+    "fills": [
+      {
+        "quantity": 0.001,
+        "price": 68018.73840350688,
+        "at": "2026-02-16T17:07:02.036835+00:00"
+      }
+    ],
+    "retries": 0,
+    "max_retries": 3,
+    "created_at": "2026-02-16T17:07:02.035660+00:00",
+    "updated_at": "2026-02-16T17:07:02.036846+00:00",
+    "submitted_at": "2026-02-16T17:07:02.036334+00:00",
+    "filled_at": "2026-02-16T17:07:02.036840+00:00",
+    "error": null,
+    "events": [
+      {
+        "state": "NEW",
+        "at": "2026-02-16T17:07:02.035660+00:00"
+      },
+      {
+        "state": "SUBMITTED",
+        "at": "2026-02-16T17:07:02.036332+00:00"
+      },
+      {
+        "state": "FILLED",
+        "at": "2026-02-16T17:07:02.036848+00:00"
+      }
+    ]
+  },
+  "ST_cbc5775a6c330b75": {
+    "client_order_id": "ST_cbc5775a6c330b75",
+    "exchange_order_id": "paper_ST_cbc57",
+    "symbol": "ETHUSDT",
+    "side": "SELL",
+    "quantity": 0.1,
+    "price": 1980.0,
+    "order_type": "LIMIT",
+    "time_in_force": "GTC",
+    "strategy": "sentiment-exit",
+    "correlation_id": "test-002",
+    "exchange": "binance",
+    "paper_mode": true,
+    "state": "FILLED",
+    "filled_quantity": 0.1,
+    "avg_fill_price": 1979.9680256908716,
+    "fills": [
+      {
+        "quantity": 0.1,
+        "price": 1979.9680256908716,
+        "at": "2026-02-16T17:07:02.038229+00:00"
+      }
+    ],
+    "retries": 0,
+    "max_retries": 3,
+    "created_at": "2026-02-16T17:07:02.037086+00:00",
+    "updated_at": "2026-02-16T17:07:02.038239+00:00",
+    "submitted_at": "2026-02-16T17:07:02.037659+00:00",
+    "filled_at": "2026-02-16T17:07:02.038234+00:00",
+    "error": null,
+    "events": [
+      {
+        "state": "NEW",
+        "at": "2026-02-16T17:07:02.037086+00:00"
+      },
+      {
+        "state": "SUBMITTED",
+        "at": "2026-02-16T17:07:02.037657+00:00"
+      },
+      {
+        "state": "FILLED",
+        "at": "2026-02-16T17:07:02.038241+00:00"
+      }
+    ]
+  }
+}

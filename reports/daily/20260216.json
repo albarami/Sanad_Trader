@@ -1,0 +1,19 @@
+{
+  "date": "2026-02-16",
+  "generated_at": "2026-02-16T19:25:06.311115+00:00",
+  "trades_today": 0,
+  "wins": 0,
+  "losses": 0,
+  "daily_win_rate": 0,
+  "daily_pnl_pct": 0,
+  "daily_pnl_usd": 0,
+  "portfolio_balance": 0,
+  "max_drawdown_pct": 0,
+  "open_positions": 0,
+  "exposure_pct": 0,
+  "active_orders": 0,
+  "signals_processed": 79,
+  "signals_rejected": 0,
+  "best_trade": 0,
+  "worst_trade": 0
+}

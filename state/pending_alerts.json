@@ -1,0 +1,22 @@
+{
+  "alerts": [
+    {
+      "channel": "telegram",
+      "message": "\ud83d\udcca *Test Alert*\nTest notification from Sanad Trader",
+      "timestamp": "2026-02-16T19:19:33.829665+00:00",
+      "sent": false
+    },
+    {
+      "channel": "telegram",
+      "message": "\ud83d\udcca *Trade BUY*\n*BUY* 0.001 BTCUSDT\nPrice: $68,500.0000\nStrategy: meme-momentum\nExchange: binance",
+      "timestamp": "2026-02-16T19:19:33.830442+00:00",
+      "sent": false
+    },
+    {
+      "channel": "telegram",
+      "message": "\ud83d\udcca *Daily Report*\nTrades: 0\nP&L: +0.00% ($+0.00)\nWin Rate: 0%\nBalance: $0.00\nMax DD: 0.0%\nSignals: 79 processed, 0 rejected",
+      "timestamp": "2026-02-16T19:25:06.391234+00:00",
+      "sent": false
+    }
+  ]
+}

@@ -1,6 +1,6 @@
 {
   "mode": "PAPER",
-  "overall_status": "CRITICAL",
+  "overall_status": "WARNING",
   "open_positions": 0,
   "total_exposure_pct": 0.0,
   "daily_pnl_pct": 0.0,
@@ -21,24 +21,22 @@
     },
     "flash_crash": {
       "status": "OK",
-      "detail": "No price history available yet"
+      "detail": "0 flash crashes detected",
+      "alerts": []
     },
     "cron_health": {
-      "status": "ALERT",
-      "detail": "2 cron issues",
-      "alerts": [
-        "price_snapshot: never ran",
-        "meme_radar: never ran"
-      ]
+      "status": "OK",
+      "detail": "0 cron issues",
+      "alerts": []
     },
     "ntp_sync": {
       "status": "WARNING",
       "detail": "NTP status unknown: "
     },
     "circuit_breakers": {
-      "status": "CRITICAL",
-      "detail": "3 tripped: binance_api, mexc_api, helius_rpc"
+      "status": "OK",
+      "detail": "All closed"
     }
   },
-  "heartbeat_timestamp": "2026-02-15T17:10:01.843629+00:00"
+  "heartbeat_timestamp": "2026-02-16T19:20:46.597720+00:00"
 }

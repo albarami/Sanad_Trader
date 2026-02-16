@@ -1,0 +1,51 @@
+{
+  "date": "20260216",
+  "trades_analyzed": 4,
+  "regime": "UNKNOWN",
+  "rolling_7d": {
+    "trades": 0,
+    "period_days": 7
+  },
+  "rolling_30d": {
+    "trades": 0,
+    "period_days": 30
+  },
+  "rolling_90d": {
+    "trades": 0,
+    "period_days": 90
+  },
+  "by_strategy": {
+    "unknown": {
+      "trades": 4,
+      "win_rate": 0.5,
+      "total_return_pct": -0.02,
+      "avg_pnl_pct": -0.01
+    }
+  },
+  "by_source": {
+    "unknown": {
+      "trades": 4,
+      "win_rate": 0.5,
+      "avg_pnl_pct": -0.01
+    }
+  },
+  "gpt_validation": {
+    "verdict": "CRITICAL",
+    "sample_size_adequate": false,
+    "statistically_significant_patterns": [],
+    "noise_patterns": [
+      "unknown"
+    ],
+    "strategy_verdicts": {
+      "unknown": "DEACTIVATE"
+    },
+    "recommendations": [
+      "Increase the number of trades to at least 30 to 50 for more robust statistical testing;",
+      "Review the strategy's market conditions to find any underlying causes for the negative returns;",
+      "Consider redesigning or re-evaluating the 'unknown' strategy due to unfavorable results."
+    ],
+    "confidence_level": "high",
+    "summary": "The trading system's performance data lacks sufficient sample size for meaningful statistical analysis, with only four trades executed by an 'unknown' strategy. This leads to a high likelihood of noise rather than real patterns, and the negative returns suggest that this strategy should be deactivated. Further data collection and strategy refinement are recommended to derive statistically significant insights."
+  },
+  "generated_at": "2026-02-16T19:08:07.992381+00:00"
+}

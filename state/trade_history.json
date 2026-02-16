@@ -1,0 +1,48 @@
+{
+  "trades": [
+    {
+      "token": "BTC",
+      "symbol": "BTCUSDT",
+      "timestamp": "2026-02-15T19:34:57.702555+00:00",
+      "side": "SELL",
+      "reason": "STOP_LOSS",
+      "entry_price": 100000.0,
+      "exit_price": 68435.94,
+      "pnl_pct": -0.3156406,
+      "pnl_usd": -92.47376432802706
+    },
+    {
+      "token": "BTC",
+      "symbol": "BTCUSDT",
+      "timestamp": "2026-02-15T19:35:04.848356+00:00",
+      "side": "SELL",
+      "reason": "TAKE_PROFIT",
+      "entry_price": 50000.0,
+      "exit_price": 68435.94,
+      "pnl_pct": 0.36871880000000007,
+      "pnl_usd": 53.695169832953766
+    },
+    {
+      "token": "BTC",
+      "symbol": "BTCUSDT",
+      "timestamp": "2026-02-15T19:35:18.026522+00:00",
+      "side": "SELL",
+      "reason": "TRAILING_STOP",
+      "entry_price": 58000.0,
+      "exit_price": 62000.0,
+      "pnl_pct": 0.06896551724137931,
+      "pnl_usd": 11.512265254518848
+    },
+    {
+      "token": "BTC",
+      "symbol": "BTCUSDT",
+      "timestamp": "2026-02-16T07:04:10.097405+00:00",
+      "side": "SELL",
+      "reason": "STOP_LOSS",
+      "entry_price": 80000.0,
+      "exit_price": 68403.25,
+      "pnl_pct": -0.144959375,
+      "pnl_usd": -29.162883125
+    }
+  ]
+}

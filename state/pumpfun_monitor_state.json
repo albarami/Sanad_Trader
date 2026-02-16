@@ -1,0 +1,9 @@
+{
+  "started_at": null,
+  "total_tokens_seen": 0,
+  "total_migrations": 0,
+  "total_signals": 0,
+  "tokens_this_hour": 0,
+  "hour_start": null,
+  "last_event": null
+}

@@ -1,0 +1,36 @@
+{
+  "token": {
+    "symbol": "CHUD",
+    "deployment_timestamp": "2026-01-05T18:48:39.308522+00:00"
+  },
+  "symbol": "CHUDUSDT",
+  "venue": "DEX",
+  "exchange": "raydium",
+  "strategy_name": "meme-momentum",
+  "data_timestamps": {
+    "price_timestamp": "2026-02-16T09:48:39.308548+00:00",
+    "onchain_timestamp": "2026-02-16T09:48:39.308550+00:00"
+  },
+  "current_price": null,
+  "sanad_verification": {
+    "sanad_trust_score": 78,
+    "grade": "Mashhur",
+    "recommendation": "PROCEED",
+    "rugpull_flags": []
+  },
+  "market_data": {
+    "estimated_slippage_bps": 0,
+    "spread_bps": 0,
+    "depth_sufficient": false,
+    "price_change_pct_window": 0
+  },
+  "trade_intent": {
+    "position_size_pct": 0.02,
+    "position_usd": 200.0
+  },
+  "trade_confidence_score": 86,
+  "almuhasbi_verdict": "REJECT",
+  "dex_sim_result": null,
+  "volatility_30min_pct": 0,
+  "has_verified_catalyst": false
+}

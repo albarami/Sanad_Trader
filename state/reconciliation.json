@@ -1,0 +1,10 @@
+{
+  "last_reconciliation_timestamp": "2026-02-16T19:25:01.893013+00:00",
+  "has_mismatch": false,
+  "mismatch_details": null,
+  "positions_checked": 0,
+  "exchanges_checked": [
+    "paper"
+  ],
+  "mode": "PAPER"
+}

@@ -1,0 +1,37 @@
+{
+  "last_run": "2026-02-16T19:15:01+00:00",
+  "processed_hashes": [
+    "d79a2f404c4f",
+    "e028e8c19c07",
+    "2223dac17cbd",
+    "00badff476f6",
+    "f12043c11b42",
+    "acc08efc9a16",
+    "92a3ee0b17e2",
+    "dfe3c2cf4f75",
+    "e71d966df239",
+    "848d851a3e5c",
+    "19f4c2176e2f",
+    "ec19fd4ac4a3",
+    "95667b7a0e6f",
+    "f7755354f1d5",
+    "0444c623b4ff",
+    "d626772b6086",
+    "b79503d1091f",
+    "c0435955e5bc",
+    "50a5705f6bd7",
+    "1f96a12e7dc6"
+  ],
+  "daily_pipeline_runs": 20,
+  "daily_reset_date": "2026-02-16",
+  "signals_scanned": 37,
+  "signals_filtered": 19,
+  "signal_selected": {
+    "token": "$BEER2",
+    "score": 80,
+    "source": "birdeye_meme_radar",
+    "signal_type": "TRENDING"
+  },
+  "pipeline_result": "REJECT",
+  "pipeline_reason": "Trust score 52 < 70"
+}

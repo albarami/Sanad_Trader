@@ -1,0 +1,42 @@
+{
+  "sent": 5,
+  "failed": 0,
+  "history": [
+    {
+      "level": "L1",
+      "title": "Heartbeat",
+      "message": "System heartbeat OK",
+      "channel": "log_only",
+      "at": "2026-02-16T19:19:33.828837+00:00"
+    },
+    {
+      "level": "L2",
+      "title": "Test Alert",
+      "message": "Test notification from Sanad Trader",
+      "channel": "telegram",
+      "at": "2026-02-16T19:19:33.829874+00:00"
+    },
+    {
+      "level": "L2",
+      "title": "Trade BUY",
+      "message": "*BUY* 0.001 BTCUSDT\nPrice: $68,500.0000\nStrategy: meme-momentum\nExchange: binance",
+      "channel": "telegram",
+      "at": "2026-02-16T19:19:33.830701+00:00"
+    },
+    {
+      "level": "L1",
+      "title": "Trade Rejected",
+      "message": "Token: FAKECOIN\nSanad Score: 25/100\nReason: Sanad score too low",
+      "channel": "log_only",
+      "at": "2026-02-16T19:19:33.831053+00:00"
+    },
+    {
+      "level": "L2",
+      "title": "Daily Report",
+      "message": "Trades: 0\nP&L: +0.00% ($+0.00)\nWin Rate: 0%\nBalance: $0.00\nMax DD: 0.0%\nSignals: 79 processed, 0 rejected",
+      "channel": "telegram",
+      "at": "2026-02-16T19:25:06.391685+00:00"
+    }
+  ],
+  "last_sent": "2026-02-16T19:25:06.391692+00:00"
+}

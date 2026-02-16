@@ -1,0 +1,29 @@
+{
+  "status": "OK",
+  "timestamp": "2026-02-16T14:46:47.826461+00:00",
+  "checks": [
+    {
+      "check": "timestamp_skew",
+      "status": "OK",
+      "issues": []
+    },
+    {
+      "check": "cross_feed_deviation",
+      "status": "OK",
+      "issues": []
+    },
+    {
+      "check": "outlier_rejection",
+      "status": "OK",
+      "issues": []
+    },
+    {
+      "check": "stale_detection",
+      "status": "OK",
+      "issues": []
+    }
+  ],
+  "summary": {
+    "OK": 4
+  }
+}

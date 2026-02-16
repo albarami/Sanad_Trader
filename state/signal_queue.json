@@ -1,0 +1,44 @@
+{
+  "queue": [
+    {
+      "token": "PEPE",
+      "source": "coingecko",
+      "priority": "NORMAL",
+      "priority_rank": 2,
+      "signal": {
+        "token": "PEPE",
+        "source": "coingecko"
+      },
+      "queued_at": "2026-02-16T14:44:51.677754+00:00"
+    },
+    {
+      "token": "BONK",
+      "source": "birdeye",
+      "priority": "LOW",
+      "priority_rank": 3,
+      "signal": {
+        "token": "BONK",
+        "source": "birdeye"
+      },
+      "queued_at": "2026-02-16T14:44:51.678471+00:00"
+    }
+  ],
+  "processed": [
+    {
+      "token": "DOGE",
+      "source": "coingecko",
+      "processed_at": "2026-02-16T14:44:51.679416+00:00",
+      "wait_time_s": 0.000454
+    },
+    {
+      "token": "WIF",
+      "source": "dexscreener",
+      "processed_at": "2026-02-16T14:44:51.679734+00:00",
+      "wait_time_s": 0.001674
+    }
+  ],
+  "pipeline_runs": [
+    "2026-02-16T14:44:51.679416+00:00",
+    "2026-02-16T14:44:51.679734+00:00"
+  ]
+}
