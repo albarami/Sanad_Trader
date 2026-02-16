@@ -161,13 +161,8 @@ def call_opus(prompt: str) -> dict | None:
         # Method 1: Direct Anthropic API call
         import requests
 
-        api_key = os.environ.get("ANTHROPIC_API_KEY", "")
+        import env_loader; api_key = env_loader.get_key("ANTHROPIC_API_KEY") or ""
         if not api_key:
-            env_path = BASE_DIR / ".env"
-            if env_path.exists():
-                for line in env_path.read_text().splitlines():
-                    if line.startswith("ANTHROPIC_API_KEY="):
-                        api_key = line.split("=", 1)[1].strip()
 
         if not api_key:
             _log("No ANTHROPIC_API_KEY — trying OpenClaw relay")

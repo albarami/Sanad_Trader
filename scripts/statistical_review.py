@@ -285,9 +285,9 @@ def call_gpt(prompt: str) -> dict | None:
                     "Content-Type": "application/json",
                 },
                 json={
-                    "model": "gpt-4o",
+                    "model": "gpt-5.2-chat-latest",
                     "messages": [{"role": "user", "content": prompt}],
-                    "max_tokens": 2048,
+                    "max_completion_tokens": 2048,
                     "response_format": {"type": "json_object"},
                 },
                 timeout=90,
@@ -313,7 +313,7 @@ def call_gpt(prompt: str) -> dict | None:
                 },
                 json={
                     "model": "claude-sonnet-4-5-20250929",
-                    "max_tokens": 2048,
+                    "max_completion_tokens": 2048,
                     "messages": [{"role": "user", "content": prompt}],
                 },
                 timeout=90,

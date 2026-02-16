@@ -1,0 +1,30 @@
+# Sprint 6 Cron Schedule — All times UTC
+# QAT = UTC+3, so "23:00 QAT" = "20:00 UTC"
+
+# === Every 3 minutes ===
+*/3 * * * * cd /data/.openclaw/workspace/trading && python3 scripts/price_snapshot.py >> logs/price_snapshot.log 2>&1
+
+# === Every 10 minutes ===
+*/10 * * * * cd /data/.openclaw/workspace/trading && python3 scripts/heartbeat.py >> logs/heartbeat.log 2>&1
+
+# === Every 15 minutes ===
+*/15 * * * * cd /data/.openclaw/workspace/trading && python3 scripts/onchain_analytics.py >> logs/onchain.log 2>&1
+*/15 * * * * cd /data/.openclaw/workspace/trading && python3 scripts/social_sentiment.py >> logs/sentiment.log 2>&1
+
+# === Hourly ===
+0 * * * * cd /data/.openclaw/workspace/trading && python3 scripts/reconciliation.py >> logs/reconciliation.log 2>&1
+
+# === Daily ===
+0 0 * * * cd /data/.openclaw/workspace/trading && python3 scripts/daily_pnl_reset.py >> logs/pnl_reset.log 2>&1
+0 0 * * * cd /data/.openclaw/workspace/trading && python3 scripts/rugpull_db.py >> logs/rugpull.log 2>&1
+0 20 * * * cd /data/.openclaw/workspace/trading && python3 scripts/daily_report.py >> logs/daily_report.log 2>&1
+
+# === Every 6 hours ===
+0 */6 * * * cd /data/.openclaw/workspace/trading && python3 scripts/github_backup.py >> logs/backup.log 2>&1
+
+# === Weekly ===
+0 1 * * 0 cd /data/.openclaw/workspace/trading && python3 scripts/dust_sweeper.py >> logs/dust.log 2>&1
+0 3 * * 0 cd /data/.openclaw/workspace/trading && python3 scripts/weekly_analysis.py >> logs/weekly_analysis.log 2>&1
+0 5 * * 0 cd /data/.openclaw/workspace/trading && python3 scripts/weekly_research.py >> logs/weekly_research.log 2>&1
+0 3 * * 1 cd /data/.openclaw/workspace/trading && python3 scripts/model_check.py >> logs/model_check.log 2>&1
+0 19 * * 5 cd /data/.openclaw/workspace/trading && python3 scripts/security_audit.py >> logs/security_audit.log 2>&1
