@@ -1,0 +1,18 @@
+{
+  "groups": [
+    {
+      "name": "Example Alpha Group",
+      "id": -1001234567890,
+      "grade": "C",
+      "enabled": false,
+      "notes": "Replace with real group IDs"
+    }
+  ],
+  "settings": {
+    "min_signal_strength": 30,
+    "cooldown_hours": 1,
+    "jitter_min_ms": 200,
+    "jitter_max_ms": 800,
+    "max_signals_per_hour": 10
+  }
+}

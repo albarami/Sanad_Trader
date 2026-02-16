@@ -52,7 +52,7 @@
 | 1.2.13 | Twitter/X API | ❌ | TWITTER_API_KEY | Social sentiment — not started |
 | 1.2.14 | BubbleMaps API | ❌ | BUBBLEMAPS_API_KEY | Sybil detection — Helius client provides basic Sybil detection as alternative |
 | 1.2.15 | Jito MEV Bundle API | ❌ | JITO_API_KEY | MEV-protected DEX trades — not started |
-| 1.2.16 | Telethon (Telegram) | ❌ | TELEGRAM_API_ID + HASH | Alpha group sniffer — not started |
+| 1.2.16 | Telethon (Telegram) | ✅ | scripts/telegram_sniffer.py — Telethon auth done, detection tested |
 | 1.2.17 | WhatsApp Business API | ❌ | WHATSAPP_TOKEN | Notifications — not started |
 
 ### 1.3 Supabase
@@ -90,8 +90,8 @@
 | 2.1.4 | Circuit breaker (ErrorTracker) | ✅ | 5 errors/60s → trip, 5min cooldown |
 | 2.1.5 | Slippage estimation | ✅ | Real order book depth |
 | 2.1.6 | Health check | ✅ | Feeds Gate #10 |
-| 2.1.7 | Limit orders | ❌ | Only market orders, need limit + time-in-force |
-| 2.1.8 | WebSocket streams | ❌ | Real-time order book + trade streams |
+| 2.1.7 | Limit orders | ✅ | binance_client.py time_in_force + OMS defaults to LIMIT |
+| 2.1.8 | WebSocket streams | ✅ | scripts/ws_manager.py — Binance WS working, MEXC geo-blocked |
 | 2.1.9 | New listing detection | ✅ | scripts/binance_new_listings.py — 441 USDT pairs baselined, diffs on each run, generates listing signals |
 
 ### 2.2 Price Snapshot Cron
@@ -185,7 +185,7 @@
 |---|-----------|--------|------|---------| 
 | 3.2.1 | CoinGecko API client | ✅ | scripts/coingecko_client.py (16.3KB) | Trending, top gainers, global data |
 | 3.2.2 | Trending coins monitor | ✅ | — | Feeds into signal_router + meme_radar |
-| 3.2.3 | Cross-feed price validation | ❌ | — | Compare Binance vs CoinGecko (2% deviation → warn, 5% → block) |
+| 3.2.3 | Cross-feed price validation | ✅ | scripts/cross_feed_validator.py — Compare Binance vs CoinGecko (2% deviation → warn, 5% → block) |
 | 3.2.4 | CoinGecko cron job (5min) | ✅ | OpenClaw cron | Running |
 | 3.2.5 | Signal output to signals/coingecko/ | ✅ | 132 signal files | Active |
 
@@ -243,7 +243,7 @@
 | 3.8.7 | Binance WebSocket streams | ✅ | scripts/ws_manager.py — 946 msgs/15s, auto-reconnect, price cache update |
 | 3.8.8 | MEXC WebSocket streams | 🔧 | scripts/ws_manager.py — Code built but MEXC WS geo-blocked from Malaysia VPS. REST polling via mexc_client.py works. Needs proxy or non-blocked region |
 | 3.8.9 | WebSocket supervisor/reconnect | ✅ | scripts/ws_manager.py — Health monitor, stale detection, exponential backoff, state file |
-| 3.8.10 | Telegram sniffer | ❌ | Telethon, alpha group monitoring |
+| 3.8.10 | Telegram sniffer | ✅ | scripts/telegram_sniffer.py — contract+ticker detection, signal emission |
 | 3.8.11 | Market data quality gates | ✅ | scripts/market_data_quality.py — 4 checks: timestamp skew, cross-feed, outlier, stale. Integrates maintenance windows |
 | 3.8.12 | Maintenance windows config | ✅ | config/maintenance-windows.json — Binance + MEXC, suppresses stale/health/recon alerts |
 
@@ -264,32 +264,32 @@
 | 4.1.7 | Position monitor cron (1min) | ✅ | OpenClaw cron | Running every 60s |
 | 4.1.8 | Bull's trade plan in positions | ✅ | — | Sprint 2.1: stop_loss, target_price, entry_price, R:R, invalidation, timeframe stored. _calc_stop_pct/_calc_tp_pct parse Bull's prices |
 | 4.1.9 | Post-trade analyzer wired | ✅ | — | Sprint 5.5: auto-triggers Genius Memory after every close |
-| 4.1.10 | Whale exit detection | ❌ | — | Needs whale tracker |
-| 4.1.11 | Sentiment reversal exit | ❌ | — | Needs sentiment feeds |
-| 4.1.12 | Emergency sell all | 🔧 | heartbeat.py | Function exists, needs real exchange integration |
+| 4.1.10 | Whale exit detection | ✅ | scripts/whale_exit_trigger.py — cluster detection, 3 urgency levels |
+| 4.1.11 | Sentiment reversal exit | ✅ | scripts/sentiment_exit_trigger.py — 3 urgency levels, 4h cooldown |
+| 4.1.12 | Emergency sell all | ✅ | scripts/emergency_sell.py — OMS-wired, cancel+sell+close+log+alert |
 
 ### 4.2 Order Management System (OMS)
 
 | # | Component | Status | Notes |
 |---|-----------|--------|-------|
-| 4.2.1 | Order state machine | ❌ | scripts/oms.py — NEW→SUBMITTED→ACK→PARTIAL→FILLED→CANCELED→REJECTED |
-| 4.2.2 | Idempotency (client_order_id) | ❌ | correlation_id + strategy + side + timestamp_bucket |
-| 4.2.3 | Duplicate prevention | ❌ | Check existing orders before placing |
-| 4.2.4 | Order-intent persistence | ❌ | Record intent BEFORE sending to exchange |
-| 4.2.5 | Limit orders (default for CEX) | ❌ | Not market orders — control slippage |
-| 4.2.6 | Time-in-force handling | ❌ | GTC, IOC, FOK support |
-| 4.2.7 | Partial fill handling | ❌ | Track partial fills, update positions |
-| 4.2.8 | Order timeout/retry | ❌ | Retry logic with backoff |
+| 4.2.1 | Order state machine | ✅ | scripts/oms.py — 9 states, validated transitions, terminal detection |
+| 4.2.2 | Idempotency (client_order_id) | ✅ | correlation_id + strategy + side + timestamp_bucket |
+| 4.2.3 | Duplicate prevention | ✅ | Check existing orders before placing |
+| 4.2.4 | Order-intent persistence | ✅ | Record intent BEFORE sending to exchange |
+| 4.2.5 | Limit orders (default for CEX) | ✅ | Not market orders — control slippage |
+| 4.2.6 | Time-in-force handling | ✅ | GTC, IOC, FOK support |
+| 4.2.7 | Partial fill handling | ✅ | Track partial fills, update positions |
+| 4.2.8 | Order timeout/retry | ✅ | Retry logic with backoff |
 
 ### 4.3 Execution Quality Tracking
 
 | # | Component | Status | Notes |
 |---|-----------|--------|-------|
-| 4.3.1 | Expected vs realized slippage | ❌ | scripts/execution_quality.py |
-| 4.3.2 | Fill latency tracking | ❌ | p50/p95 |
-| 4.3.3 | Fill rate tracking | ❌ | % of orders fully filled |
-| 4.3.4 | Execution quality events → Supabase | ❌ | execution_quality table exists |
-| 4.3.5 | Cost per trade tracking | ❌ | Fees + slippage + gas |
+| 4.3.1 | Expected vs realized slippage | ✅ | scripts/execution_quality.py |
+| 4.3.2 | Fill latency tracking | ✅ | p50/p95 |
+| 4.3.3 | Fill rate tracking | ✅ | % of orders fully filled |
+| 4.3.4 | Execution quality events → Supabase | ✅ | execution_quality table exists |
+| 4.3.5 | Cost per trade tracking | ✅ | Fees + slippage + gas |
 
 ### 4.4 MEXC Exchange Client
 
@@ -299,7 +299,7 @@
 | 4.4.2 | MEXC paper trade simulation | ✅ | Real orderbook + 0.1% fee + slippage |
 | 4.4.3 | MEXC health check | ✅ | health_check() function |
 | 4.4.4 | MEXC circuit breaker | ✅ | 3 consecutive failures → 5min cooldown |
-| 4.4.5 | Exchange router | ❌ | scripts/exchange_router.py — Route to Binance vs MEXC based on listing |
+| 4.4.5 | Exchange router | ✅ | scripts/exchange_router.py — Route to Binance vs MEXC based on listing |
 
 ### 4.5 Helius Client (On-Chain Intelligence)
 
@@ -321,7 +321,7 @@
 | 4.6.1 | positions.json updates on trade | ✅ | Pipeline writes entry, position_monitor writes exit |
 | 4.6.2 | portfolio.json P&L tracking | ✅ | Balance, drawdown, exposure recalculated on close |
 | 4.6.3 | Trade history log | ✅ | state/trade_history.json — feeds Gate #13 cooldown |
-| 4.6.4 | Daily PnL reset (midnight UTC) | ❌ | Reset daily_pnl_pct at 00:00 UTC |
+| 4.6.4 | Daily PnL reset (midnight UTC) | ✅ | scripts/daily_pnl_reset.py — Archives to daily_pnl_history.jsonl, resets counters |
 
 ---
 
