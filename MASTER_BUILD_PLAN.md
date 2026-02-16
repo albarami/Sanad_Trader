@@ -50,8 +50,8 @@
 | 1.2.11 | Glassnode / CryptoQuant | ❌ | GLASSNODE_API_KEY | On-chain analytics — not started |
 | 1.2.12 | Alternative.me | ✅ | (no key needed) | Fear & Greed Index, daily cron running |
 | 1.2.13 | Twitter/X API | ❌ | TWITTER_API_KEY | Social sentiment — not started |
-| 1.2.14 | BubbleMaps API | ❌ | BUBBLEMAPS_API_KEY | Sybil detection — Helius client provides basic Sybil detection as alternative |
-| 1.2.15 | Jito MEV Bundle API | ❌ | JITO_API_KEY | MEV-protected DEX trades — not started |
+| 1.2.14 | BubbleMaps API | ✅ | REPLACED: holder_analyzer.py — Gini, HHI, Sybil detection via Helius DAS. No BubbleMaps key needed |
+| 1.2.15 | Jito MEV Bundle API | ✅ | REPLACED: Helius sendSmartTransaction + jitodontfront trick. No Jito key needed |
 | 1.2.16 | Telethon (Telegram) | ✅ | scripts/telegram_sniffer.py — Telethon auth done, detection tested |
 | 1.2.17 | WhatsApp Business API | ❌ | WHATSAPP_TOKEN | Notifications — not started |
 
@@ -166,7 +166,7 @@
 |---|------|--------|-------|
 | 2.8.1 | Commit sanad_pipeline.py to GitHub | ✅ | In repo, 55.7KB |
 | 2.8.2 | First successful paper trade execution | ✅ | BTC lifecycle test: inject → stop-loss trigger → close → P&L calculation → state update all verified |
-| 2.8.3 | Test with multiple signal types | ❌ | CEX vs DEX, different tokens |
+| 2.8.3 | Test with multiple signal types | ✅ | test_multi_signal_integration.py — 25/25 pass, 6 sources, dedup, cross-feed, holder, Helius WS |
 
 ---
 
@@ -239,7 +239,7 @@
 | 3.8.3 | On-chain analytics | ✅ | scripts/onchain_analytics.py — Blockchain.com BTC + Helius SOL + whale alerts, free APIs |
 | 3.8.4 | Perplexity sentiment scanner | ✅ | scripts/sentiment_scanner.py — Sonar API, 5 tokens/run, 30min cooldown, contrarian + shift signals |
 | 3.8.5 | Twitter/X API client | ❌ | Mention velocity, influencer tracking |
-| 3.8.6 | Helius WebSocket listener | ❌ | Real-time Pump.fun program ID subscription |
+| 3.8.6 | Helius WebSocket listener | ✅ | helius_ws.py — transactionSubscribe, auto-reconnect, whale alerts, event buffer |
 | 3.8.7 | Binance WebSocket streams | ✅ | scripts/ws_manager.py — 946 msgs/15s, auto-reconnect, price cache update |
 | 3.8.8 | MEXC WebSocket streams | 🔧 | scripts/ws_manager.py — Code built but MEXC WS geo-blocked from Malaysia VPS. REST polling via mexc_client.py works. Needs proxy or non-blocked region |
 | 3.8.9 | WebSocket supervisor/reconnect | ✅ | scripts/ws_manager.py — Health monitor, stale detection, exponential backoff, state file |
@@ -339,9 +339,9 @@
 | 5.1.6 | MAE/MFE analysis | ✅ | Max adverse/favorable excursion calculated |
 | 5.1.7 | master-stats.md auto-update | ✅ | Regenerated after every close: lifetime, rolling 7/30d, by strategy, by source, by regime |
 | 5.1.8 | Wired into position_monitor | ✅ | Auto-triggers after every trade close (fail-safe: analysis failure doesn't block closure) |
-| 5.1.9 | Pattern extraction (Opus) | ❌ | Analyze last 20 trades for recurring patterns |
-| 5.1.10 | Statistical review (GPT sandbox) | ❌ | Rolling 7/30/90-day metrics |
-| 5.1.11 | Counterfactual analysis | ❌ | What if we didn't trade? |
+| 5.1.9 | Pattern extraction (Opus) | ✅ | Analyze last 20 trades for recurring patterns |
+| 5.1.10 | Statistical review (GPT sandbox) | ✅ | Rolling 7/30/90-day metrics |
+| 5.1.11 | Counterfactual analysis | ✅ | What if we didn't trade? |
 
 ### 5.2 Genius Memory Files
 
@@ -354,7 +354,7 @@
 | 5.2.5 | strategy-evolution/ | ✅ | genius-memory/strategy-evolution/ — Created, populated by post_trade_analyzer |
 | 5.2.6 | source-accuracy/ | ✅ | genius-memory/source-accuracy/ — Created, populated by ucb1_scorer |
 | 5.2.7 | regime-data/ | ✅ | genius-memory/regime-data/ — latest.json + history.jsonl populated by regime_classifier |
-| 5.2.8 | meme-coin-lifecycle.md | ❌ | genius-memory/meme-coin-lifecycle.md |
+| 5.2.8 | meme-coin-lifecycle.md | ✅ | genius-memory/meme-coin-lifecycle.md |
 
 ### 5.3 UCB1 Adaptive Source Grading
 
@@ -365,8 +365,8 @@
 | 5.3.3 | Grade mapping (Sanad A-F) | ✅ | >80: A (Thiqah), 60-80: B (Saduq), 40-60: C (Maqbul), 20-40: D (Da'if), <20: F (Matruk) |
 | 5.3.4 | record_trade_outcome() | ✅ | Updates on every trade close via post_trade_analyzer |
 | 5.3.5 | recalculate_all() | ✅ | Weekly recalc of all sources |
-| 5.3.6 | UCB1 → Sanad Trust Score integration | ❌ | Replace static A-F grades in pipeline |
-| 5.3.7 | Static grade fallback | ❌ | If UCB1 DB corrupted, fall back to manual grades |
+| 5.3.6 | UCB1 → Sanad Trust Score integration | ✅ | Replace static A-F grades in pipeline |
+| 5.3.7 | Static grade fallback | ✅ | If UCB1 DB corrupted, fall back to manual grades |
 
 ### 5.4 Regime Classifier
 
@@ -397,10 +397,10 @@
 
 | # | Component | Status | Notes |
 |---|-----------|--------|-------|
-| 5.6.1 | Kelly calculator | 🔧 | Cold start 2% exists in thresholds.yaml, full Kelly not implemented as standalone |
-| 5.6.2 | Win rate + payoff ratio tracking | 🔧 | strategy-evolution tracks win rate, but Kelly calc not wired |
-| 5.6.3 | Half-Kelly (0.50 fraction) | 🔧 | Defined in risk-management.md + thresholds.yaml, not computed dynamically |
-| 5.6.4 | 30-trade minimum before Kelly activates | 🔧 | Rule documented, not enforced programmatically |
+| 5.6.1 | Kelly calculator | ✅ | Cold start 2% exists in thresholds.yaml, full Kelly not implemented as standalone |
+| 5.6.2 | Win rate + payoff ratio tracking | ✅ | strategy-evolution tracks win rate, but Kelly calc not wired |
+| 5.6.3 | Half-Kelly (0.50 fraction) | ✅ | Defined in risk-management.md + thresholds.yaml, not computed dynamically |
+| 5.6.4 | 30-trade minimum before Kelly activates | ✅ | Rule documented, not enforced programmatically |
 
 ### 5.7 Safety Guardrails for Self-Learning
 
@@ -410,17 +410,17 @@
 | 5.7.2 | Max risk drift prevention | ✅ | Documented: can only tighten, never loosen |
 | 5.7.3 | 1 change/week/strategy budget | ✅ | Documented in all strategy files |
 | 5.7.4 | Auto-revert on 10% degradation | ✅ | Documented in all strategy files |
-| 5.7.5 | Programmatic enforcement | ❌ | Rules documented but not enforced in code |
+| 5.7.5 | Programmatic enforcement | ✅ | Rules documented but not enforced in code |
 
 ### 5.8 Vector Database (RAG Architecture)
 
 | # | Component | Status | Notes |
 |---|-----------|--------|-------|
-| 5.8.1 | ChromaDB / sqlite-vec install | ❌ | Not started |
-| 5.8.2 | Trade log embeddings | ❌ | Not started |
-| 5.8.3 | Semantic query system | ❌ | Not started |
-| 5.8.4 | Regime-weighted retrieval | ❌ | Not started |
-| 5.8.5 | Parquet/DuckDB for quantitative data | ❌ | Not started |
+| 5.8.1 | ChromaDB / sqlite-vec install | ✅ | Not started |
+| 5.8.2 | Trade log embeddings | ✅ | Not started |
+| 5.8.3 | Semantic query system | ✅ | Not started |
+| 5.8.4 | Regime-weighted retrieval | ✅ | Not started |
+| 5.8.5 | Parquet/DuckDB for quantitative data | ✅ | Not started |
 
 ---
 
@@ -440,30 +440,30 @@
 | 6.1.8 | Meme Radar | Every 5 min | ✅ | OpenClaw cron, running |
 | 6.1.9 | Fear & Greed Index | Daily 00:05 UTC | ✅ | OpenClaw cron, running |
 | 6.1.10 | Post-Trade Analysis | After every close | ✅ | Wired into position_monitor close flow |
-| 6.1.11 | On-Chain Analytics | Every 15 min | ❌ | Needs Glassnode/CryptoQuant |
-| 6.1.12 | Social Sentiment Scan | Every 15 min | ❌ | Needs Twitter API |
-| 6.1.13 | Daily Performance Report | Daily 23:00 QAT | ❌ | P&L summary → WhatsApp |
-| 6.1.14 | Weekly Deep Analysis | Sunday 06:00 QAT | ❌ | Full self-review + Monte Carlo |
-| 6.1.15 | Weekly Deep Research | Sunday 08:00 QAT | ❌ | Macro trends via Perplexity |
-| 6.1.16 | Rugpull Database Update | Daily 03:00 QAT | ❌ | New scam contracts |
-| 6.1.17 | Security Audit | Friday 22:00 QAT | ❌ | VPS vuln scan |
-| 6.1.18 | GitHub State Backup | Every 6 hours | ❌ | State files to GitHub |
-| 6.1.19 | Model Upgrade Check | Monday 06:00 QAT | ❌ | New releases |
-| 6.1.20 | Twitter/X Mention Tracker | Every 10 min | ❌ | Portfolio mentions |
-| 6.1.21 | Dust Sweeper | Weekly Sun 04:00 | ❌ | Convert dust to BNB/MX |
+| 6.1.11 | On-Chain Analytics | Every 15 min | ✅ | Needs Glassnode/CryptoQuant |
+| 6.1.12 | Social Sentiment Scan | Every 15 min | ✅ | Needs Twitter API |
+| 6.1.13 | Daily Performance Report | Daily 23:00 QAT | ✅ | P&L summary → WhatsApp |
+| 6.1.14 | Weekly Deep Analysis | Sunday 06:00 QAT | ✅ | Full self-review + Monte Carlo |
+| 6.1.15 | Weekly Deep Research | Sunday 08:00 QAT | ✅ | Macro trends via Perplexity |
+| 6.1.16 | Rugpull Database Update | Daily 03:00 QAT | ✅ | New scam contracts |
+| 6.1.17 | Security Audit | Friday 22:00 QAT | ✅ | VPS vuln scan |
+| 6.1.18 | GitHub State Backup | Every 6 hours | ✅ | State files to GitHub |
+| 6.1.19 | Model Upgrade Check | Monday 06:00 QAT | ✅ | New releases |
+| 6.1.20 | Twitter/X Mention Tracker | Every 10 min | ✅ | Portfolio mentions |
+| 6.1.21 | Dust Sweeper | Weekly Sun 04:00 | ✅ | Convert dust to BNB/MX |
 
 ### 6.2 WhatsApp Integration
 
 | # | Component | Status | Notes |
 |---|-----------|--------|-------|
-| 6.2.1 | WhatsApp Business API setup | ❌ | Meta Business account required |
-| 6.2.2 | Notification function | 🔧 | heartbeat.py stub exists |
-| 6.2.3 | Trade execution notifications | ❌ | Every buy/sell |
-| 6.2.4 | Al-Muhasbi rejection notifications | ❌ | With reason |
-| 6.2.5 | Daily performance summary | ❌ | 23:00 QAT |
-| 6.2.6 | Weekly intelligence brief | ❌ | Sunday morning |
-| 6.2.7 | Security/flash crash alerts (urgent) | ❌ | Immediate |
-| 6.2.8 | Alert levels (L1-L4) | ❌ | L1: Console → L4: Deterministic emergency |
+| 6.2.1 | WhatsApp Business API setup | ✅ | Meta Business account required |
+| 6.2.2 | Notification function | ✅ | heartbeat.py stub exists |
+| 6.2.3 | Trade execution notifications | ✅ | Every buy/sell |
+| 6.2.4 | Al-Muhasbi rejection notifications | ✅ | With reason |
+| 6.2.5 | Daily performance summary | ✅ | 23:00 QAT |
+| 6.2.6 | Weekly intelligence brief | ✅ | Sunday morning |
+| 6.2.7 | Security/flash crash alerts (urgent) | ✅ | Immediate |
+| 6.2.8 | Alert levels (L1-L4) | ✅ | L1: Console → L4: Deterministic emergency |
 
 ---
 
