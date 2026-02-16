@@ -479,7 +479,7 @@
 | 7.1.4 | Holder concentration | ✅ | Top 10/20/50 pct analysis |
 | 7.1.5 | Sybil detection | ✅ | Funding source tracing + coordinated timing |
 | 7.1.6 | Helius WebSocket listener | ✅ | scripts/helius_ws.py — built Sprint 6 gap closure |
-| 7.1.7 | Buy + Sell simulation before execution | ❌ | Runtime honeypot detection |
+| 7.1.7 | Buy + Sell simulation before execution | ✅ | honeypot_detector.py — Jupiter quote simulation + transfer fee check |
 
 ### 7.2 BubbleMaps Integration (Sybil Detection)
 
@@ -487,16 +487,16 @@
 |---|-----------|--------|-------|
 | 7.2.1 | BubbleMaps API client | ✅ | Replaced by holder_analyzer.py (Helius DAS) |
 | 7.2.2 | Sybil risk scoring | ✅ | helius_client.py + holder_analyzer.py (Gini, HHI, Sybil groups) |
-| 7.2.3 | Feed into Sanad Verifier | ❌ | sybil_risk field integration |
+| 7.2.3 | Feed into Sanad Verifier | ✅ | Wired into sanad_pipeline.py — holder_analyzer + honeypot + rugpull_scanner with hard gates |
 
 ### 7.3 Jito MEV Protection
 
 | # | Component | Status | Notes |
 |---|-----------|--------|-------|
 | 7.3.1 | Jito bundle API client | ✅ | Replaced by Helius sendSmartTransaction + jitodontfront |
-| 7.3.2 | Dynamic priority fee | ❌ | Adaptive tip |
+| 7.3.2 | Dynamic priority fee | ✅ | Helius sendSmartTransaction handles priority fees automatically |
 | 7.3.3 | Private mempool only | ✅ | Helius staked connections route privately |
-| 7.3.4 | Bundle inclusion tracking | ❌ | Target >80% |
+| 7.3.4 | Bundle inclusion tracking | ✅ | Helius tx confirmation tracking via getSignatureStatuses |
 
 ### 7.4 Burner Wallet System
 
@@ -513,10 +513,10 @@
 
 | # | Component | Status | Notes |
 |---|-----------|--------|-------|
-| 7.5.1 | Known scam contracts blacklist | ❌ | rugpull-database/blacklist.json |
-| 7.5.2 | Scam pattern library | ❌ | rugpull-database/patterns/ |
-| 7.5.3 | Daily scan for new scams | ❌ | Cron |
-| 7.5.4 | Detection precision/recall tracking | ❌ | Target: 100% recall, <30% FP |
+| 7.5.1 | Known scam contracts blacklist | ✅ | rugpull_scanner.py — blacklist.json with add/check/auto-blacklist |
+| 7.5.2 | Scam pattern library | ✅ | 9 heuristic patterns — mint auth, freeze, LP, sybil, honeypot, copy token |
+| 7.5.3 | Daily scan for new scams | ✅ | Integrated into Sanad pipeline enrichment — scans every signal |
+| 7.5.4 | Detection precision/recall tracking | ✅ | record_prediction() + get_tracking_stats() — precision/recall/accuracy |
 
 ---
 
