@@ -1074,7 +1074,7 @@ def stage_7_execute(signal, sanad_result, strategy_result, bull_result, bear_res
             print(f"  Paper trade filled: {order['orderId']} @ ${order['price']:,.4f}")
 
             # Update positions state
-            _add_position(signal, strategy_result, order, sanad_result)
+            _add_position(signal, strategy_result, order, sanad_result, bull_result)
         else:
             decision_record["execution"] = {"error": "Paper order failed"}
             print(f"  WARNING: Paper order execution failed")
@@ -1143,7 +1143,36 @@ def _load_state(filename):
         return {}
 
 
-def _add_position(signal, strategy_result, order, sanad_result):
+def _calc_stop_pct(entry_price, bull_result):
+    """Calculate stop-loss percentage from Bull's specific price, with safety bounds."""
+    try:
+        stop_str = str(bull_result.get("stop_loss", ""))
+        # Extract numeric value from string like "$0.00000410"
+        stop_price = float(stop_str.replace("$", "").replace(",", "").split()[0])
+        if stop_price <= 0 or stop_price >= entry_price:
+            return THRESHOLDS["risk"]["stop_loss_default_pct"]
+        pct = (entry_price - stop_price) / entry_price
+        # Safety bounds: minimum 3%, maximum 25%
+        return max(0.03, min(0.25, pct))
+    except (ValueError, TypeError, IndexError):
+        return THRESHOLDS["risk"]["stop_loss_default_pct"]
+
+
+def _calc_tp_pct(entry_price, bull_result):
+    """Calculate take-profit percentage from Bull's specific target, with safety bounds."""
+    try:
+        target_str = str(bull_result.get("target_price", ""))
+        target_price = float(target_str.replace("$", "").replace(",", "").split()[0])
+        if target_price <= entry_price:
+            return THRESHOLDS["risk"]["take_profit_default_pct"]
+        pct = (target_price - entry_price) / entry_price
+        # Safety bounds: minimum 10%, maximum 500%
+        return max(0.10, min(5.0, pct))
+    except (ValueError, TypeError, IndexError):
+        return THRESHOLDS["risk"]["take_profit_default_pct"]
+
+
+def _add_position(signal, strategy_result, order, sanad_result, bull_result=None):
     """Add position to positions.json state file."""
     try:
         positions = _load_state("positions.json")
@@ -1159,8 +1188,14 @@ def _add_position(signal, strategy_result, order, sanad_result):
             "current_price": order["price"],
             "quantity": order["quantity"],
             "position_usd": strategy_result.get("position_usd", 0),
-            "stop_loss_pct": THRESHOLDS["risk"]["stop_loss_default_pct"],
-            "take_profit_pct": THRESHOLDS["risk"]["take_profit_default_pct"],
+            "stop_loss_pct": _calc_stop_pct(order["price"], bull_result) if bull_result else THRESHOLDS["risk"]["stop_loss_default_pct"],
+            "take_profit_pct": _calc_tp_pct(order["price"], bull_result) if bull_result else THRESHOLDS["risk"]["take_profit_default_pct"],
+            "bull_stop_loss": bull_result.get("stop_loss", "N/A") if bull_result else "N/A",
+            "bull_target_price": bull_result.get("target_price", "N/A") if bull_result else "N/A",
+            "bull_entry_price": bull_result.get("entry_price", "N/A") if bull_result else "N/A",
+            "risk_reward_ratio": bull_result.get("risk_reward_ratio", "N/A") if bull_result else "N/A",
+            "bull_invalidation": bull_result.get("invalidation_point", "N/A") if bull_result else "N/A",
+            "bull_timeframe": bull_result.get("timeframe", "N/A") if bull_result else "N/A",
             "strategy_name": strategy_result.get("strategy_name", ""),
             "sanad_score": sanad_result.get("trust_score", 0),
             "status": "OPEN",
