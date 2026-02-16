@@ -502,6 +502,64 @@ def run_router():
         cross_tag = " ← CROSS-SOURCE" if is_cross else ""
         _log(f"  {i}. {token} — score {score} ({origin} {stype}, {detail}){cross_tag}")
 
+    # --- RugCheck safety gate (top 3 Solana candidates) ---
+    try:
+        from rugcheck_client import check_token_safety
+    except ImportError:
+        sys.path.insert(0, str(SCRIPT_DIR))
+        from rugcheck_client import check_token_safety
+
+    rugcheck_log_parts = []
+    rugcheck_skipped: set[int] = set()
+    checked_rc = 0
+    for idx, (s, sc) in enumerate(candidates):
+        addr = s.get("token_address", "")
+        chain = s.get("chain", "")
+        if not addr or chain != "solana" or checked_rc >= 3:
+            continue
+        checked_rc += 1
+        token_name = s.get("token", "?")
+        try:
+            safety = check_token_safety(addr)
+            rc_score = safety.get("rugcheck_score")
+            rc_level = safety.get("risk_level", "?")
+            rc_safe = safety.get("safe_to_trade", False)
+
+            if rc_score is not None and rc_score > 70:
+                candidates[idx] = (s, sc + 10)  # bonus
+            if rc_score is not None and rc_score < 30:
+                rugcheck_skipped.add(idx)
+                rugcheck_log_parts.append(f"{token_name} score {rc_score} ({rc_level}) ⛔ SKIPPED")
+                continue
+            if not rc_safe:
+                rugcheck_skipped.add(idx)
+                rugcheck_log_parts.append(f"{token_name} score {rc_score} ({rc_level}) UNSAFE ⛔ SKIPPED")
+                continue
+
+            flag = "✅" if rc_level == "Good" else "⚠️"
+            rugcheck_log_parts.append(f"{token_name} score {rc_score} ({rc_level}) {flag}")
+            # Store rugcheck data in signal for pipeline
+            s["rugcheck_score"] = rc_score
+            s["rugcheck_level"] = rc_level
+            s["rugcheck_risks"] = safety.get("risks", [])
+        except Exception as e:
+            rugcheck_log_parts.append(f"{token_name} ERROR: {e}")
+
+    if rugcheck_log_parts:
+        _log(f"RugCheck: {' | '.join(rugcheck_log_parts)}")
+
+    # Remove skipped candidates
+    if rugcheck_skipped:
+        candidates = [(s, sc) for idx, (s, sc) in enumerate(candidates) if idx not in rugcheck_skipped]
+        # Re-sort after bonus adjustments
+        candidates.sort(key=lambda x: x[1], reverse=True)
+
+    if not candidates:
+        _log("No candidates remaining after RugCheck safety gate.")
+        state["last_run"] = now_str
+        _save_json_atomic(ROUTER_STATE_PATH, state)
+        return
+
     # --- Select top signal ---
     selected, selected_score = candidates[0]
     selected_token = selected.get("token", "?")
