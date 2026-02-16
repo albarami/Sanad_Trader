@@ -593,16 +593,19 @@ if __name__ == "__main__":
     print("Starting Sanad Trader Console API on port 8100...")
     uvicorn.run(app, host="0.0.0.0", port=8100)
 
-# ── Static file serving for console ──
+
+# ─────────────────────────────────────────────────────────
+# Serve Console Frontend
+# ─────────────────────────────────────────────────────────
+
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 
 CONSOLE_DIR = BASE_DIR / "console"
 
-@app.get("/")
-def serve_console():
-    return FileResponse(CONSOLE_DIR / "index.html")
-
-# Mount static files last
 if CONSOLE_DIR.exists():
-    app.mount("/console", StaticFiles(directory=str(CONSOLE_DIR)), name="console")
+    @app.get("/")
+    def serve_console():
+        return FileResponse(CONSOLE_DIR / "index.html")
+
+    app.mount("/static", StaticFiles(directory=str(CONSOLE_DIR)), name="static")
