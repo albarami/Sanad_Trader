@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Signal Router — Sprint 3.x
-Reads CoinGecko + DexScreener signals, ranks them, feeds the best
+Reads CoinGecko + DexScreener + Birdeye signals, ranks them, feeds the best
 candidate into sanad_pipeline.py. Deterministic Python. No LLMs.
 Designed to run as a cron job every 15 minutes.
 """
@@ -23,6 +23,7 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 BASE_DIR = SCRIPT_DIR.parent  # /data/.openclaw/workspace/trading
 SIGNALS_CG = BASE_DIR / "signals" / "coingecko"
 SIGNALS_DEX = BASE_DIR / "signals" / "dexscreener"
+SIGNALS_BE = BASE_DIR / "signals" / "birdeye"
 STATE_DIR = BASE_DIR / "state"
 POSITIONS_PATH = STATE_DIR / "positions.json"
 PORTFOLIO_PATH = STATE_DIR / "portfolio.json"
@@ -148,7 +149,13 @@ def _score_signal(signal: dict, age_minutes: float, is_cross_source: bool) -> in
     source = signal.get("source", "")
 
     # Source type score
-    if stype == "BOOSTED_TOKEN":
+    if source == "birdeye_meme_radar" and stype == "MEME_GAINER":
+        score += 25  # highest base — dedicated meme radar with security data
+    elif source == "birdeye_meme_radar" and stype == "TRENDING":
+        score += 20
+    elif source == "birdeye_meme_radar" and stype == "NEW_LISTING":
+        score += 10
+    elif stype == "BOOSTED_TOKEN":
         score += 20
     elif stype in ("TRENDING_GAINER",):
         score += 20
@@ -159,8 +166,39 @@ def _score_signal(signal: dict, age_minutes: float, is_cross_source: bool) -> in
     elif stype == "MAJOR_GAINER":
         score += 15
 
+    # --- Birdeye security-aware bonuses/penalties ---
+    # Smart money signal
+    if signal.get("smart_money_signal"):
+        score += 25
+
+    # Holder distribution (from token_security enrichment)
+    top10 = signal.get("top10_holder_pct")
+    if top10 is not None and top10 > 0:
+        if top10 < 30:
+            score += 10  # healthy distribution
+        elif top10 > 80:
+            score -= 30  # rug risk
+
+    # Rug flags penalty
+    rug_flags = signal.get("rug_flags") or []
+    if rug_flags and not all("not_checked" in f or "not_enriched" in f for f in rug_flags):
+        score -= 20
+
+    # Holder count bonus
+    holder_count = signal.get("holder_count") or 0
+    if holder_count > 1000:
+        score += 10
+
+    # Token age scoring
+    age_hours = signal.get("token_age_hours")
+    if age_hours is not None:
+        if age_hours < 1:
+            score -= 15  # too fresh, risky
+        elif 1 <= age_hours <= 24:
+            score += 5  # sweet spot for meme launches
+
     # Volume
-    vol = signal.get("volume_24h") or signal.get("volume_24h") or 0
+    vol = signal.get("volume_24h") or 0
     if vol > 1_000_000:
         score += 20
     elif vol > 500_000:
@@ -237,6 +275,14 @@ def _to_pipeline_signal(signal: dict, cross_sources: list[str] | None = None) ->
         else:
             source_parts.append("CoinGecko top gainer")
 
+    if "birdeye" in signal.get("source", ""):
+        be_type = signal.get("signal_type", "").lower().replace("_", " ")
+        top10 = signal.get("top10_holder_pct")
+        if top10 is not None and top10 > 0:
+            source_parts.append(f"Birdeye {be_type} (top10={top10:.0f}%)")
+        else:
+            source_parts.append(f"Birdeye {be_type}")
+
     if cross_sources:
         for cs in cross_sources:
             if cs not in " ".join(source_parts).lower():
@@ -295,10 +341,18 @@ def run_router():
     # --- Load signals ---
     cg_path, cg_signals, cg_age = _latest_signal_file(SIGNALS_CG, exclude_names={"global_latest.json"})
     dex_path, dex_signals, dex_age = _latest_signal_file(SIGNALS_DEX)
+    be_path, be_signals, be_age = _latest_signal_file(SIGNALS_BE)
 
-    cg_label = f"{len(cg_signals)} signals ({cg_age:.0f}min ago)" if cg_signals else f"0 signals ({cg_age:.0f}min ago, stale)" if cg_path else "no files"
-    dex_label = f"{len(dex_signals)} signals ({dex_age:.0f}min ago)" if dex_signals else f"0 signals ({dex_age:.0f}min ago, stale)" if dex_path else "no files"
-    _log(f"Loading signals: CoinGecko {cg_label}, DexScreener {dex_label}")
+    def _label(name, sigs, age, path):
+        if sigs:
+            return f"{name} {len(sigs)} ({age:.0f}min ago)"
+        elif path:
+            return f"{name} 0 ({age:.0f}min ago, stale)"
+        return f"{name} no files"
+
+    _log(f"Loading signals: {_label('CoinGecko', cg_signals, cg_age, cg_path)}, "
+         f"{_label('DexScreener', dex_signals, dex_age, dex_path)}, "
+         f"{_label('Birdeye', be_signals, be_age, be_path)}")
 
     all_signals = []
     for s in cg_signals:
@@ -308,6 +362,10 @@ def run_router():
     for s in dex_signals:
         s["_source_age_min"] = dex_age
         s["_origin"] = "dexscreener"
+        all_signals.append(s)
+    for s in be_signals:
+        s["_source_age_min"] = be_age
+        s["_origin"] = "birdeye"
         all_signals.append(s)
 
     if not all_signals:
@@ -338,10 +396,18 @@ def run_router():
         _save_json_atomic(ROUTER_STATE_PATH, state)
         return
 
-    # --- Detect cross-source tokens ---
+    # --- Detect cross-source tokens (Tawatur) ---
     cg_tokens = {s.get("token", "").upper() for s in cg_signals}
     dex_tokens = {s.get("token", "").upper() for s in dex_signals}
-    cross_source_tokens = cg_tokens & dex_tokens
+    be_tokens = {s.get("token", "").upper() for s in be_signals}
+    # Cross-source = token appears in 2+ sources
+    all_source_sets = [cg_tokens, dex_tokens, be_tokens]
+    cross_source_tokens: set[str] = set()
+    all_unique = cg_tokens | dex_tokens | be_tokens
+    for tok in all_unique:
+        sources_count = sum(1 for s in all_source_sets if tok in s)
+        if sources_count >= 2:
+            cross_source_tokens.add(tok)
     if cross_source_tokens:
         _log(f"Cross-source (Tawatur) matches: {', '.join(sorted(cross_source_tokens))}")
 
@@ -392,6 +458,15 @@ def run_router():
             extras.append(f"boost {s['boost_amount']}x")
         if s.get("trending_rank") is not None:
             extras.append(f"trending #{s['trending_rank'] + 1}")
+        top10 = s.get("top10_holder_pct")
+        if top10 is not None and top10 > 0:
+            extras.append(f"top10={top10:.0f}%")
+        if s.get("holder_count") and s["holder_count"] > 0:
+            hc = s["holder_count"]
+            extras.append(f"{hc/1e3:.1f}K holders" if hc >= 1000 else f"{hc} holders")
+        age_h = s.get("token_age_hours")
+        if age_h is not None:
+            extras.append(f"age {age_h:.0f}h" if age_h < 24 else f"age {age_h/24:.0f}d")
         pct_1h = s.get("price_change_1h_pct")
         pct_24h = s.get("price_change_24h_pct")
         if pct_1h:
@@ -421,9 +496,12 @@ def run_router():
                 if s.get("_origin") == "coingecko":
                     rank = s.get("trending_rank")
                     cross_labels.append(f"CoinGecko trending #{rank + 1}" if rank is not None else "CoinGecko gainer")
-                else:
+                elif s.get("_origin") == "dexscreener":
                     boost = s.get("boost_amount")
                     cross_labels.append(f"DexScreener boost ({boost}x)" if boost else "DexScreener")
+                elif s.get("_origin") == "birdeye":
+                    be_type = s.get("signal_type", "")
+                    cross_labels.append(f"Birdeye {be_type.lower().replace('_', ' ')}")
 
     pipeline_signal = _to_pipeline_signal(selected, cross_labels)
 
