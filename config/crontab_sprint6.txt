@@ -28,3 +28,13 @@
 0 5 * * 0 cd /data/.openclaw/workspace/trading && python3 scripts/weekly_research.py >> logs/weekly_research.log 2>&1
 0 3 * * 1 cd /data/.openclaw/workspace/trading && python3 scripts/model_check.py >> logs/model_check.log 2>&1
 0 19 * * 5 cd /data/.openclaw/workspace/trading && python3 scripts/security_audit.py >> logs/security_audit.log 2>&1
+
+# Sprint 9 — Safety
+# Weekly Red Team (Saturday 23:00 QAT = 20:00 UTC)
+0 20 * * 6 cd /data/.openclaw/workspace/trading && python3 scripts/red_team.py --all >> /tmp/red_team.log 2>&1
+
+# Daily root hash (04:00 QAT = 01:00 UTC)
+0 1 * * * cd /data/.openclaw/workspace/trading && python3 scripts/red_team.py --hash >> /tmp/hash.log 2>&1
+
+# Hash verification (every 6 hours)
+0 */6 * * * cd /data/.openclaw/workspace/trading && python3 scripts/red_team.py --verify >> /tmp/hash_verify.log 2>&1
