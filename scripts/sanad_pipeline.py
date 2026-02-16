@@ -495,16 +495,25 @@ EXCHANGE DATA:
 {signal.get('onchain_evidence_summary', '')}
 
 Execute the full 6-step Takhrij process as specified in your instructions.
+Use the explicit Trust Score Formula to calculate the score deterministically.
 Return your analysis as valid JSON with these exact keys:
 {{
-  "trust_score": <0-100>,
+  "trust_score": <0-100, calculated using the weighted formula>,
   "grade": "<Tawatur|Mashhur|Ahad>",
+  "source_grade": "<A|B|C|D|F>",
+  "source_ucb1_score": <UCB1 value or 50 if new>,
+  "chain_length": <number of independent confirmations>,
+  "chain_integrity": "<CONNECTED|BROKEN|PARTIAL>",
+  "content_consistency": "<CONSISTENT|CONTRADICTIONS_FOUND|UNVERIFIABLE>",
+  "corroboration_level": "<TAWATUR|MASHHUR|AHAD_SAHIH|AHAD_DAIF>",
+  "recency_decay_points": <0 to -15>,
+  "rugpull_flags": ["<flag1>", "<flag2>"] or [],
+  "sybil_risk": "<LOW|MEDIUM|HIGH>",
+  "sybil_evidence": "<description if MEDIUM/HIGH>",
+  "key_findings": ["<finding1>", "<finding2>", "<finding3>"],
   "recommendation": "<PROCEED|CAUTION|BLOCK>",
   "source_count": <number of independent sources found>,
-  "key_findings": ["<finding1>", "<finding2>", ...],
-  "rugpull_flags": ["<flag1>", ...] or [],
-  "sybil_risk": "<LOW|MEDIUM|HIGH>",
-  "reasoning": "<brief explanation>"
+  "reasoning": "<3-5 sentence detailed explanation>"
 }}"""
 
     sanad_response = call_claude(
@@ -654,14 +663,27 @@ EXCHANGE DATA: {sanad_result.get('price_context', 'N/A')}"""
     print("  [4a] Bull Al-Baqarah arguing FOR...")
     bull_message = f"""{context}
 
-Argue FOR this trade. Return valid JSON:
+Argue FOR this trade. Address all 7 points in your mandate: entry thesis, market microstructure, social momentum, on-chain evidence, historical pattern match, risk/reward calculation, and position sizing.
+
+Return valid JSON with these exact keys:
 {{
   "conviction": <0-100>,
-  "thesis": "<your bull thesis>",
-  "entry_price": "<suggested entry>",
-  "target_price": "<target price>",
-  "supporting_evidence": ["<evidence1>", "<evidence2>", ...],
-  "risk_acknowledgment": "<risks you see but accept>"
+  "thesis": "<2-3 sentence core argument>",
+  "entry_price": "<suggested entry price or 'market'>",
+  "target_price": "<target price with reasoning>",
+  "stop_loss": "<stop-loss price with reasoning>",
+  "risk_reward_ratio": "<calculated R:R>",
+  "timeframe": "<expected hold duration>",
+  "supporting_evidence": [
+    "<specific data point 1 with numbers>",
+    "<specific data point 2 with numbers>",
+    "<specific data point 3 with numbers>",
+    "<specific data point 4 with numbers>",
+    "<specific data point 5 with numbers>"
+  ],
+  "catalyst_timeline": "<what needs to happen and when>",
+  "risk_acknowledgment": "<2-3 sentences on main risks>",
+  "invalidation_point": "<what would make this thesis wrong>"
 }}"""
 
     bull_response = call_claude(
@@ -684,15 +706,34 @@ Argue FOR this trade. Return valid JSON:
 BULL'S ARGUMENT:
 Conviction: {bull_result.get('conviction', 'N/A')}/100
 Thesis: {bull_result.get('thesis', 'N/A')}
+Entry: {bull_result.get('entry_price', 'N/A')}
+Target: {bull_result.get('target_price', 'N/A')}
+Stop-Loss: {bull_result.get('stop_loss', 'N/A')}
+R:R Ratio: {bull_result.get('risk_reward_ratio', 'N/A')}
 Evidence: {json.dumps(bull_result.get('supporting_evidence', []))}
+Invalidation: {bull_result.get('invalidation_point', 'N/A')}
 
-Argue AGAINST this trade. Attack the Bull's thesis. Apply your Muḥāsibī pre-reasoning discipline first, then return your final analysis as valid JSON (you may include reasoning text before the JSON block):
+Apply your Muḥāsibī pre-reasoning discipline (Khawāṭir → Murāqaba → Mujāhada) first, then attack the Bull's thesis across all 8 vectors. Return valid JSON (you may include reasoning text before the JSON block):
 {{
-  "conviction": <0-100 where 100 means absolutely do NOT trade>,
-  "attack_points": ["<attack1>", "<attack2>", ...],
-  "worst_case_scenario": "<what could go wrong>",
-  "hidden_risks": ["<risk1>", "<risk2>", ...],
-  "historical_parallels": "<similar past situations that went badly>"
+  "conviction": <0-100 where 100 = absolutely DO NOT trade>,
+  "thesis": "<2-3 sentence core argument against>",
+  "attack_points": [
+    "<specific attack on evidence 1>",
+    "<specific attack on evidence 2>",
+    "<specific attack on evidence 3>",
+    "<specific attack on evidence 4>",
+    "<specific attack on evidence 5>"
+  ],
+  "worst_case_scenario": "<quantified worst case with specific numbers>",
+  "hidden_risks": [
+    "<risk the Bull ignores 1>",
+    "<risk the Bull ignores 2>",
+    "<risk the Bull ignores 3>"
+  ],
+  "historical_parallels": "<specific past failure — token, date, outcome>",
+  "liquidity_assessment": "<can we actually exit? specific analysis>",
+  "timing_assessment": "<early, on time, or late? evidence>",
+  "what_must_be_true": "<assumptions that must ALL hold for Bull case>"
 }}"""
 
     bear_response = call_claude(
@@ -736,9 +777,13 @@ SOURCE: {signal['source']}
 SANAD VERIFICATION:
 - Trust Score: {sanad_result.get('trust_score', 'N/A')}/100
 - Grade: {sanad_result.get('grade', 'N/A')}
+- Source Grade: {sanad_result.get('source_grade', 'N/A')}
+- Chain Integrity: {sanad_result.get('chain_integrity', 'N/A')}
+- Corroboration: {sanad_result.get('corroboration_level', 'N/A')}
 - Recommendation: {sanad_result.get('recommendation', 'N/A')}
 - Key Findings: {json.dumps(sanad_result.get('key_findings', []))}
 - Rugpull Flags: {json.dumps(sanad_result.get('rugpull_flags', []))}
+- Sybil Risk: {sanad_result.get('sybil_risk', 'N/A')}
 
 STRATEGY:
 - Name: {strategy_result.get('strategy_name', 'N/A')}
@@ -747,26 +792,49 @@ STRATEGY:
 BULL CASE (Al-Baqarah):
 - Conviction: {bull_result.get('conviction', 'N/A')}/100
 - Thesis: {bull_result.get('thesis', 'N/A')}
+- Entry: {bull_result.get('entry_price', 'N/A')}
+- Target: {bull_result.get('target_price', 'N/A')}
+- Stop-Loss: {bull_result.get('stop_loss', 'N/A')}
+- R:R Ratio: {bull_result.get('risk_reward_ratio', 'N/A')}
 - Evidence: {json.dumps(bull_result.get('supporting_evidence', []))}
+- Catalyst: {bull_result.get('catalyst_timeline', 'N/A')}
+- Invalidation: {bull_result.get('invalidation_point', 'N/A')}
 
 BEAR CASE (Al-Dahhak):
 - Conviction Against: {bear_result.get('conviction', 'N/A')}/100
+- Thesis: {bear_result.get('thesis', 'N/A')}
 - Attack Points: {json.dumps(bear_result.get('attack_points', []))}
 - Worst Case: {bear_result.get('worst_case_scenario', 'N/A')}
 - Hidden Risks: {json.dumps(bear_result.get('hidden_risks', []))}
+- Historical Parallels: {bear_result.get('historical_parallels', 'N/A')}
+- Liquidity Assessment: {bear_result.get('liquidity_assessment', 'N/A')}
+- Timing Assessment: {bear_result.get('timing_assessment', 'N/A')}
+- Must Be True: {bear_result.get('what_must_be_true', 'N/A')}
 
-Execute your 6-point checklist and return valid JSON:
+Execute your full 5-step Muḥāsibī discipline (Khawāṭir → Murāqaba → Mujāhada → 7-point checklist → Verdict). Return ONLY valid JSON:
 {{
-  "verdict": "<APPROVE|REJECT|REVISE>",
+  "khawatir": [
+    {{"impulse": "...", "classification": "nafs|waswas|genuine"}},
+    {{"impulse": "...", "classification": "nafs|waswas|genuine"}},
+    {{"impulse": "...", "classification": "nafs|waswas|genuine"}}
+  ],
+  "muraqaba_biases_caught": ["bias 1", "bias 2"],
+  "mujahada_uncomfortable_truth": "...",
+  "checklist": {{
+    "cognitive_bias": {{"rating": "PASS|FLAG|FAIL", "conviction": <1-10>, "detail": "..."}},
+    "statistical_review": {{"rating": "PASS|FLAG|FAIL", "conviction": <1-10>, "detail": "..."}},
+    "risk_assessment": {{"rating": "PASS|FLAG|FAIL", "conviction": <1-10>, "detail": "..."}},
+    "sanad_integrity": {{"rating": "PASS|FLAG|FAIL", "conviction": <1-10>, "detail": "..."}},
+    "bear_case_strength": {{"rating": "PASS|FLAG|FAIL", "conviction": <1-10>, "detail": "..."}},
+    "market_context": {{"rating": "PASS|FLAG|FAIL", "conviction": <1-10>, "detail": "..."}},
+    "shariah_compliance": {{"rating": "PASS|FLAG|CONCERN", "conviction": <1-10>, "detail": "..."}}
+  }},
+  "verdict": "APPROVE|REJECT|REVISE",
   "confidence_score": <0-100>,
-  "cognitive_bias_check": "<any biases detected in the analysis>",
-  "statistical_review": "<risk/reward assessment>",
-  "risk_assessment": "<overall risk level and reasoning>",
-  "sanad_integrity": "<assessment of source verification quality>",
-  "bear_case_strength": "<how strong is the bear case>",
-  "market_context": "<current market conditions relevance>",
-  "reasoning": "<brief explanation of verdict>",
-  "conditions": ["<condition1 if REVISE>"] or []
+  "reasoning": "<5-7 sentences with specific evidence references>",
+  "conditions": ["<if REVISE>"] or [],
+  "position_size_recommendation": "FULL|REDUCE_TO_X%|REJECT",
+  "key_concern": "<single most important concern>"
 }}"""
 
     # Use GPT via OpenAI direct for independent review (different model = different blindspot)
