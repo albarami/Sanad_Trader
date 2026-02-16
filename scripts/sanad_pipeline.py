@@ -422,6 +422,119 @@ IMPORTANT FOR SANAD SCORING:
 - On-chain data is MORE reliable than news for meme tokens — it shows what's actually happening, not what's being reported
 """
 
+    # 4. Holder Concentration Analysis (Sprint 7.2.3 — replaces BubbleMaps)
+    try:
+        from holder_analyzer import analyze_concentration
+        holder_result = analyze_concentration(address)
+        if holder_result.get("status") == "analyzed":
+            onchain_evidence["holder_analysis"] = {
+                "top_5_pct": holder_result.get("top_5_pct"),
+                "top_10_pct": holder_result.get("top_10_pct"),
+                "top_20_pct": holder_result.get("top_20_pct"),
+                "hhi": holder_result.get("hhi"),
+                "gini": holder_result.get("gini"),
+                "dev_wallet_pct": holder_result.get("dev_wallet_pct"),
+                "sybil_risk": holder_result.get("sybil_risk"),
+                "risk_score": holder_result.get("risk_score"),
+            }
+            print(f"    Holder analysis: top10={holder_result.get('top_10_pct')}%, "
+                  f"sybil={holder_result.get('sybil_risk')}, risk={holder_result.get('risk_score')}/100")
+        else:
+            onchain_evidence["holder_analysis"] = {"status": holder_result.get("status", "no_data")}
+            print(f"    Holder analysis: {holder_result.get('status', 'no_data')}")
+    except Exception as e:
+        onchain_evidence["holder_analysis"] = {"error": str(e)}
+        print(f"    Holder analysis: error — {e}")
+
+    _time.sleep(1)
+
+    # 5. Honeypot Detection (Sprint 7.1.7)
+    try:
+        from honeypot_detector import check_honeypot
+        honeypot_result = check_honeypot(address, signal.get("token", ""))
+        onchain_evidence["honeypot"] = {
+            "is_honeypot": honeypot_result.get("is_honeypot", False),
+            "verdict": honeypot_result.get("verdict", "UNKNOWN"),
+            "buy_possible": honeypot_result.get("buy_possible"),
+            "sell_possible": honeypot_result.get("sell_possible"),
+            "round_trip_loss_pct": honeypot_result.get("round_trip_loss_pct", 0),
+            "checks": honeypot_result.get("checks", []),
+        }
+        print(f"    Honeypot: {honeypot_result.get('verdict')} "
+              f"(round-trip loss: {honeypot_result.get('round_trip_loss_pct', 0):.1f}%)")
+    except Exception as e:
+        onchain_evidence["honeypot"] = {"error": str(e)}
+        print(f"    Honeypot: error — {e}")
+
+    # 6. Rugpull Scanner (Sprint 7.5.1-7.5.4)
+    try:
+        from rugpull_scanner import scan_token, is_blacklisted, record_prediction
+        if is_blacklisted(address):
+            onchain_evidence["rugpull_scan"] = {
+                "verdict": "BLACKLISTED",
+                "risk_score": 100,
+                "flags": ["previously_blacklisted"],
+            }
+            print(f"    Rugpull scan: BLACKLISTED (known scam)")
+        else:
+            scan_result = scan_token(
+                address,
+                token_name=signal.get("token", ""),
+                metadata=None,  # will fetch via helius
+                holders=onchain_evidence.get("holder_analysis"),
+            )
+            onchain_evidence["rugpull_scan"] = {
+                "verdict": scan_result.get("verdict"),
+                "risk_score": scan_result.get("risk_score"),
+                "flags": scan_result.get("flags", []),
+            }
+            print(f"    Rugpull scan: {scan_result.get('verdict')} "
+                  f"(score: {scan_result.get('risk_score')}/100, "
+                  f"flags: {len(scan_result.get('flags', []))})")
+    except Exception as e:
+        onchain_evidence["rugpull_scan"] = {"error": str(e)}
+        print(f"    Rugpull scan: error — {e}")
+
+    # 3. Build verification summary
+    rc = onchain_evidence.get("rugcheck", {})
+    bs = onchain_evidence.get("birdeye_security", {})
+    bo = onchain_evidence.get("birdeye_overview", {})
+    tc = onchain_evidence.get("token_creation", {})
+    ha = onchain_evidence.get("holder_analysis", {})
+    hp = onchain_evidence.get("honeypot", {})
+    rs = onchain_evidence.get("rugpull_scan", {})
+
+    evidence_summary += f"""
+
+Source 4 — Holder Concentration (Helius DAS, deterministic):
+  Top 5 Holders: {_fmt(ha.get('top_5_pct'), suffix='%')}
+  Top 10 Holders: {_fmt(ha.get('top_10_pct'), suffix='%')}
+  Top 20 Holders: {_fmt(ha.get('top_20_pct'), suffix='%')}
+  HHI (concentration index): {_fmt(ha.get('hhi'))}  (>2500 = concentrated)
+  Gini Coefficient: {_fmt(ha.get('gini'))}  (>0.8 = very unequal)
+  Dev Wallet: {_fmt(ha.get('dev_wallet_pct'), suffix='%')}
+  Sybil Risk: {ha.get('sybil_risk', 'N/A')}
+  Holder Risk Score: {_fmt(ha.get('risk_score'), suffix='/100')}
+
+Source 5 — Honeypot Detection (Jupiter simulation, deterministic):
+  Verdict: {hp.get('verdict', 'N/A')}
+  Buy Possible: {hp.get('buy_possible', 'N/A')}
+  Sell Possible: {hp.get('sell_possible', 'N/A')}
+  Round-Trip Loss: {_fmt(hp.get('round_trip_loss_pct'), suffix='%')}
+  Checks: {', '.join(hp.get('checks', [])) or 'None'}
+
+Source 6 — Rugpull Scanner (deterministic pattern matching):
+  Verdict: {rs.get('verdict', 'N/A')}
+  Risk Score: {_fmt(rs.get('risk_score'), suffix='/100')}
+  Flags: {', '.join(rs.get('flags', [])) or 'None'}
+
+HARD GATES (deterministic, override LLM):
+- If honeypot verdict = HONEYPOT → BLOCK (no trade)
+- If rugpull scan verdict = RUG or BLACKLISTED → BLOCK (no trade)
+- If holder sybil_risk = CRITICAL → BLOCK (no trade)
+- If holder risk_score > 80 → strong BLOCK signal
+"""
+
     signal["onchain_evidence"] = onchain_evidence
     signal["onchain_evidence_summary"] = evidence_summary.strip()
     return signal
@@ -444,6 +557,35 @@ def stage_2_sanad_verification(signal):
 
     # Step 0: Enrich with on-chain data for Solana tokens
     signal = enrich_signal_with_onchain_data(signal)
+
+    # Step 0b: HARD GATES — deterministic blocks before LLM (Sprint 7.2.3)
+    onchain = signal.get("onchain_evidence", {})
+    hp = onchain.get("honeypot", {})
+    rs = onchain.get("rugpull_scan", {})
+    ha = onchain.get("holder_analysis", {})
+
+    hard_block_reason = None
+    if hp.get("is_honeypot") or hp.get("verdict") == "HONEYPOT":
+        hard_block_reason = f"HONEYPOT detected: {', '.join(hp.get('checks', []))}"
+    elif rs.get("verdict") in ("RUG", "BLACKLISTED"):
+        hard_block_reason = f"Rugpull scan: {rs.get('verdict')} — flags: {', '.join(rs.get('flags', []))}"
+    elif ha.get("sybil_risk") == "CRITICAL":
+        hard_block_reason = f"CRITICAL Sybil risk (holder risk score: {ha.get('risk_score', '?')}/100)"
+
+    if hard_block_reason:
+        print(f"  ⛔ HARD GATE BLOCK: {hard_block_reason}")
+        print(f"  Skipping LLM verification — deterministic BLOCK")
+        return {
+            "trust_score": 0,
+            "grade": "BLOCKED",
+            "recommendation": "BLOCK",
+            "reasoning": f"Deterministic hard gate: {hard_block_reason}",
+            "hard_gate": True,
+            "hard_gate_reason": hard_block_reason,
+            "honeypot": hp,
+            "rugpull_scan": rs,
+            "holder_analysis": ha,
+        }, None
 
     # Step 1: Gather real-time intelligence via Perplexity
     print("  [2a] Gathering real-time intelligence via Perplexity...")
