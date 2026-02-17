@@ -102,18 +102,42 @@ def save_trailing_stops(data):
 # EXIT CONDITION CHECKS
 # ─────────────────────────────────────────────
 
-# Trailing stop parameters (from meme-momentum.md)
-TRAILING_ACTIVATION_PCT = 0.15   # Activate at 15% profit
-TRAILING_DROP_PCT = 0.08         # Close on 8% drop from high-water
+# Trailing stop parameters — Al-Muhasbi audit: let winners run, cut losers fast
+TRAILING_ACTIVATION_PCT = 0.05   # Activate at 5% profit (was 15% — never triggered before TP)
+TRAILING_DROP_PCT = 0.03         # Close on 3% drop from high-water (was 8% — tighter for blue-chips)
 MAX_HOLD_HOURS = 48              # Time-based exit
 FLASH_CRASH_PCT = 0.10           # 10% drop in 15 minutes
 FLASH_CRASH_WINDOW_MIN = 15      # 15-minute window
 
+# CEX blue-chip tokens use trailing stop INSTEAD of fixed TP
+CEX_BLUECHIP = {
+    "BONK", "WIF", "PEPE", "FLOKI", "RAY", "ORCA", "SOL", "JUP",
+    "DOGE", "SHIB", "PENGU", "TAO", "SUI", "VIRTUAL", "BTC", "ETH",
+    "AAVE", "UNI", "LINK", "ATOM", "HBAR", "XRP", "INIT", "ONDO",
+    "MOVE", "LDO", "RPL", "FOGO",
+}
+
 
 def check_stop_loss(position, current_price):
-    """Exit Condition A: Hard stop-loss."""
+    """Exit Condition A: Hard stop-loss with breakeven upgrade.
+    Once price reaches +3%, stop moves to entry (breakeven) — never give back a winner.
+    Blue-chips use tighter stops (5% default instead of 15%).
+    """
     entry = position["entry_price"]
+    token = position.get("token", "").upper()
+    unrealized_pct = (current_price - entry) / entry
+
+    # Breakeven stop: once +3%, stop moves to entry price
+    if unrealized_pct >= 0.03 and not position.get("_breakeven_set"):
+        position["_breakeven_set"] = True
+        position["stop_loss_pct"] = 0.001  # Essentially entry price (0.1% buffer for fees)
+        print(f"    [BREAKEVEN] {token} stop moved to entry @ ${entry:,.4f} (was +{unrealized_pct*100:.1f}%)")
+
     stop_pct = position.get("stop_loss_pct", 0.15)
+    # Blue-chips: default tighter stop (5%) if not already tighter
+    if token in CEX_BLUECHIP and stop_pct > 0.05 and not position.get("_breakeven_set"):
+        stop_pct = 0.05
+
     stop_price = entry * (1.0 - stop_pct)
 
     if current_price <= stop_price:
@@ -122,7 +146,15 @@ def check_stop_loss(position, current_price):
 
 
 def check_take_profit(position, current_price):
-    """Exit Condition B: Take-profit."""
+    """Exit Condition B: Take-profit.
+    CEX blue-chips skip fixed TP — trailing stop handles exit (let winners run).
+    Only DEX/unknown tokens use fixed TP as safety net.
+    """
+    token = position.get("token", "").upper()
+    if token in CEX_BLUECHIP:
+        # Blue-chips: no fixed TP, trailing stop will handle exit
+        return False, None, None
+
     entry = position["entry_price"]
     tp_pct = position.get("take_profit_pct", 0.30)
     tp_price = entry * (1.0 + tp_pct)

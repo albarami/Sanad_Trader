@@ -1438,6 +1438,96 @@ def _sync_to_supabase(record):
 # ─────────────────────────────────────────────
 # MAIN PIPELINE ORCHESTRATOR
 # ─────────────────────────────────────────────
+# TWO-TIER PIPELINE (Al-Muhasbi audit: CEX blue-chips don't need fraud detection)
+# ─────────────────────────────────────────────
+
+CEX_FAST_TRACK = {
+    "BONK", "WIF", "PEPE", "FLOKI", "RAY", "ORCA", "SOL", "JUP",
+    "DOGE", "SHIB", "PENGU", "TAO", "SUI", "VIRTUAL", "BTC", "ETH",
+    "AAVE", "UNI", "LINK", "ATOM", "HBAR", "XRP", "INIT", "ONDO",
+    "MOVE", "LDO", "RPL", "FOGO",
+}
+
+FAST_TRACK_MIN_SCORE = 80  # Router score threshold for fast-track
+
+
+def run_pipeline_fast_track(signal):
+    """
+    TIER 1: Fast-track pipeline for CEX blue-chip tokens.
+    Skips: Sanad verification, Bull/Bear debate, Al-Muhasbi judge.
+    Uses: Signal intake → Strategy match → Policy engine → Execute.
+    Time: ~5 seconds (0 LLM calls, pure deterministic).
+    """
+    print("\n" + "=" * 60)
+    print("SANAD TRADER v3.0 — FAST-TRACK PIPELINE (CEX BLUE-CHIP)")
+    print("=" * 60)
+
+    # Stage 1: Signal Intake
+    signal, error = stage_1_signal_intake(signal)
+    if error:
+        print(f"\nFAST-TRACK BLOCKED at Stage 1: {error}")
+        return {"final_action": "REJECT", "stage": 1, "reason": error}
+
+    # Synthetic Sanad result (CEX tokens = trusted by default)
+    sanad_result = {
+        "trust_score": 80,
+        "grade": "Mashhur",
+        "source_grade": "A",
+        "chain_integrity": "CONNECTED",
+        "corroboration_level": "MASHHUR",
+        "rugpull_flags": [],
+        "sybil_risk": "LOW",
+        "recommendation": "PROCEED",
+        "reasoning": f"Fast-track: {signal.get('token', '?')} is CEX-listed blue-chip. Sanad verification skipped.",
+        "fast_track": True,
+    }
+
+    # Stage 3: Strategy Match
+    strategy_result, error = stage_3_strategy_match(signal, sanad_result)
+    if error:
+        print(f"\nFAST-TRACK BLOCKED at Stage 3: {error}")
+        return {"final_action": "REJECT", "stage": 3, "reason": error}
+
+    # Synthetic debate results (no LLM calls)
+    bull_result = {
+        "conviction": 65,
+        "thesis": f"CEX blue-chip momentum trade on {signal.get('token', '?')}",
+        "target_price": "trailing_stop",
+        "stop_loss": "5%",
+        "risk_reward_ratio": "1:3+",
+        "fast_track": True,
+    }
+    bear_result = {
+        "conviction": 35,
+        "thesis": "Standard market risk applies",
+        "fast_track": True,
+    }
+
+    # Synthetic judge result (fast-track = auto-approve for CEX)
+    judge_result = {
+        "verdict": "APPROVE",
+        "confidence_score": 70,
+        "reasoning": f"Fast-track approval: {signal.get('token', '?')} is CEX-listed, deterministic policy gates provide sufficient protection.",
+        "position_size_recommendation": "FULL",
+        "fast_track": True,
+    }
+
+    # Stage 6: Policy Engine (STILL RUNS — this is the real protection)
+    policy_result, error = stage_6_policy_engine(signal, sanad_result, strategy_result, bull_result, bear_result, judge_result)
+    if error:
+        print(f"\nFAST-TRACK BLOCKED at Policy Engine: {error}")
+        return {"final_action": "REJECT", "stage": 6, "reason": error}
+
+    # Stage 7: Execute
+    decision_record = stage_7_execute(signal, sanad_result, strategy_result, bull_result, bear_result, judge_result, policy_result)
+    decision_record["pipeline_tier"] = "FAST_TRACK"
+
+    print("\n" + "=" * 60)
+    print(f"FAST-TRACK COMPLETE — Final Action: {decision_record['final_action']}")
+    print("=" * 60)
+
+    return decision_record
+
 
 def run_pipeline(signal):
     """
@@ -1519,7 +1609,15 @@ if __name__ == "__main__":
             "verified_catalyst": False,
         }
 
-    result = run_pipeline(signal)
+    # Two-tier routing: CEX blue-chips → fast-track, others → full pipeline
+    token = signal.get("token", "").upper()
+    router_score = signal.get("router_score", 0)
+    if token in CEX_FAST_TRACK and router_score >= FAST_TRACK_MIN_SCORE:
+        print(f"[TIER 1] {token} is CEX blue-chip with score {router_score} → FAST-TRACK")
+        result = run_pipeline_fast_track(signal)
+    else:
+        print(f"[TIER 2] {token} → FULL PIPELINE (Sanad + Debate + Judge)")
+        result = run_pipeline(signal)
 
     # Print summary
     print(f"\n{'='*60}")

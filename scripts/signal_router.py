@@ -42,10 +42,21 @@ PIPELINE_SCRIPT = SCRIPT_DIR / "sanad_pipeline.py"
 # ---------------------------------------------------------------------------
 # Constants
 # ---------------------------------------------------------------------------
-MAX_POSITIONS = 3
+# ── Load from config (Al-Muhasbi audit: hardcoded values were ignoring thresholds.yaml) ──
+import yaml as _yaml
+_THRESHOLDS_PATH = SCRIPT_DIR.parent / "config" / "thresholds.yaml"
+try:
+    with open(_THRESHOLDS_PATH) as _f:
+        _cfg = _yaml.safe_load(_f)
+    MAX_POSITIONS = _cfg.get("risk", {}).get("max_positions", 5)
+    MAX_DAILY_RUNS = _cfg.get("budget", {}).get("daily_pipeline_runs", 50)
+    COOLDOWN_HOURS = _cfg.get("policy_gates", {}).get("cooldown_minutes", 30) / 60  # now 30min default
+except Exception:
+    MAX_POSITIONS = 5
+    MAX_DAILY_RUNS = 50
+    COOLDOWN_HOURS = 0.5
+
 STALE_THRESHOLD_MIN = 30
-COOLDOWN_HOURS = 2
-MAX_DAILY_RUNS = 20
 CROSS_SOURCE_BONUS = 25
 
 
@@ -643,6 +654,7 @@ def run_router():
                     cross_labels.append(f"Birdeye {be_type.lower().replace('_', ' ')}")
 
     pipeline_signal = _to_pipeline_signal(selected, cross_labels)
+    pipeline_signal["router_score"] = selected_score  # Pass to pipeline for tier routing
 
     # --- Write temp signal file ---
     tmp_dir = BASE_DIR / "tmp"
