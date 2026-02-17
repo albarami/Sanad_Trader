@@ -4,10 +4,15 @@ SCRIPT_PATH="/data/.openclaw/workspace/trading/scripts/${SCRIPT_NAME}.py"
 STATE_DIR="/data/.openclaw/workspace/trading/state"
 CRON_HEALTH="${STATE_DIR}/cron_health.json"
 
+export SANAD_HOME="/data/.openclaw/workspace/trading"
+
 if [ -z "$SCRIPT_NAME" ]; then
     echo "Usage: cron_runner.sh <script_name>"
     exit 1
 fi
+
+# Deploy sync: validate current commit before running any script
+bash /data/.openclaw/workspace/trading/scripts/deploy_sync.sh 2>/dev/null || true
 
 python3 "$SCRIPT_PATH" 2>&1
 

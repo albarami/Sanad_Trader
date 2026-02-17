@@ -1,5 +1,5 @@
 {
-  "sent": 63,
+  "sent": 65,
   "failed": 7,
   "history": [
     {
@@ -216,7 +216,7 @@
       "level": "L2",
       "title": "SELL RAY",
       "message": "\ud83d\udfe2 *SELL \u2014 RAY/USDT*\n\nAction: SELL (TRAILING_STOP)\nEntry: $0.6910\nExit: $0.6960\nP&L: +0.7% (+$1.25)\nHold: 6.7h\n\nStrategy: meme-momentum\nSanad Score: 85",
-      "channel": "failed",
+      "channel": "telegram_resent",
       "at": "2026-02-17T11:24:04.143261+00:00"
     },
     {
@@ -279,14 +279,14 @@
       "level": "L2",
       "title": "SELL SOL",
       "message": "\ud83d\udd34 *SELL \u2014 SOL/USDT*\n\nAction: SELL (TIME_EXIT)\nEntry: $86.3600\nExit: $84.9600\nP&L: -1.6% ($-3.44)\nHold: 8.8h\n\nStrategy: whale-following\nSanad Score: 77",
-      "channel": "failed",
+      "channel": "telegram_resent",
       "at": "2026-02-17T13:35:41.546006+00:00"
     },
     {
       "level": "L2",
       "title": "SELL LINK",
       "message": "\ud83d\udd34 *SELL \u2014 LINK/USDT*\n\nAction: SELL (TIME_EXIT)\nEntry: $8.9200\nExit: $8.8100\nP&L: -1.2% ($-2.66)\nHold: 8.5h\n\nStrategy: whale-following\nSanad Score: 77",
-      "channel": "failed",
+      "channel": "telegram_resent",
       "at": "2026-02-17T13:35:43.592460+00:00"
     },
     {
@@ -300,7 +300,7 @@
       "level": "L2",
       "title": "System Status",
       "message": "\u2696\ufe0f *FULL SYSTEM STATUS \u2014 ALL GREEN*\n\n*\ud83e\udd16 LLM Agents:*\n\u2705 Anthropic (Opus 4.6) \u2014 Sanad/Bull/Bear\n\u2705 OpenAI (GPT 5.3 Codex) \u2014 Al-Muhasbi Judge\n\u2705 Perplexity (Sonar Pro) \u2014 Intelligence\n\u2705 Haiku 4.5 \u2014 Executio",
-      "channel": "failed",
+      "channel": "telegram_resent",
       "at": "2026-02-17T13:44:14.249496+00:00"
     },
     {
@@ -356,7 +356,7 @@
       "level": "L2",
       "title": "SELL MET",
       "message": "\ud83d\udd34 *SELL \u2014 MET/USDT*\n\nAction: SELL (STOP_LOSS)\nEntry: $0.2272\nExit: $0.2195\nP&L: -3.4% ($-2.09)\nHold: 2.8h\n\nStrategy: sentiment-divergence\nSanad Score: 78",
-      "channel": "failed",
+      "channel": "telegram_resent",
       "at": "2026-02-17T15:35:26.443469+00:00"
     },
     {
@@ -461,7 +461,7 @@
       "level": "L2",
       "title": "SELL BTC",
       "message": "\ud83d\udfe2 SELL BTC/USDT\n\nReason: TIME_EXIT\nEntry: 67,880.5500\nExit: 68,045.9400\nPnL: +0.2% (+0.29)\nHold: 8.0h\n\nStrategy: cex-listing-play\nSanad Score: 82",
-      "channel": "failed",
+      "channel": "telegram_resent",
       "at": "2026-02-17T19:02:58.249670+00:00"
     },
     {
@@ -482,7 +482,7 @@
       "level": "L2",
       "title": "SELL ETH",
       "message": "\ud83d\udfe2 SELL ETH/USDT\n\nReason: TIME_EXIT\nEntry: 1,969.0700\nExit: 2,013.2300\nPnL: +2.2% (+4.28)\nHold: 8.0h\n\nStrategy: whale-following\nSanad Score: 75",
-      "channel": "failed",
+      "channel": "telegram_resent",
       "at": "2026-02-17T19:17:57.508006+00:00"
     },
     {
@@ -491,7 +491,21 @@
       "message": "\ud83d\udd34 *Signal Rejected*\n\nToken: HORZ\nReason: {\n  \"result\": \"BLOCK\",\n  \"gates_passed\": [\n    1,\n    2,\n    3,\n    4,\n    5,\n    6,\n    7,\n    8,\n    9,\n    10,\n    11,\n    12,\n    13,\n    14\n  ],\n  \"gate_f",
       "channel": "log_only",
       "at": "2026-02-17T19:18:38.352435+00:00"
+    },
+    {
+      "level": "L2",
+      "title": "System Status",
+      "message": "SYSTEM ALIVE - Post-Audit Status\n\nCrons: Running (last heartbeat 05:11 MYT)\nDeploy: c8d093f verified\nSmoke test: 45/45\n\n2 sell notifications failed earlier (Markdown formatting). Fixing now.",
+      "channel": "telegram",
+      "at": "2026-02-17T21:19:11.185922+00:00"
+    },
+    {
+      "level": "L3",
+      "title": "URGENT ALERT",
+      "message": "Test: heartbeat alerts now route to Telegram",
+      "channel": "telegram",
+      "at": "2026-02-17T21:21:36.610438+00:00"
     }
   ],
-  "last_sent": "2026-02-17T19:18:38.352444+00:00"
+  "last_sent": "2026-02-17T21:21:36.610455+00:00"
 }

@@ -90,13 +90,18 @@ def log(message):
 
 def notify_whatsapp(message, urgent=False):
     """
-    Send notification via WhatsApp.
-    STUB: Will be implemented in Phase 6 (Week 4).
-    For now, logs the notification.
+    Send critical heartbeat alerts via Telegram (was WhatsApp stub).
+    Urgent alerts (kill switch, stop loss, flash crash) go as L3/L4.
     """
     prefix = "URGENT " if urgent else ""
-    log(f"[WHATSAPP {prefix}NOTIFICATION] {message}")
-    # TODO Phase 6: Implement WhatsApp API integration
+    log(f"[HEARTBEAT {prefix}ALERT] {message}")
+    try:
+        import notifier
+        level = "L3" if urgent else "L2"
+        title = "URGENT ALERT" if urgent else "Heartbeat Alert"
+        notifier.send(message, level=level, title=title)
+    except Exception as e:
+        log(f"[NOTIFY FAILED] {e} — message was: {message}")
 
 
 # ─────────────────────────────────────────────

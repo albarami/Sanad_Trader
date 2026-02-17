@@ -149,12 +149,15 @@ def _send_telegram(message: str, parse_mode: str = "Markdown") -> bool:
 
     try:
         url = f"https://api.telegram.org/bot{token}/sendMessage"
-        resp = requests.post(url, json={
+        payload = {
             "chat_id": chat_id,
             "text": message,
-            "parse_mode": parse_mode,
             "disable_web_page_preview": True,
-        }, timeout=10)
+        }
+        if parse_mode:
+            payload["parse_mode"] = parse_mode
+
+        resp = requests.post(url, json=payload, timeout=10)
 
         if resp.status_code == 200:
             _log(f"Telegram sent ({len(message)} chars)")
@@ -163,7 +166,10 @@ def _send_telegram(message: str, parse_mode: str = "Markdown") -> bool:
             _log(f"Telegram error {resp.status_code}: {resp.text[:100]}")
             # Retry without parse_mode (in case markdown breaks)
             if parse_mode:
-                return _send_telegram(message, parse_mode=None)
+                # Strip markdown characters and retry as plain text
+                import re
+                clean = re.sub(r'[*_`\[\]]', '', message)
+                return _send_telegram(clean, parse_mode=None)
             return False
 
     except Exception as e:
