@@ -1,6 +1,6 @@
 {
   "mode": "paper",
-  "overall_status": "ALERT",
+  "overall_status": "WARNING",
   "open_positions": 1,
   "total_exposure_pct": 0.0525,
   "daily_pnl_pct": 0.000428,
@@ -25,11 +25,9 @@
       "alerts": []
     },
     "cron_health": {
-      "status": "ALERT",
-      "detail": "1 cron issues",
-      "alerts": [
-        "meme_radar: never ran"
-      ]
+      "status": "OK",
+      "detail": "0 cron issues",
+      "alerts": []
     },
     "ntp_sync": {
       "status": "WARNING",
@@ -40,5 +38,5 @@
       "detail": "All closed"
     }
   },
-  "heartbeat_timestamp": "2026-02-17T21:30:50.152244+00:00"
+  "heartbeat_timestamp": "2026-02-17T21:40:47.665790+00:00"
 }

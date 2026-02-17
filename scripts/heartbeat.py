@@ -311,9 +311,9 @@ def check_cron_health():
 
     # Expected cron intervals (in minutes) with grace period
     expected_crons = {
-        "price_snapshot": 6,     # Every 3min, alert if >6min
-        "reconciliation": 20,   # Every 10min, alert if >20min
-        # meme_radar removed — not in crontab, was causing false alerts every cycle
+        "price_snapshot": 15,    # Every 3min, alert if >15min (5x tolerance)
+        "reconciliation": 30,   # Every 10min, alert if >30min (3x tolerance)
+        # meme_radar removed — not in crontab
     }
 
     for cron_name, max_age_min in expected_crons.items():

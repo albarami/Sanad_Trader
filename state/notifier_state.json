@@ -1,5 +1,5 @@
 {
-  "sent": 67,
+  "sent": 68,
   "failed": 7,
   "history": [
     {
@@ -519,7 +519,14 @@
       "message": "Heartbeat ALERT: cron_health: meme_radar: never ran | ntp_sync: NTP status unknown: ",
       "channel": "telegram",
       "at": "2026-02-17T21:30:51.260928+00:00"
+    },
+    {
+      "level": "L2",
+      "title": "Heartbeat Alert",
+      "message": "Heartbeat ALERT: cron_health: price_snapshot: last ran 6min ago (max 6min)",
+      "channel": "telegram",
+      "at": "2026-02-17T21:40:02.184469+00:00"
     }
   ],
-  "last_sent": "2026-02-17T21:30:51.260940+00:00"
+  "last_sent": "2026-02-17T21:40:02.184482+00:00"
 }
