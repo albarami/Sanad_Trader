@@ -19,8 +19,14 @@ sanad:
 sizing:
   kelly_fraction: 0.5
   kelly_min_trades: 30
-  kelly_default_pct: 0.02
+  kelly_default_pct: 0.05
   max_position_pct: 0.1
+  paper_regime_floor: 0.5
+  live_kelly_default_pct: 0.02
+  live_max_position_pct: 0.05
+  paper_default_pct: 0.05
+  paper_max_position_pct: 0.1
+  live_default_pct: 0.02
 learning:
   ucb1_cold_start_signals: 5
   thompson_exploration_days: 30

@@ -885,6 +885,10 @@ def stage_3_strategy_match(signal, sanad_result):
 
     # ── Regime-adjusted position sizing ──
     regime_size_modifier = regime_data.get("implications", {}).get("position_size_modifier", 1.0)
+    # Paper mode: floor the regime modifier so sizing stays meaningful
+    regime_floor = THRESHOLDS.get("sizing", {}).get("paper_regime_floor", 0.3)
+    if THRESHOLDS.get("mode", "paper") == "paper":
+        regime_size_modifier = max(regime_size_modifier, regime_floor)
     if regime_size_modifier < 1.0 and regime_tag != "UNKNOWN":
         adjusted_pct = position_pct * regime_size_modifier
         print(f"  Regime sizing: {position_pct*100:.1f}% × {regime_size_modifier:.1f} = {adjusted_pct*100:.1f}%")
