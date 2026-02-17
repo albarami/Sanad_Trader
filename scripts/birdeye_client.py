@@ -117,7 +117,7 @@ def _get(path: str, params: dict | None = None) -> dict | list:
     url = f"{BASE_URL}{path}"
     headers = {**DEFAULT_HEADERS, "X-API-KEY": API_KEY}
     try:
-        resp = requests.get(url, headers=headers, params=params, timeout=10)
+        resp = requests.get(url, headers=headers, params=params, timeout=8)
         if resp.status_code in (401, 403):
             _log(f"API key error ({resp.status_code})")
             _record_failure()
@@ -125,7 +125,7 @@ def _get(path: str, params: dict | None = None) -> dict | list:
         if resp.status_code == 429:
             _log("Rate limited (429) — sleeping 60s and retrying once")
             time.sleep(60)
-            resp = requests.get(url, headers=headers, params=params, timeout=10)
+            resp = requests.get(url, headers=headers, params=params, timeout=8)
         resp.raise_for_status()
         _reset_circuit()
         return resp.json()
@@ -472,8 +472,8 @@ def run_scan():
 
     _log(f"Total candidates after dedup: {len(candidates)}")
 
-    # --- 5. Enrich top 5 with overview + security + creation ---
-    _log(f"Enriching top {min(5, len(candidates))} with overview + security + creation info...")
+    # --- 5. Enrich top 3 with overview + security + creation ---
+    _log(f"Enriching top {min(3, len(candidates))} with overview + security + creation info...")
 
     signals = []
     enriched = 0
@@ -484,7 +484,7 @@ def run_scan():
         rug_flags: list[str] = []
         age_hours = None
 
-        if enriched < 5 and addr:
+        if enriched < 3 and addr:
             # Token overview for detailed data
             try:
                 overview = get_token_overview(addr)
