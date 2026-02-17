@@ -1236,6 +1236,7 @@ def stage_6_policy_engine(signal, sanad_result, strategy_result, bull_result, be
         },
         "trade_confidence_score": judge_result.get("confidence_score", 0),
         "almuhasbi_verdict": judge_result.get("verdict", "REJECT"),
+        "almuhasbi_confidence": judge_result.get("confidence_score", 0),
         "dex_sim_result": signal.get("dex_sim_result", None),
         "volatility_30min_pct": signal.get("volatility_30min_pct", 0),
         "has_verified_catalyst": signal.get("verified_catalyst", False),

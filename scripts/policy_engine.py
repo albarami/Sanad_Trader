@@ -632,9 +632,12 @@ def gate_15_sanad_audit(config, decision_packet, state):
             is_paper = True
 
         if audit_verdict == "REJECT":
-            if is_paper:
-                return True, f"PAPER MODE: Al-Muhasbi REJECT overridden (trust={trust_score}, conf={confidence_score})"
-            return False, "Al-Muhasbi verdict: REJECT"
+            judge_confidence = decision_packet.get("almuhasbi_confidence", 0)
+            if is_paper and judge_confidence < 85:
+                # Paper mode: allow low-confidence rejects through for learning
+                return True, f"PAPER MODE: Al-Muhasbi REJECT overridden (judge_conf={judge_confidence}% < 85%, trust={trust_score})"
+            # Hard block: judge confident or live mode
+            return False, f"Al-Muhasbi verdict: REJECT (confidence {judge_confidence}%)"
 
         if audit_verdict not in ("APPROVE", "REVISE"):
             if is_paper:

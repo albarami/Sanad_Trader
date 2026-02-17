@@ -665,6 +665,21 @@ def run_router():
         score = _score_signal(s, age, is_cross) + regime_adjustment
         candidates.append((s, score))
 
+    # ── Bear market quality filter ──
+    # In BEAR_HIGH_VOL: only allow CEX-listed tokens with real volume
+    router_cfg = _cfg.get("router", {})
+    if regime_tag in ("BEAR_HIGH_VOL", "BEAR_LOW_VOL") and router_cfg.get("bear_market_cex_only", False):
+        min_vol = router_cfg.get("min_volume_24h_usd", 1_000_000)
+        min_liq = router_cfg.get("min_liquidity_usd", 500_000)
+        pre_filter = len(candidates)
+        candidates = [
+            (s, sc) for s, sc in candidates
+            if (s.get("volume_24h", 0) or 0) >= min_vol or sc >= 50  # high score = CEX listed
+        ]
+        dropped = pre_filter - len(candidates)
+        if dropped:
+            _log(f"Bear market filter: dropped {dropped} low-quality signals (min vol ${min_vol:,.0f})")
+
     if filtered_reasons:
         _log(f"Filtered: {', '.join(filtered_reasons)}")
 

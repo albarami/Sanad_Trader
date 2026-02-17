@@ -10,7 +10,7 @@ risk:
   live_max_positions: 3
   paper_max_hold_hours: 8
 sanad:
-  minimum_trade_score: 8
+  minimum_trade_score: 15
   minimum_source_grade: C
   tawatur_sources: 3
   mashhur_sources: 2
@@ -94,8 +94,8 @@ policy_gates:
   exchange_error_window_minutes: 15
   max_concurrent_positions: 5
 scoring:
-  min_trust_score: 40
-  min_confidence_score: 35
+  min_trust_score: 50
+  min_confidence_score: 45
   recency_decay_per_hour: 5
   live_min_trust_score: 70
   live_min_confidence_score: 60
@@ -116,3 +116,7 @@ signals:
   min_cross_confirmations: 1
   paper_mode_min_cross: 1
   live_mode_min_cross: 2
+router:
+  bear_market_cex_only: true
+  min_volume_24h_usd: 1000000
+  min_liquidity_usd: 500000
