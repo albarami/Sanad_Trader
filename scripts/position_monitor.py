@@ -103,8 +103,8 @@ def save_trailing_stops(data):
 # ─────────────────────────────────────────────
 
 # Trailing stop parameters — Al-Muhasbi audit: let winners run, cut losers fast
-TRAILING_ACTIVATION_PCT = 0.08   # Al-Muhasbi approved: +8% (not 5%, not 15%)
-TRAILING_DROP_PCT = 0.05         # Al-Muhasbi approved: 5% from HWM (not 3%, not 8%)
+TRAILING_ACTIVATION_PCT = 0.04   # Paper mode: activate at +4% (tighter for faster turnover)
+TRAILING_DROP_PCT = 0.03         # Paper mode: 3% trail from HWM (lock profits faster)
 _default_max_hold = 24
 try:
     import yaml as _yaml

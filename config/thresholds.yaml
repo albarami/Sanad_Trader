@@ -5,12 +5,12 @@ risk:
   max_drawdown_pct: 0.15
   stop_loss_default_pct: 0.15
   take_profit_default_pct: 0.3
-  max_positions: 8
-  paper_max_positions: 8
+  max_positions: 10
+  paper_max_positions: 10
   live_max_positions: 3
-  paper_max_hold_hours: 12
+  paper_max_hold_hours: 8
 sanad:
-  minimum_trade_score: 40
+  minimum_trade_score: 8
   minimum_source_grade: C
   tawatur_sources: 3
   mashhur_sources: 2
@@ -19,13 +19,13 @@ sanad:
 sizing:
   kelly_fraction: 0.5
   kelly_min_trades: 30
-  kelly_default_pct: 0.05
+  kelly_default_pct: 0.075
   max_position_pct: 0.1
-  paper_regime_floor: 0.5
+  paper_regime_floor: 0.7
   live_kelly_default_pct: 0.02
   live_max_position_pct: 0.05
-  paper_default_pct: 0.05
-  paper_max_position_pct: 0.1
+  paper_default_pct: 0.075
+  paper_max_position_pct: 0.15
   live_default_pct: 0.02
 learning:
   ucb1_cold_start_signals: 5
@@ -73,7 +73,7 @@ budget:
   daily_llm_spend_limit_usd: 15.0
   monthly_llm_spend_limit_usd: 300.0
   cost_per_trade_alert_usd: 2.0
-  daily_pipeline_runs: 75
+  daily_pipeline_runs: 120
 graduation:
   min_paper_days: 90
   min_paper_trades: 30
@@ -95,7 +95,7 @@ policy_gates:
   max_concurrent_positions: 5
 scoring:
   min_trust_score: 40
-  min_confidence_score: 40
+  min_confidence_score: 35
   recency_decay_per_hour: 5
   live_min_trust_score: 70
   live_min_confidence_score: 60
