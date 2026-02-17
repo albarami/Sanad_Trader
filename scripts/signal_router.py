@@ -520,6 +520,26 @@ def run_router():
     except Exception as e:
         print(f"  Binance new listings error: {e}")
 
+    # ── Source 6: Pump.fun Migrations ──
+    try:
+        pf_dir = BASE_DIR / "signals" / "pumpfun"
+        if pf_dir.exists():
+            pf_files = sorted(pf_dir.glob("*.json"), key=lambda p: p.stat().st_mtime, reverse=True)
+            for pf_file in pf_files[:10]:  # Last 10 signal files
+                age_min = (datetime.now(timezone.utc) - datetime.fromtimestamp(pf_file.stat().st_mtime, tz=timezone.utc)).total_seconds() / 60
+                if age_min < 30:  # Only signals from last 30 minutes
+                    pf_signal = json.loads(pf_file.read_text())
+                    pf_signal["_source_age_min"] = age_min
+                    pf_signal["_origin"] = "pumpfun"
+                    if "source" not in pf_signal:
+                        pf_signal["source"] = "pumpfun_monitor"
+                    all_signals.append(pf_signal)
+            pf_count = sum(1 for s in all_signals if s.get("_origin") == "pumpfun")
+            if pf_count:
+                _log(f"Pump.fun: {pf_count} migration signals loaded")
+    except Exception as e:
+        _log(f"Pump.fun signal load error: {e}")
+
     if not all_signals:
         _log("No actionable signals — no recent data from either source.")
         state["last_run"] = now_str
