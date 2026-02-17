@@ -221,6 +221,26 @@ def run():
     r.append(f"  Cron health: {healthy_crons}/{total_crons} OK")
     r.append(f"  Mode: PAPER")
 
+    # ── Run Pattern Extractor ──
+    pattern_summary = ""
+    try:
+        from pattern_extractor import run as run_pattern_extractor
+        _log("Running pattern extractor...")
+        pattern_result = run_pattern_extractor()
+        if pattern_result and isinstance(pattern_result, dict):
+            patterns = pattern_result.get("patterns", [])
+            if patterns:
+                r.append(f"🧠 *Pattern Extractor ({len(patterns)} patterns):*")
+                for pat in patterns[:3]:
+                    name = pat.get("name", pat.get("pattern", "?"))
+                    conf = pat.get("confidence", 0)
+                    r.append(f"  • {name} ({conf:.0%} confidence)")
+                r.append("")
+                pattern_summary = f"{len(patterns)} patterns found"
+        _log(f"Pattern extractor complete: {pattern_summary or 'no patterns'}")
+    except Exception as e:
+        _log(f"Pattern extractor failed: {e}")
+
     report_text = "\n".join(r)
 
     # ── Send Telegram ──

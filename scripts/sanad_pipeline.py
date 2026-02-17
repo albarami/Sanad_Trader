@@ -757,25 +757,64 @@ def stage_3_strategy_match(signal, sanad_result):
     if not available:
         return None, "No strategies available"
 
-    # Match signal to best strategy via registry
+    # ── Get current market regime ──
+    regime_tag = "UNKNOWN"
+    regime_data = {}
+    try:
+        from regime_classifier import get_current_regime
+        regime_data = get_current_regime()
+        regime_tag = regime_data.get("regime_tag", "UNKNOWN")
+        print(f"  Market Regime: {regime_tag} (confidence: {regime_data.get('confidence', 0):.0%})")
+        implications = regime_data.get("implications", {})
+        if implications.get("notes"):
+            for note in implications["notes"][:2]:
+                print(f"    → {note}")
+    except Exception as e:
+        print(f"  Regime classifier error ({e}) — using UNKNOWN")
+
+    # ── Thompson Sampling: select best strategy for this signal + regime ──
     strategy_name = "meme-momentum"  # fallback default
     matched_exit_rules = {}
+    thompson_result = {}
     try:
-        sys.path.insert(0, str(SCRIPT_DIR))
-        from strategy_registry import match_signal_to_strategies
-        matches = match_signal_to_strategies(signal)
-        if matches:
-            # Pick first matched strategy (registry returns them in priority order)
-            best_match = matches[0]
-            strategy_name = best_match["strategy"]
-            matched_exit_rules = best_match.get("exit_rules", {})
-            print(f"  Strategy matched: {strategy_name} (from {len(matches)} candidates)")
-            if len(matches) > 1:
-                print(f"  Also matched: {', '.join(m['strategy'] for m in matches[1:])}")
+        from thompson_sampler import select_strategy as thompson_select
+        from strategy_registry import get_active_strategies
+
+        thompson_result = thompson_select(signal=signal, current_regime=regime_tag)
+        thompson_pick = thompson_result.get("selected")
+
+        if thompson_pick:
+            strategy_name = thompson_pick
+            # Get exit rules from strategy registry
+            active = get_active_strategies()
+            if strategy_name in active:
+                matched_exit_rules = active[strategy_name].get("exit_conditions", {})
+            print(f"  Thompson selected: {strategy_name} (mode={thompson_result.get('mode', '?')}, score={thompson_result.get('scores', {}).get(strategy_name, 0):.4f})")
+            if thompson_result.get("excluded"):
+                for name, reason in thompson_result["excluded"].items():
+                    print(f"    EXCLUDED {name}: {reason}")
         else:
-            print(f"  No strategy match — defaulting to {strategy_name}")
+            print(f"  Thompson: no eligible strategies — falling back to registry match")
+            # Fallback to registry priority matching
+            from strategy_registry import match_signal_to_strategies
+            matches = match_signal_to_strategies(signal)
+            if matches:
+                best_match = matches[0]
+                strategy_name = best_match["strategy"]
+                matched_exit_rules = best_match.get("exit_rules", {})
+                print(f"  Registry fallback: {strategy_name}")
     except Exception as e:
-        print(f"  Strategy registry error ({e}) — defaulting to {strategy_name}")
+        print(f"  Thompson error ({e}) — falling back to registry match")
+        try:
+            from strategy_registry import match_signal_to_strategies
+            matches = match_signal_to_strategies(signal)
+            if matches:
+                best_match = matches[0]
+                strategy_name = best_match["strategy"]
+                matched_exit_rules = best_match.get("exit_rules", {})
+                print(f"  Registry fallback: {strategy_name}")
+        except Exception as e2:
+            print(f"  Registry also failed ({e2}) — using default {strategy_name}")
 
     strategy_path = strategies_dir / f"{strategy_name}.md"
     if not strategy_path.exists():
@@ -793,17 +832,52 @@ def stage_3_strategy_match(signal, sanad_result):
     portfolio = _load_state("portfolio.json")
     balance = portfolio.get("current_balance_usd", 10000)
 
-    # Kelly fraction or default
-    trade_count = len(_load_state("trade_history.json").get("trades", []))
+    # Kelly Criterion position sizing
+    trade_history = _load_state("trade_history.json")
+    all_trades = trade_history.get("trades", [])
+    trade_count = len(all_trades)
     min_kelly_trades = THRESHOLDS["sizing"]["kelly_min_trades"]
 
     if trade_count >= min_kelly_trades:
-        position_pct = THRESHOLDS["sizing"]["kelly_fraction"] * 0.5  # Fractional Kelly placeholder
+        # Calculate Kelly fraction from actual trade data
+        sells = [t for t in all_trades if t.get("side") == "SELL" and t.get("pnl_pct") is not None]
+        if len(sells) >= min_kelly_trades:
+            wins = [t for t in sells if t["pnl_pct"] > 0]
+            losses = [t for t in sells if t["pnl_pct"] <= 0]
+            win_rate = len(wins) / len(sells)
+            avg_win = sum(abs(t["pnl_pct"]) for t in wins) / len(wins) if wins else 0
+            avg_loss = sum(abs(t["pnl_pct"]) for t in losses) / len(losses) if losses else 1
+            
+            # Kelly formula: f* = (p * b - q) / b
+            # p = win probability, q = loss probability, b = win/loss ratio
+            if avg_loss > 0:
+                b = avg_win / avg_loss
+                kelly_full = (win_rate * b - (1 - win_rate)) / b
+            else:
+                kelly_full = win_rate  # No losses yet
+
+            # Fractional Kelly (half Kelly for safety)
+            kelly_fraction = THRESHOLDS["sizing"]["kelly_fraction"]
+            position_pct = max(0.005, kelly_full * kelly_fraction)  # Floor at 0.5%
+            print(f"  Kelly: WR={win_rate:.0%} AvgW={avg_win:.2%} AvgL={avg_loss:.2%} Full={kelly_full:.2%} → {position_pct:.2%}")
+        else:
+            position_pct = THRESHOLDS["sizing"]["kelly_default_pct"]
     else:
         position_pct = THRESHOLDS["sizing"]["kelly_default_pct"]  # 2% cold start
+        print(f"  Kelly: cold start ({trade_count}/{min_kelly_trades} trades) → {position_pct:.1%}")
+
+    # Cap at max (before regime adjustment)
+    max_pct = THRESHOLDS["sizing"]["max_position_pct"]
+    position_pct = min(position_pct, max_pct)
+
+    # ── Regime-adjusted position sizing ──
+    regime_size_modifier = regime_data.get("implications", {}).get("position_size_modifier", 1.0)
+    if regime_size_modifier < 1.0 and regime_tag != "UNKNOWN":
+        adjusted_pct = position_pct * regime_size_modifier
+        print(f"  Regime sizing: {position_pct*100:.1f}% × {regime_size_modifier:.1f} = {adjusted_pct*100:.1f}%")
+        position_pct = adjusted_pct
 
     # Cap at max
-    max_pct = THRESHOLDS["sizing"]["max_position_pct"]
     position_pct = min(position_pct, max_pct)
     position_usd = balance * position_pct
 
@@ -815,6 +889,9 @@ def stage_3_strategy_match(signal, sanad_result):
         "sizing_mode": "cold_start" if trade_count < min_kelly_trades else "fractional_kelly",
         "trade_count": trade_count,
         "exit_rules": matched_exit_rules,
+        "regime_tag": regime_tag,
+        "regime_size_modifier": regime_size_modifier,
+        "thompson_mode": thompson_result.get("mode", "fallback"),
     }
 
     print(f"  Strategy: {strategy_name}")
@@ -1452,6 +1529,9 @@ def _add_position(signal, strategy_result, order, sanad_result, bull_result=None
             "strategy_name": strategy_result.get("strategy_name", ""),
             "signal_source": signal.get("source", "unknown"),
             "sanad_score": sanad_result.get("trust_score", 0),
+            "regime_tag": strategy_result.get("regime_tag", "UNKNOWN"),
+            "regime_size_modifier": strategy_result.get("regime_size_modifier", 1.0),
+            "thompson_mode": strategy_result.get("thompson_mode", "fallback"),
             "status": "OPEN",
             "opened_at": datetime.now(timezone.utc).isoformat(),
         }

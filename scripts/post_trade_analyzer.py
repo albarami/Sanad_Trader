@@ -324,6 +324,18 @@ def analyze_trade(trade: dict) -> dict:
         trade_id=trade_id,
     )
 
+    # ── Update Thompson Sampling (adaptive strategy selection) ──
+    try:
+        from thompson_sampler import record_outcome as thompson_record_outcome
+        thompson_record_outcome(
+            strategy_name=strategy,
+            is_win=is_win,
+            pnl_pct=pnl_pct,
+        )
+        _log(f"  Thompson updated: {strategy} {'WIN' if is_win else 'LOSS'}")
+    except Exception as e:
+        _log(f"  WARNING: Thompson update failed: {e}")
+
     # ── Update strategy tracker ──
     _update_strategy_tracker(strategy, is_win, pnl_pct, pnl_usd, regime_tag)
 
