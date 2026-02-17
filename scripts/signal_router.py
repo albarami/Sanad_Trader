@@ -509,6 +509,17 @@ def run_router():
         s["_origin"] = "onchain"
         all_signals.append(s)
 
+    # ── Source 5: Binance New Listings ──
+    try:
+        from binance_new_listings import check_new_listings
+        new_listings = check_new_listings()
+        if new_listings:
+            for listing in new_listings:
+                listing["source"] = "binance_new_listing"
+                all_signals.append(listing)
+    except Exception as e:
+        print(f"  Binance new listings error: {e}")
+
     if not all_signals:
         _log("No actionable signals — no recent data from either source.")
         state["last_run"] = now_str

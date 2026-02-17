@@ -663,9 +663,22 @@ Return your analysis as valid JSON with these exact keys:
   "reasoning": "<3-5 sentence detailed explanation>"
 }}"""
 
+    # RAG: retrieve similar past trades for context
+    rag_context = ""
+    try:
+        from vector_db import query_regime_weighted
+        similar = query_regime_weighted(f"{signal['token']} {signal.get('signal_type', '')}", n_results=3)
+        if similar:
+            rag_lines = []
+            for s in similar:
+                rag_lines.append(f"- {s.get('token', '?')}: {s.get('outcome', '?')} ({s.get('pnl_pct', 0)*100:.1f}%), regime={s.get('regime', '?')}")
+            rag_context = "\n\nSIMILAR PAST TRADES:\n" + "\n".join(rag_lines)
+    except Exception as e:
+        pass  # RAG is optional enhancement
+
     sanad_response = call_claude(
         system_prompt=SANAD_PROMPT,
-        user_message=verification_prompt,
+        user_message=verification_prompt + rag_context,
         model="claude-opus-4-6",  # Opus for verification
         max_tokens=8000,
     )
@@ -1313,6 +1326,28 @@ def stage_7_execute(signal, sanad_result, strategy_result, bull_result, bear_res
         # Paper trade execution
         symbol = signal.get("symbol", signal["token"] + "USDT")
         quantity = strategy_result.get("position_usd", 200) / (policy_result["decision_packet"].get("current_price", 1))
+
+        # Partial fill simulation
+        try:
+            from partial_fill_sim import simulate_fill
+            fill_result = simulate_fill(
+                order_size_usd=strategy_result.get("position_usd", 200),
+                liquidity_usd=signal.get("volume_24h", 1000000) / 24,
+            )
+            if fill_result.get("fill_pct", 1.0) < 0.5:
+                # Less than 50% fill expected — skip trade
+                print(f"  Partial fill sim: only {fill_result['fill_pct']*100:.0f}% fill expected — SKIPPING")
+                return None, "Partial fill too low"
+        except Exception as e:
+            print(f"  Partial fill sim error ({e}) — proceeding")
+
+        # Route to best exchange
+        try:
+            from exchange_router import route
+            exchange_info = route(signal.get("symbol", signal["token"] + "USDT"))
+            exchange = exchange_info.get("exchange", "binance")
+        except Exception as e:
+            exchange = "binance"
 
         print(f"  EXECUTING PAPER TRADE: BUY {quantity:.6f} {symbol}")
         order = binance_client.place_order(

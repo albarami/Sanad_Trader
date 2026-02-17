@@ -368,6 +368,13 @@ def close_position(position, current_price, reason, detail=""):
     }
     log_to_jsonl(LOGS_DIR / "paper-trades.jsonl", paper_trade)
 
+    # Record execution quality
+    try:
+        from execution_quality import record_execution
+        record_execution(paper_trade)
+    except Exception as e:
+        print(f"    Execution quality recording error: {e}")
+
     # Log decision
     decision = {
         "correlation_id": position.get("id", "unknown"),
@@ -633,6 +640,40 @@ def run_monitor():
         triggered, reason, detail = check_momentum_decay(position, current_price)
         if triggered:
             pnl = close_position(position, current_price, reason, detail)
+            closed_pnls.append(pnl)
+            continue
+
+        # ── Exit Condition G: Whale Exit Signal ──
+        try:
+            from whale_exit_trigger import check_whale_exits
+            whale_exits = check_whale_exits()
+            if whale_exits:
+                for we in whale_exits:
+                    if we.get("token") == position["token"] and we.get("urgency", 0) >= 2:
+                        should_close = True
+                        close_reason = "WHALE_EXIT"
+                        close_detail = f"Whale exit signal: urgency {we['urgency']}, {we.get('description', '')}"
+                        break
+        except Exception as e:
+            print(f"    Whale exit check error: {e}")
+
+        # ── Exit Condition H: Sentiment Reversal ──
+        if not should_close:
+            try:
+                from sentiment_exit_trigger import check_reversals
+                sent_exits = check_reversals()
+                if sent_exits:
+                    for se in sent_exits:
+                        if se.get("token") == position["token"] and se.get("urgency", 0) >= 2:
+                            should_close = True
+                            close_reason = "SENTIMENT_REVERSAL"
+                            close_detail = f"Sentiment reversal: urgency {se['urgency']}, {se.get('description', '')}"
+                            break
+            except Exception as e:
+                print(f"    Sentiment exit check error: {e}")
+
+        if should_close:
+            pnl = close_position(position, current_price, close_reason, close_detail)
             closed_pnls.append(pnl)
             continue
 

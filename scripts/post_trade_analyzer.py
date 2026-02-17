@@ -314,6 +314,14 @@ def analyze_trade(trade: dict) -> dict:
     _save_json_atomic(target_dir / filename, analysis)
     _log(f"  Saved to {'wins' if is_win else 'losses'}/{filename}")
 
+    # ── Index in Vector DB for RAG retrieval ──
+    try:
+        from vector_db import index_trade
+        index_trade(analysis, trade_id=trade_id)
+        _log(f"  Vector DB: indexed trade {trade_id}")
+    except Exception as e:
+        _log(f"  WARNING: Vector DB indexing failed: {e}")
+
     # ── Update UCB1 source score ──
     record_trade_outcome(
         source_name=source,
