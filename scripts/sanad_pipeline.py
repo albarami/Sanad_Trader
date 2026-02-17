@@ -1380,14 +1380,13 @@ def stage_7_execute(signal, sanad_result, strategy_result, bull_result, bear_res
                     strat = strategy_result.get('strategy_name', '?') if strategy_result else '?'
                     sanad_sc = sanad_result.get('trust_score', '?') if sanad_result else '?'
                     notifier.send(
-                        f"🟢 *BUY — {signal['token']}/USDT*\n\n"
-                        f"Action: BUY (LONG)\n"
-                        f"Entry: ${order['price']:,.4f}\n"
-                        f"Size: ${size_usd:,.0f} ({order['quantity']:,.2f} units)\n\n"
+                        f"BUY {signal['token']}/USDT\n\n"
+                        f"Entry: {order['price']:,.4f}\n"
+                        f"Size: {size_usd:,.0f} ({order['quantity']:,.2f} units)\n\n"
                         f"Strategy: {strat}\n"
                         f"Sanad Score: {sanad_sc}\n"
-                        f"Fee: ${order['fee_usd']:,.2f}\n\n"
-                        f"_All 15 policy gates passed ✅_",
+                        f"Fee: {order['fee_usd']:,.2f}\n\n"
+                        f"All 15 policy gates passed",
                         level="L2",
                         title=f"BUY {signal['token']}"
                     )

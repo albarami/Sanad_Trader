@@ -436,11 +436,11 @@ def close_position(position, current_price, reason, detail=""):
         emoji = "🟢" if net_pnl_usd >= 0 else "🔴"
         pnl_sign = "+" if net_pnl_usd >= 0 else ""
         notifier.send(
-            f"{emoji} *SELL — {position['token']}/USDT*\n\n"
-            f"Action: SELL ({reason})\n"
-            f"Entry: ${entry:,.4f}\n"
-            f"Exit: ${current_price:,.4f}\n"
-            f"P&L: {pnl_sign}{pnl_pct*100:.1f}% ({pnl_sign}${net_pnl_usd:.2f})\n"
+            f"{emoji} SELL {position['token']}/USDT\n\n"
+            f"Reason: {reason}\n"
+            f"Entry: {entry:,.4f}\n"
+            f"Exit: {current_price:,.4f}\n"
+            f"PnL: {pnl_sign}{pnl_pct*100:.1f}% ({pnl_sign}{net_pnl_usd:.2f})\n"
             f"Hold: {hold_hours:.1f}h\n\n"
             f"Strategy: {position.get('strategy_name', '?')}\n"
             f"Sanad Score: {position.get('sanad_score', '?')}",
