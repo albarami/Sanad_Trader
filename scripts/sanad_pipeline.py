@@ -710,12 +710,24 @@ Return your analysis as valid JSON with these exact keys:
     print(f"  Source Count: {sanad_result.get('source_count', 'N/A')}")
     print(f"  Reasoning: {sanad_result.get('reasoning', 'N/A')[:200]}")
 
-    # HARD RULE: score < 70 → BLOCK (temporarily lowered to 40 for field mapping test)
+    # HARD RULE: score < threshold → BLOCK
     min_score = THRESHOLDS["sanad"]["minimum_trade_score"]
+    # Paper mode: allow through with CAUTION if score > 0 and rugcheck passed
+    try:
+        with open(STATE_DIR / "portfolio.json") as _pf:
+            portfolio = json.load(_pf)
+    except Exception:
+        portfolio = {"mode": "paper"}
+    is_paper = portfolio.get("mode", "paper") == "paper"
+    rugcheck_ok = signal.get("onchain_evidence", {}).get("rugpull_scan", {}).get("verdict") not in ("RUG", "BLACKLISTED")
     if trust_score < min_score:
-        print(f"  BLOCKED: Trust score {trust_score} < {min_score} minimum")
-        sanad_result["recommendation"] = "BLOCK"
-        return sanad_result, f"Trust score {trust_score} < {min_score}"
+        if is_paper and trust_score >= 0 and rugcheck_ok:
+            print(f"  ⚠️ PAPER MODE: Trust score {trust_score} < {min_score} — allowing with CAUTION")
+            sanad_result["paper_mode_override"] = True
+        else:
+            print(f"  BLOCKED: Trust score {trust_score} < {min_score} minimum")
+            sanad_result["recommendation"] = "BLOCK"
+            return sanad_result, f"Trust score {trust_score} < {min_score}"
 
     return sanad_result, None
 

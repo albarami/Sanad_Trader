@@ -152,108 +152,154 @@ def _signal_hash(signal: dict) -> str:
 # Scoring
 # ---------------------------------------------------------------------------
 def _score_signal(signal: dict, age_minutes: float, is_cross_source: bool) -> int:
+    """
+    Score signals like an experienced trader, not a hype chaser.
+
+    Priority hierarchy:
+    1. CEX-listed (can actually execute and exit)        +40
+    2. Volume & liquidity (can size a real position)     +30 max
+    3. Cross-source confirmation (Tawatur/Mashhur)       +30
+    4. Healthy fundamentals (holders, age, distribution) +25 max
+    5. Momentum (catalyst-driven, not pump-driven)       +15 max
+    6. Penalties: brand new, low liquidity, rug flags    -50 max
+    """
     score = 0
     stype = signal.get("signal_type", "")
     source = signal.get("source", "")
+    token = signal.get("token", "").upper()
 
-    # Source type score
-    if source == "birdeye_meme_radar" and stype == "MEME_GAINER":
-        score += 25  # highest base — dedicated meme radar with security data
-    elif source == "birdeye_meme_radar" and stype == "TRENDING":
-        score += 20
-    elif source == "birdeye_meme_radar" and stype == "NEW_LISTING":
-        score += 10
-    elif stype == "BOOSTED_TOKEN":
-        score += 20
-    elif stype in ("TRENDING_GAINER",):
-        score += 20
-    elif stype in ("WATCHLIST_TRENDING", "WATCHLIST_GAINER"):
-        score += 15
-    elif stype == "COMMUNITY_TAKEOVER":
-        score += 10
-    elif stype == "MAJOR_GAINER":
-        score += 15
+    # ── 1. CEX LISTING BONUS (biggest factor) ──
+    # Tokens on Binance/MEXC can actually be traded with real order books
+    CEX_LISTED = {
+        "BONK", "WIF", "PEPE", "FLOKI", "RAY", "ORCA", "SOL", "JUP",
+        "DOGE", "SHIB", "PENGU", "TAO", "SUI", "VIRTUAL", "BTC", "ETH",
+        "AAVE", "UNI", "LINK", "ATOM", "HBAR", "XRP", "INIT", "ONDO",
+        "MOVE", "LDO", "RPL", "FOGO",
+    }
+    if token in CEX_LISTED:
+        score += 40  # massive bonus — tradeable on real exchange
+    else:
+        score -= 10  # penalty — DEX only, execution risk
 
-    # --- Birdeye security-aware bonuses/penalties ---
-    # Smart money signal
-    if signal.get("smart_money_signal"):
-        score += 25
-
-    # Holder distribution (from token_security enrichment)
-    top10 = signal.get("top10_holder_pct")
-    if top10 is not None and top10 > 0:
-        if top10 < 30:
-            score += 10  # healthy distribution
-        elif top10 > 80:
-            score -= 30  # rug risk
-
-    # Rug flags penalty
-    rug_flags = signal.get("rug_flags") or []
-    if rug_flags and not all("not_checked" in f or "not_enriched" in f for f in rug_flags):
-        score -= 20
-
-    # Holder count bonus
-    holder_count = signal.get("holder_count") or 0
-    if holder_count > 1000:
-        score += 10
-
-    # Token age scoring
-    age_hours = signal.get("token_age_hours")
-    if age_hours is not None:
-        if age_hours < 1:
-            score -= 15  # too fresh, risky
-        elif 1 <= age_hours <= 24:
-            score += 5  # sweet spot for meme launches
-
-    # Volume
+    # ── 2. VOLUME & LIQUIDITY (can we size a position?) ──
     vol = signal.get("volume_24h") or 0
-    if vol > 1_000_000:
+    if vol > 10_000_000:
+        score += 30  # deep market
+    elif vol > 5_000_000:
+        score += 25
+    elif vol > 1_000_000:
         score += 20
     elif vol > 500_000:
         score += 10
     elif vol > 100_000:
         score += 5
+    else:
+        score -= 10  # can't exit this
 
-    # Price momentum (prefer 1h, fall back to 24h)
+    liq = signal.get("liquidity_usd") or 0
+    if liq > 500_000:
+        score += 10
+    elif liq > 200_000:
+        score += 5
+
+    # ── 3. CROSS-SOURCE CONFIRMATION ──
+    if is_cross_source:
+        score += 30  # Tawatur = strongest conviction
+
+    # ── 4. FUNDAMENTALS ──
+    # Token age — maturity = safety
+    age_hours = signal.get("token_age_hours")
+    if age_hours is not None:
+        if age_hours < 1:
+            score -= 30  # brand new = almost certainly a rug or pump
+        elif age_hours < 6:
+            score -= 15  # too young, no track record
+        elif age_hours < 24:
+            score -= 5   # still risky
+        elif age_hours > 168:  # >1 week
+            score += 10  # survived — real project
+        elif age_hours > 720:  # >30 days
+            score += 15  # established
+
+    # Holder distribution
+    top10 = signal.get("top10_holder_pct")
+    if top10 is not None and top10 > 0:
+        if top10 < 25:
+            score += 10  # healthy
+        elif top10 < 40:
+            score += 5
+        elif top10 > 70:
+            score -= 25  # whale-controlled
+        elif top10 > 50:
+            score -= 10
+
+    # Holder count
+    holder_count = signal.get("holder_count") or 0
+    if holder_count > 5000:
+        score += 10
+    elif holder_count > 1000:
+        score += 5
+    elif holder_count < 100 and holder_count > 0:
+        score -= 15  # ghost town
+
+    # Rug flags penalty
+    rug_flags = signal.get("rug_flags") or []
+    if rug_flags and not all("not_checked" in f or "not_enriched" in f for f in rug_flags):
+        score -= 25
+
+    # Smart money signal
+    if signal.get("smart_money_signal"):
+        score += 20
+
+    # ── 5. MOMENTUM (measured, not insane) ──
     pct_1h = signal.get("price_change_1h_pct") or 0
     pct_24h = signal.get("price_change_24h_pct") or 0
-    momentum = pct_1h if pct_1h else pct_24h / 4  # rough proxy
-    if momentum > 20:
-        score += 15
-    elif momentum > 10:
-        score += 10
-    elif momentum > 5:
-        score += 5
+    momentum = pct_1h if pct_1h else pct_24h / 4
 
-    # Liquidity
-    liq = signal.get("liquidity_usd") or 0
-    if liq > 200_000:
-        score += 15
-    elif liq > 100_000:
-        score += 10
-    elif liq > 50_000:
-        score += 5
+    # Good momentum: 5-50%. Over 100% = pump territory
+    if 5 <= momentum <= 15:
+        score += 15  # healthy momentum
+    elif 15 < momentum <= 50:
+        score += 10  # strong but plausible
+    elif 50 < momentum <= 100:
+        score += 5   # be cautious
+    elif momentum > 100:
+        score -= 10  # pump — will dump
+    elif momentum > 1000:
+        score -= 25  # obvious scam pump
 
     # Buy/sell ratio
     bsr = signal.get("buy_sell_ratio") or 0
     if bsr > 2.0:
-        score += 15
+        score += 10
     elif bsr > 1.5:
-        score += 10
-    elif bsr > 1.0:
         score += 5
 
-    # Recency
+    # ── 6. SOURCE TYPE (signal quality) ──
+    if source == "birdeye_meme_radar" and stype == "MEME_GAINER":
+        score += 10
+    elif source == "birdeye_meme_radar" and stype == "TRENDING":
+        score += 10
+    elif stype == "BOOSTED_TOKEN":
+        score += 5   # paid boosts = questionable
+    elif stype in ("TRENDING_GAINER", "MAJOR_GAINER"):
+        score += 10
+    elif stype == "COMMUNITY_TAKEOVER":
+        score += 5
+    elif stype == "NEW_LISTING":
+        score += 0   # neutral — too new
+
+    # Signal recency
     if age_minutes < 10:
-        score += 10
-    elif age_minutes < 20:
         score += 5
+    elif age_minutes < 20:
+        score += 3
 
-    # Cross-source Tawatur bonus
-    if is_cross_source:
-        score += CROSS_SOURCE_BONUS
+    # ── MARKET REGIME AWARENESS ──
+    # In extreme fear, established tokens are bargains
+    # (Fear/greed bonus applied externally by router)
 
-    return score
+    return max(score, 0)  # floor at 0
 
 
 # ---------------------------------------------------------------------------
