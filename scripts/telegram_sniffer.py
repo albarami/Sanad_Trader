@@ -341,7 +341,7 @@ def emit_signal(finding: dict, strength: float, message_text: str,
         "signal_strength": strength,
         "message_preview": message_text[:200],
         "timestamp": now.isoformat(),
-        "type": "ALPHA_CALL",
+        "type": finding.get("type", "ALPHA_CALL"),
     }
 
     # Save signal
