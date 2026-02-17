@@ -1,11 +1,36 @@
 {
   "groups": [
     {
-      "name": "Example Alpha Group",
-      "id": -1001234567890,
+      "name": "Whale Alert",
+      "id": "whale_alert_io",
+      "grade": "B",
+      "enabled": true,
+      "strategy": "whale-following",
+      "notes": "Largest whale transaction tracker. BTC/ETH/stablecoin exchange flows."
+    },
+    {
+      "name": "WhaleBot Alerts",
+      "id": "WhaleBotAlerts",
+      "grade": "B",
+      "enabled": true,
+      "strategy": "whale-following",
+      "notes": "Fast whale alerts with exchange flow direction (in/out)."
+    },
+    {
+      "name": "WhaleBot Pumps",
+      "id": "WhaleBotPumps",
       "grade": "C",
-      "enabled": false,
-      "notes": "Replace with real group IDs"
+      "enabled": true,
+      "strategy": "meme-momentum",
+      "notes": "Alt/meme coin whale movements, pump detection."
+    },
+    {
+      "name": "Wu Blockchain",
+      "id": "WuBlockchain",
+      "grade": "B",
+      "enabled": true,
+      "strategy": "cex-listing-play",
+      "notes": "CEX listing announcements, breaking crypto news."
     }
   ],
   "settings": {
