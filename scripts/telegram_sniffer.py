@@ -75,6 +75,28 @@ ETH_CONTRACT_RE = re.compile(r'\b0x[a-fA-F0-9]{40}\b')
 # Ticker symbols like $BTC, $PEPE, $WIF
 TICKER_RE = re.compile(r'\$([A-Z]{2,10})\b')
 
+# Whale Alert format: "757 #BTC (51,556,810 USD) transferred from Coinbase to unknown"
+WHALE_ALERT_RE = re.compile(
+    r'([\d,]+)\s+#?(\w+)\s+\(([\d,]+)\s+USD\)\s+(?:transferred|transfered)\s+from\s+(.+?)\s+to\s+(.+?)(?:\n|$)',
+    re.IGNORECASE
+)
+
+# WhaleBot format: "300 BTC ($20,418,514) transfered from Binance to Unknown"
+WHALEBOT_RE = re.compile(
+    r'([\d,]+)\s+(\w+)\s+\(\$([\d,]+)\)\s+(?:transferred|transfered)\s+from\s+(\w[\w\s]*?)\s+to\s+(\w[\w\s]*?)(?:\n|$)',
+    re.IGNORECASE
+)
+
+# WhaleBot Pumps format: "🚀MMT/USDT is Pumping on Binance!" or "💀BSU/USDT is Dumping on Bitget!"
+PUMP_DUMP_RE = re.compile(
+    r'[🚀💀]\s*(\w+)/(?:USDT|USDC)\s+is\s+(Pumping|Dumping)\s+on\s+([\w-]+)',
+    re.IGNORECASE
+)
+
+# Known exchanges for flow direction analysis
+EXCHANGES = {"binance", "coinbase", "kraken", "okx", "bybit", "bitfinex", "gemini", "huobi",
+             "kucoin", "gate.io", "mexc", "bitget", "upbit", "coinbase institutional"}
+
 # Common call keywords
 CALL_KEYWORDS = [
     "buy", "buying", "long", "entry", "accumulate", "ape", "gem", "alpha",
@@ -113,16 +135,98 @@ def detect_tokens(text: str) -> list:
             "chain": "ethereum",
         })
 
-    # Tickers
+    # Tickers ($BTC style)
     for match in TICKER_RE.finditer(text):
         ticker = match.group(1)
-        # Skip common false positives
         if ticker not in {"USD", "THE", "FOR", "AND", "NOT", "BUT", "ALL", "ARE"}:
             findings.append({
                 "type": "ticker",
                 "value": ticker,
                 "chain": "unknown",
             })
+
+    # Whale Alert transfers: "757 #BTC (51,556,810 USD) transferred from Coinbase to unknown"
+    for match in WHALE_ALERT_RE.finditer(text):
+        amount = float(match.group(1).replace(",", ""))
+        token = match.group(2).upper()
+        usd_value = float(match.group(3).replace(",", ""))
+        from_entity = match.group(4).strip().lower()
+        to_entity = match.group(5).strip().lower()
+
+        # Determine flow direction
+        from_exchange = any(ex in from_entity for ex in EXCHANGES)
+        to_exchange = any(ex in to_entity for ex in EXCHANGES)
+
+        if from_exchange and not to_exchange:
+            direction = "OFF_EXCHANGE"  # Bullish — accumulation
+            signal_type = "whale_accumulation"
+        elif to_exchange and not from_exchange:
+            direction = "TO_EXCHANGE"   # Bearish — potential sell
+            signal_type = "whale_distribution"
+        else:
+            direction = "UNKNOWN"
+            signal_type = "whale_transfer"
+
+        if usd_value >= 1_000_000:  # Only care about $1M+ transfers
+            findings.append({
+                "type": signal_type,
+                "token": token,
+                "value": token,
+                "amount": amount,
+                "usd_value": usd_value,
+                "from": match.group(4).strip(),
+                "to": match.group(5).strip(),
+                "direction": direction,
+                "chain": "unknown",
+            })
+
+    # WhaleBot transfers: "300 BTC ($20,418,514) transfered from Binance to Unknown"
+    for match in WHALEBOT_RE.finditer(text):
+        amount = float(match.group(1).replace(",", ""))
+        token = match.group(2).upper()
+        usd_value = float(match.group(3).replace(",", ""))
+        from_entity = match.group(4).strip().lower()
+        to_entity = match.group(5).strip().lower()
+
+        from_exchange = any(ex in from_entity for ex in EXCHANGES)
+        to_exchange = any(ex in to_entity for ex in EXCHANGES)
+
+        if from_exchange and not to_exchange:
+            direction = "OFF_EXCHANGE"
+            signal_type = "whale_accumulation"
+        elif to_exchange and not from_exchange:
+            direction = "TO_EXCHANGE"
+            signal_type = "whale_distribution"
+        else:
+            direction = "UNKNOWN"
+            signal_type = "whale_transfer"
+
+        if usd_value >= 1_000_000:
+            findings.append({
+                "type": signal_type,
+                "token": token,
+                "value": token,
+                "amount": amount,
+                "usd_value": usd_value,
+                "from": match.group(4).strip(),
+                "to": match.group(5).strip(),
+                "direction": direction,
+                "chain": "unknown",
+            })
+
+    # WhaleBot Pumps: "🚀MMT/USDT is Pumping on Binance!"
+    for match in PUMP_DUMP_RE.finditer(text):
+        token = match.group(1).upper()
+        action = match.group(2).lower()
+        exchange = match.group(3)
+        findings.append({
+            "type": "pump_alert" if action == "pumping" else "dump_alert",
+            "token": token,
+            "value": token,
+            "exchange": exchange,
+            "action": action,
+            "chain": "unknown",
+        })
 
     return findings
 
@@ -150,11 +254,39 @@ def calc_signal_strength(text: str, findings: list) -> float:
     if has_ticker:
         score += 10
 
+    # Whale transfer signals
+    whale_types = ("whale_accumulation", "whale_distribution", "whale_transfer")
+    whale_findings = [f for f in findings if f["type"] in whale_types]
+    for wf in whale_findings:
+        usd = wf.get("usd_value", 0)
+        if usd >= 100_000_000:    # $100M+
+            score += 70
+        elif usd >= 50_000_000:   # $50M+
+            score += 55
+        elif usd >= 10_000_000:   # $10M+
+            score += 45
+        elif usd >= 1_000_000:    # $1M+
+            score += 35
+
+        # Direction bonus
+        if wf.get("direction") == "OFF_EXCHANGE":
+            score += 15  # Bullish — accumulation signal
+        elif wf.get("direction") == "TO_EXCHANGE":
+            score += 5   # Still a signal, but bearish
+
+    # Pump/dump alerts from WhaleBot Pumps
+    pump_findings = [f for f in findings if f["type"] in ("pump_alert", "dump_alert")]
+    for pf in pump_findings:
+        if pf["type"] == "pump_alert":
+            score += 40
+        else:
+            score += 10  # Dump alerts are informational
+
     # Negative signals (reduce confidence)
     if "scam" in text_lower or "rug" in text_lower or "fake" in text_lower:
         score -= 30
-    if "sell" in text_lower or "dump" in text_lower or "exit" in text_lower:
-        score -= 15
+    if "burn" in text_lower and "treasury" in text_lower:
+        score -= 20  # Stablecoin burns are noise
 
     return max(0, min(100, score))
 
@@ -472,7 +604,7 @@ async def run_snapshot(max_messages: int = 20, max_age_min: int = 15):
                         if _check_cooldown(token_key, state, settings.get("cooldown_hours", 1)):
                             continue
 
-                        emit_signal(finding, strength, msg.text, group_name, group_grade, group.get("strategy", ""))
+                        emit_signal(finding, strength, msg.text, group_name, group_grade, state)
                         _set_cooldown(token_key, state, settings.get("cooldown_hours", 1))
                         state["signals_emitted"] = state.get("signals_emitted", 0) + 1
                         state["signals_this_hour"] = state.get("signals_this_hour", 0) + 1

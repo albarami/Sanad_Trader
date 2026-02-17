@@ -562,7 +562,7 @@ def run_router():
 
     # ── Source 7: Telegram Sniffer ──
     try:
-        tg_dir = BASE_DIR / "signals" / "telegram_sniffer"
+        tg_dir = BASE_DIR / "signals" / "telegram"
         if tg_dir.exists():
             tg_files = sorted(tg_dir.glob("*.json"), key=lambda p: p.stat().st_mtime, reverse=True)
             for tg_file in tg_files[:15]:
