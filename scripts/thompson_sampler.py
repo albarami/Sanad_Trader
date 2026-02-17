@@ -115,15 +115,18 @@ STRATEGY_REGISTRY = {
         "max_signal_age_min": 10,
     },
     "whale-following": {
-        "preferred_regimes": ["BULL_NORMAL_VOL", "BULL_LOW_VOL", "SIDEWAYS_NORMAL_VOL"],
-        "neutral_regimes": ["BULL_HIGH_VOL", "SIDEWAYS_LOW_VOL", "SIDEWAYS_HIGH_VOL"],
-        "avoid_regimes": ["BEAR_HIGH_VOL"],
+        "preferred_regimes": ["BULL_NORMAL_VOL", "BULL_LOW_VOL", "SIDEWAYS_NORMAL_VOL",
+                              "BEAR_HIGH_VOL", "BEAR_NORMAL_VOL"],  # Whales buy dips!
+        "neutral_regimes": ["BULL_HIGH_VOL", "SIDEWAYS_LOW_VOL", "SIDEWAYS_HIGH_VOL",
+                            "BEAR_LOW_VOL"],
+        "avoid_regimes": [],  # Whale accumulation is valid in ANY regime
         "signal_types": ["whale_accumulation", "large_transfer", "exchange_flow"],
         "max_signal_age_min": 60,
     },
     "sentiment-divergence": {
-        "preferred_regimes": ["BEAR_LOW_VOL", "SIDEWAYS_NORMAL_VOL", "SIDEWAYS_LOW_VOL"],
-        "neutral_regimes": ["BEAR_NORMAL_VOL", "BULL_LOW_VOL"],
+        "preferred_regimes": ["BEAR_LOW_VOL", "BEAR_NORMAL_VOL", "BEAR_HIGH_VOL",  # Best in fear
+                              "SIDEWAYS_NORMAL_VOL", "SIDEWAYS_LOW_VOL"],
+        "neutral_regimes": ["BULL_LOW_VOL"],
         "avoid_regimes": ["BULL_HIGH_VOL"],  # Divergence doesn't apply in euphoria
         "signal_types": ["sentiment_divergence", "fear_greed_extreme", "contrarian"],
         "max_signal_age_min": 60,
