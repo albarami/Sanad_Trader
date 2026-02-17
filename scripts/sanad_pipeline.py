@@ -1786,19 +1786,52 @@ def _add_position(signal, strategy_result, order, sanad_result, bull_result=None
 
 
 def _log_decision_short_circuit(signal, sanad_result):
-    """Log a short-circuited BLOCK decision without wasting LLM calls."""
+    """Log a short-circuited BLOCK decision with full telemetry (no LLM calls)."""
     from datetime import datetime, timezone
+
+    # Run lightweight classification for telemetry (no LLM cost)
+    asset_tier = "UNKNOWN"
+    eligible_strategies = []
+    regime_tag = "UNKNOWN"
+    try:
+        from token_profile import TokenProfile, classify_asset, get_eligible_strategies
+        # Ensure symbol is set (signals use 'token' key)
+        profile_data = dict(signal)
+        if 'symbol' not in profile_data and 'token' in profile_data:
+            profile_data['symbol'] = profile_data['token']
+        profile = TokenProfile.from_dict(profile_data)
+        asset_tier = classify_asset(profile)
+        regime_state = _load_state("regime.json") or {}
+        regime_tag = regime_state.get("regime_tag", "UNKNOWN")
+        eligible_strategies = get_eligible_strategies(profile, regime_tag)
+    except Exception:
+        pass  # Best-effort — don't fail the log
+
     record = {
         "timestamp": datetime.now(timezone.utc).isoformat(),
-        "signal": {"token": signal.get("token", "?"), "source": signal.get("source", "?")},
+        "correlation_id": signal.get("correlation_id", ""),
+        "signal": {
+            "token": signal.get("token", "?"),
+            "source": signal.get("source", "?"),
+            "thesis": signal.get("thesis", ""),
+        },
+        "asset_tier": asset_tier,
+        "regime_tag": regime_tag,
+        "eligible_strategies": eligible_strategies,
+        "selected_strategy": "NONE",
+        "meme_safety_gate": "N/A",
+        "lint_result": "N/A",
         "sanad": {
             "trust_score": sanad_result.get("trust_score", 0),
             "grade": sanad_result.get("grade", "?"),
             "recommendation": "BLOCK",
             "rugpull_flags": sanad_result.get("rugpull_flags", []),
         },
-        "short_circuited": True,
-        "judge": {"verdict": "REJECT", "confidence_score": 100, "reasoning": "Short-circuited: Sanad BLOCK before LLM debate"},
+        "bull": {"conviction": 0, "thesis": ""},
+        "bear": {"conviction": 0, "attack_points": []},
+        "judge": {"verdict": "REJECT", "confidence_score": 0, "reasoning": "Short-circuited: Sanad BLOCK before LLM debate"},
+        "trade_confidence_score": 0,
+        "short_circuit": True,
         "final_action": "REJECT",
     }
     _log_decision(record)
@@ -1856,7 +1889,7 @@ def run_pipeline(signal):
         return {"final_action": "REJECT", "stage": 2, "reason": error}
 
     # SHORT-CIRCUIT: If Sanad says BLOCK, stop before burning LLM credits
-    if sanad_result.get("recommendation") == "BLOCK" and not sanad_result.get("paper_mode_override"):
+    if sanad_result.get("recommendation") == "BLOCK":
         trust = sanad_result.get("trust_score", 0)
         print(f"\n⛔ SHORT-CIRCUIT: Sanad BLOCK (trust={trust}/100) — skipping LLM debate")
         _log_decision_short_circuit(signal, sanad_result)

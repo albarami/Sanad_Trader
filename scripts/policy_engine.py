@@ -611,6 +611,11 @@ def gate_15_sanad_audit(config, decision_packet, state):
         if trust_score is None:
             return False, "Sanad trust score missing from decision packet"
 
+        # Belt-and-suspenders: hard reject if Sanad recommendation is BLOCK
+        sanad_rec = sanad.get("recommendation", "BLOCK")
+        if sanad_rec == "BLOCK":
+            return False, f"Sanad recommendation BLOCK (trust={trust_score})"
+
         if trust_score < min_trust:
             return False, f"Trust score too low: {trust_score} < {min_trust}"
 
@@ -623,25 +628,18 @@ def gate_15_sanad_audit(config, decision_packet, state):
 
         audit_verdict = decision_packet.get("almuhasbi_verdict", "")
 
-        # Paper mode: allow REJECT/REVISE through with warning (we want to see execution)
-        portfolio_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "state", "portfolio.json")
-        try:
-            with open(portfolio_path) as f:
-                is_paper = json.load(f).get("mode", "paper") == "paper"
-        except Exception:
-            is_paper = True
+        # Check ALLOW_LOW_TRUST_PAPER env var for explicit paper exploration
+        allow_paper_override = os.environ.get("ALLOW_LOW_TRUST_PAPER", "false").lower() == "true"
 
         if audit_verdict == "REJECT":
             judge_confidence = decision_packet.get("almuhasbi_confidence", 0)
-            if is_paper and judge_confidence < 85:
-                # Paper mode: allow low-confidence rejects through for learning
-                return True, f"PAPER MODE: Al-Muhasbi REJECT overridden (judge_conf={judge_confidence}% < 85%, trust={trust_score})"
-            # Hard block: judge confident or live mode
+            if allow_paper_override and judge_confidence < 85:
+                return True, f"PAPER EXPLORE: Al-Muhasbi REJECT overridden (ALLOW_LOW_TRUST_PAPER=true, judge_conf={judge_confidence}%)"
             return False, f"Al-Muhasbi verdict: REJECT (confidence {judge_confidence}%)"
 
         if audit_verdict not in ("APPROVE", "REVISE"):
-            if is_paper:
-                return True, f"PAPER MODE: verdict '{audit_verdict}' overridden (trust={trust_score}, conf={confidence_score})"
+            if allow_paper_override:
+                return True, f"PAPER EXPLORE: verdict '{audit_verdict}' overridden (ALLOW_LOW_TRUST_PAPER=true)"
             return False, f"Al-Muhasbi verdict invalid or missing: '{audit_verdict}'"
 
         return True, f"Trust: {trust_score}, Confidence: {confidence_score}, Audit: {audit_verdict}"

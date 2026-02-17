@@ -521,7 +521,16 @@ def update_portfolio(positions_data, closed_pnls):
     portfolio["current_balance_usd"] = round(current, 2)
     portfolio["peak_balance_usd"] = round(peak, 2)
     portfolio["open_position_count"] = len(open_positions)
-    portfolio["daily_pnl_pct"] = round(sum(closed_pnls) / starting, 6) if starting > 0 else 0
+    # Derive daily PnL from trade_history (today's closed trades only)
+    from datetime import datetime, timezone
+    today_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    daily_pnl_usd = sum(
+        float(t.get("pnl_usd", t.get("net_pnl_usd", 0)) or 0)
+        for t in trades if isinstance(t, dict)
+        and (t.get("closed_at", t.get("timestamp", ""))[:10] == today_str)
+    )
+    portfolio["daily_pnl_usd"] = round(daily_pnl_usd, 2)
+    portfolio["daily_pnl_pct"] = round(daily_pnl_usd / starting, 6) if starting > 0 else 0
     portfolio["current_drawdown_pct"] = round((peak - current) / peak, 6) if peak > 0 else 0
     portfolio["meme_allocation_pct"] = round(meme_usd / current, 4) if current > 0 else 0
     portfolio["total_exposure_pct"] = round(total_exposure_usd / current, 4) if current > 0 else 0
