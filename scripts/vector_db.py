@@ -341,6 +341,220 @@ def query_regime_weighted(query_text: str, n_results: int = 10) -> list:
 
 
 # ─────────────────────────────────────────────────────────
+# v3.0 — Expert Knowledge Base
+# ─────────────────────────────────────────────────────────
+
+EXPERT_KNOWLEDGE = [
+    {
+        "id": "EXPERT_GCR_BEAR",
+        "content": """GCR Contrarian Bear Setup:
+When everyone is bullish and leverage is maxed out, the setup is actually bearish.
+Look for: funding rates >0.1% (overleveraged longs), social sentiment >80 (euphoria),
+exchange inflows spiking (whales distributing to retail), realized cap flat while price pumps (distribution).
+The "obvious pump" is often the top. Fade the crowd when positioning is extreme.""",
+        "metadata": {"type": "expert", "source": "GCR", "regime": "BULL", "strategy": "sentiment-divergence", "tier": "TIER_1"},
+    },
+    {
+        "id": "EXPERT_WHALE_ACCUM",
+        "content": """Whale Accumulation Pattern (Wintermute/Jump):
+Smart money accumulates quietly over DAYS, not hours. Look for: consistent CEX to cold wallet flows,
+multiple known smart money addresses buying at similar prices, low social chatter despite buying.
+RED FLAG: Single large buy + immediate social hype = likely dump setup. 
+Real accumulation = boring + consistent + low key.""",
+        "metadata": {"type": "expert", "source": "Wintermute", "regime": "ANY", "strategy": "whale-following", "tier": "TIER_1"},
+    },
+    {
+        "id": "EXPERT_COBIE_FDV",
+        "content": """Cobie FDV Trap:
+If circulating supply <30% and FDV is 10x+ current market cap, VCs are waiting to dump on you.
+Check unlock schedule: are major unlocks in next 3-6 months? Price often tops BEFORE unlock, not during.
+The "fundamental thesis" doesn't matter if supply inflation crushes price. Always calc: new supply per month / current circ supply.
+If >5% monthly inflation incoming, avoid.""",
+        "metadata": {"type": "expert", "source": "Cobie", "regime": "ANY", "strategy": "cex-listing-play", "tier": "TIER_2"},
+    },
+    {
+        "id": "EXPERT_HAYES_MACRO",
+        "content": """Arthur Hayes Macro Liquidity:
+Bitcoin doesn't care about fundamentals, it cares about global liquidity. Track: Fed balance sheet,
+reverse repo facility, Treasury general account, China credit impulse. When liquidity is expanding (Fed QE, RRP draining),
+risk assets pump. When liquidity contracts (QT, RRP filling), everything dumps.
+Trade the liquidity cycle, not the narrative.""",
+        "metadata": {"type": "expert", "source": "Arthur Hayes", "regime": "ANY", "strategy": "sentiment-divergence", "tier": "TIER_1"},
+    },
+    {
+        "id": "EXPERT_MEME_LIFECYCLE",
+        "content": """Meme Coin Lifecycle (Murad):
+Phase 1 (0-24h): Launch + early hype. Most fail here. High risk.
+Phase 2 (24-72h): Cult formation or death. Look for: holder count growing, top 10 holders DECREASING (distribution to believers).
+Phase 3 (3-7 days): Make or break. If still alive + growing holders + stable LP, potential runner.
+Phase 4 (1-4 weeks): CEX listing speculation. This is the top for most memes.
+Don't marry your bags. Memes are trades, not investments.""",
+        "metadata": {"type": "expert", "source": "Murad", "regime": "BULL", "strategy": "meme-momentum", "tier": "TIER_3"},
+    },
+    {
+        "id": "EXPERT_MURAD_CULT",
+        "content": """Murad Cult Conviction Test:
+A real cult holds through -50% dips. Fake cult panic-sells at -20%.
+How to test: Check holder retention during dips. Are same wallets still holding after pullback?
+Check Telegram/Twitter: are they buying the dip or crying?
+BEST signal: organic memes appearing (art, videos) without dev asking. If community creates, they believe.
+If dev has to post "wen marketing?", it's dead.""",
+        "metadata": {"type": "expert", "source": "Murad", "regime": "ANY", "strategy": "meme-momentum", "tier": "TIER_3"},
+    },
+    {
+        "id": "EXPERT_ZACHXBT_RUG",
+        "content": """ZachXBT Rug Patterns:
+1. Dev wallet holds >15% = instant red flag
+2. LP unlocked or <60 day lock = can rug anytime
+3. Top 10 holders >70% = coordinated dump incoming
+4. New token but "team" has no GitHub/Twitter history = anonymous scammers
+5. Promises of "utilities" but no actual product = vaporware
+6. Celebrity endorsement out of nowhere = they got paid, will dump on you
+Trust on-chain data, not marketing.""",
+        "metadata": {"type": "expert", "source": "ZachXBT", "regime": "ANY", "strategy": "meme-momentum", "tier": "TIER_3"},
+    },
+    {
+        "id": "EXPERT_CEX_LISTING",
+        "content": """CEX Listing Play (Cobie/Hsaka):
+Listings are buy-the-rumor, sell-the-news events. Optimal entry: 1-3 weeks BEFORE announcement when smart money accumulates.
+RED FLAGS: already pumped 300% = listing priced in. Social hype at ATH = you're exit liquidity.
+BEST SETUP: consolidating after initial pump, volume drying up, then listing announcement.
+Exit: list price +20% to +50%, don't wait for "Binance main" dreams.""",
+        "metadata": {"type": "expert", "source": "Cobie", "regime": "SIDEWAYS", "strategy": "cex-listing-play", "tier": "TIER_2"},
+    },
+    {
+        "id": "EXPERT_SENTIMENT_DIV",
+        "content": """Sentiment Divergence Setup:
+When social sentiment is extremely bearish but price is holding steady/up slightly = accumulation.
+When social sentiment is extremely bullish but price is chopping/down slightly = distribution.
+BEST entries: Fear & Greed Index <20 + price higher lows + whale accumulation.
+WORST entries: Fear & Greed Index >80 + price lower highs + whale distribution.
+Sentiment is a lagging indicator. Smart money front-runs it.""",
+        "metadata": {"type": "expert", "source": "GCR", "regime": "BEAR", "strategy": "sentiment-divergence", "tier": "TIER_1"},
+    },
+    {
+        "id": "EXPERT_BEAR_RULES",
+        "content": """Bear Market Rules:
+1. Most pumps are bull traps. Default to skeptical.
+2. "Good news" doesn't matter in bear market. Price still dumps.
+3. Bounces are for exiting, not entering (unless you're day trading).
+4. Whale accumulation in bear market is real (they buy dips). But verify: is it accumulation or dead cat bounce?
+5. Best bear trades: short squeezes, but exit fast. No holding long positions overnight.
+6. Cash is a position. Don't force trades just to be "in the game".""",
+        "metadata": {"type": "expert", "source": "Multiple", "regime": "BEAR", "strategy": "sentiment-divergence", "tier": "ALL"},
+    },
+    {
+        "id": "EXPERT_ANTI_PATTERNS",
+        "content": """Anti-Patterns (Autopsy of Failed Trades):
+1. Buying "cheap" = buying dying projects. Focus on momentum, not cheapness.
+2. Averaging down = throwing good money at bad trade. If thesis broke, exit.
+3. "Everyone is talking about it" = you're late. Best entries are boring.
+4. "Fundamentals are good" = doesn't matter if market structure is bad (overleveraged, low liquidity).
+5. "It can't go lower" = famous last words. No price is too low.
+6. Ignoring on-chain data because "narrative is strong" = hopium. Chain doesn't lie.""",
+        "metadata": {"type": "expert", "source": "Post-Trade Analysis", "regime": "ANY", "strategy": "ALL", "tier": "ALL"},
+    },
+    {
+        "id": "EXPERT_ONCHAIN_HIERARCHY",
+        "content": """On-Chain Data Hierarchy (by reliability):
+1. TIER 1 (Deterministic, never lies): LP lock status, mint authority, freeze authority, holder concentration
+2. TIER 2 (High signal): Exchange flows, whale accumulation/distribution, realized cap
+3. TIER 3 (Moderate signal): Social metrics, GitHub activity, dev wallet activity
+4. TIER 4 (Low signal, high noise): Twitter followers, Telegram members (mostly bots)
+When TIER 1 data contradicts narrative, trust TIER 1. When social hype contradicts on-chain reality, fade social.""",
+        "metadata": {"type": "expert", "source": "On-Chain Analysis", "regime": "ANY", "strategy": "ALL", "tier": "ALL"},
+    },
+]
+
+
+def load_expert_knowledge() -> int:
+    """Index all expert knowledge entries into ChromaDB."""
+    collection = get_collection()
+    if not collection:
+        _log("ERROR: ChromaDB not available")
+        return 0
+    
+    count = 0
+    for entry in EXPERT_KNOWLEDGE:
+        try:
+            collection.upsert(
+                ids=[entry["id"]],
+                documents=[entry["content"]],
+                metadatas=[entry["metadata"]],
+            )
+            count += 1
+        except Exception as e:
+            _log(f"Error indexing {entry['id']}: {e}")
+    
+    _log(f"Loaded {count}/{len(EXPERT_KNOWLEDGE)} expert knowledge entries")
+    return count
+
+
+def get_rag_context(token: str, tier: str, strategy: str, regime: str, n_results: int = 3) -> str:
+    """
+    Get RAG context filtered by tier, strategy, and regime.
+    Returns formatted string for inclusion in agent prompts.
+    """
+    collection = get_collection()
+    if not collection:
+        return ""
+    
+    query_text = f"{token} {strategy} {regime}"
+    
+    # Build filter for tier + strategy + regime
+    where_filter = {"type": "expert"}
+    # Note: ChromaDB where filters are AND-based, so we query more broadly and filter in post-processing
+    
+    try:
+        results = collection.query(
+            query_texts=[query_text],
+            n_results=min(n_results * 3, 10),  # Get more then filter
+            where=where_filter,
+        )
+        
+        if not results or not results["documents"]:
+            return ""
+        
+        # Post-filter for tier/strategy/regime match
+        relevant = []
+        for i, doc_id in enumerate(results["ids"][0]):
+            meta = results["metadatas"][0][i]
+            doc = results["documents"][0][i]
+            
+            # Check if expert knowledge matches our context
+            expert_tier = meta.get("tier", "ALL")
+            expert_strat = meta.get("strategy", "ALL")
+            expert_regime = meta.get("regime", "ANY")
+            
+            tier_match = expert_tier == "ALL" or expert_tier == tier
+            strat_match = expert_strat == "ALL" or expert_strat == strategy
+            regime_match = expert_regime == "ANY" or expert_regime == regime
+            
+            if tier_match and (strat_match or expert_strat == "ALL"):
+                relevant.append({
+                    "source": meta.get("source", "Unknown"),
+                    "content": doc,
+                    "strategy": expert_strat,
+                    "regime": expert_regime,
+                })
+        
+        if not relevant:
+            return ""
+        
+        # Format for prompt inclusion
+        context_lines = ["EXPERT KNOWLEDGE (from past trades & market analysis):"]
+        for i, item in enumerate(relevant[:n_results], 1):
+            context_lines.append(f"\n{i}. {item['source']} ({item['strategy']}, {item['regime']}):")
+            context_lines.append(f"   {item['content']}")
+        
+        return "\n".join(context_lines)
+        
+    except Exception as e:
+        _log(f"RAG context error: {e}")
+        return ""
+
+
+# ─────────────────────────────────────────────────────────
 # 5.8.5 — Quantitative Data (DuckDB/Parquet stub)
 # ─────────────────────────────────────────────────────────
 
@@ -391,8 +605,12 @@ def run():
     # 5.8.2: Index trades
     trade_count = index_all_trades()
     pm_count = index_post_mortems()
+    
+    # v3.0: Load expert knowledge
+    expert_count = load_expert_knowledge()
+    
     total = collection.count()
-    _log(f"Total documents in DB: {total}")
+    _log(f"Total documents in DB: {total} (trades={trade_count}, postmortems={pm_count}, experts={expert_count})")
 
     # 5.8.3: Test query
     print(f"\n  === Query Test ===")

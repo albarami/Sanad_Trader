@@ -99,24 +99,26 @@ def _save_json_atomic(path: Path, data):
 # Strategy Registry
 # ─────────────────────────────────────────────────────────
 # Known strategies and their regime affinities
+# v3.0: Added regime-tier matrix rules
 STRATEGY_REGISTRY = {
     "meme-momentum": {
-        "preferred_regimes": ["BULL_NORMAL_VOL", "BULL_LOW_VOL", "BULL_HIGH_VOL"],
-        "neutral_regimes": ["SIDEWAYS_NORMAL_VOL", "SIDEWAYS_LOW_VOL"],
-        "avoid_regimes": ["BEAR_HIGH_VOL", "BEAR_NORMAL_VOL", "BEAR_LOW_VOL"],
+        "preferred_regimes": ["BULL_NORMAL_VOL", "BULL_LOW_VOL", "BULL_HIGH_VOL"],  # v3.0: PREFERRED in BULL for TIER_3
+        "neutral_regimes": [],  # v3.0: removed sideways neutrality
+        "avoid_regimes": ["BEAR_HIGH_VOL", "BEAR_NORMAL_VOL", "BEAR_LOW_VOL"],  # v3.0: BLOCKED in all BEAR
+        "cautious_regimes": ["SIDEWAYS_NORMAL_VOL", "SIDEWAYS_LOW_VOL", "SIDEWAYS_HIGH_VOL"],  # v3.0: CAUTIOUS in SIDEWAYS
         "signal_types": ["trending", "volume_spike", "social_momentum", "meme_radar"],
         "max_signal_age_min": 30,
     },
     "early-launch": {
-        "preferred_regimes": ["BULL_NORMAL_VOL", "BULL_LOW_VOL", "SIDEWAYS_NORMAL_VOL"],
-        "neutral_regimes": ["BULL_HIGH_VOL", "SIDEWAYS_LOW_VOL"],
-        "avoid_regimes": ["BEAR_HIGH_VOL", "BEAR_NORMAL_VOL", "BEAR_LOW_VOL", "SIDEWAYS_HIGH_VOL"],
+        "preferred_regimes": ["BULL_NORMAL_VOL", "BULL_LOW_VOL"],  # v3.0: ALLOWED in BULL for TIER_3
+        "neutral_regimes": ["BULL_HIGH_VOL", "SIDEWAYS_NORMAL_VOL", "SIDEWAYS_LOW_VOL"],
+        "avoid_regimes": ["BEAR_HIGH_VOL", "BEAR_NORMAL_VOL", "BEAR_LOW_VOL", "SIDEWAYS_HIGH_VOL"],  # v3.0: BLOCKED in all BEAR
         "signal_types": ["new_launch", "pumpfun", "dex_new_pool"],
         "max_signal_age_min": 10,
     },
     "whale-following": {
         "preferred_regimes": ["BULL_NORMAL_VOL", "BULL_LOW_VOL", "SIDEWAYS_NORMAL_VOL",
-                              "BEAR_HIGH_VOL", "BEAR_NORMAL_VOL"],  # Whales buy dips!
+                              "BEAR_HIGH_VOL", "BEAR_NORMAL_VOL"],  # v3.0: PREFERRED in BEAR for TIER_1/2
         "neutral_regimes": ["BULL_HIGH_VOL", "SIDEWAYS_LOW_VOL", "SIDEWAYS_HIGH_VOL",
                             "BEAR_LOW_VOL"],
         "avoid_regimes": [],  # Whale accumulation is valid in ANY regime
@@ -124,7 +126,7 @@ STRATEGY_REGISTRY = {
         "max_signal_age_min": 60,
     },
     "sentiment-divergence": {
-        "preferred_regimes": ["BEAR_LOW_VOL", "BEAR_NORMAL_VOL", "BEAR_HIGH_VOL",  # Best in fear
+        "preferred_regimes": ["BEAR_LOW_VOL", "BEAR_NORMAL_VOL", "BEAR_HIGH_VOL",  # v3.0: PREFERRED in BEAR for TIER_1/2
                               "SIDEWAYS_NORMAL_VOL", "SIDEWAYS_LOW_VOL"],
         "neutral_regimes": ["BULL_LOW_VOL"],
         "avoid_regimes": ["BULL_HIGH_VOL"],  # Divergence doesn't apply in euphoria
@@ -132,9 +134,9 @@ STRATEGY_REGISTRY = {
         "max_signal_age_min": 60,
     },
     "cex-listing-play": {
-        "preferred_regimes": ["BULL_NORMAL_VOL", "BULL_LOW_VOL", "SIDEWAYS_NORMAL_VOL"],
-        "neutral_regimes": ["BULL_HIGH_VOL", "SIDEWAYS_LOW_VOL", "SIDEWAYS_HIGH_VOL",
-                            "BEAR_LOW_VOL", "BEAR_NORMAL_VOL"],
+        "preferred_regimes": ["BULL_NORMAL_VOL", "BULL_LOW_VOL", "SIDEWAYS_NORMAL_VOL",
+                              "SIDEWAYS_LOW_VOL", "SIDEWAYS_HIGH_VOL"],  # v3.0: PREFERRED in SIDEWAYS for TIER_2
+        "neutral_regimes": ["BULL_HIGH_VOL", "BEAR_LOW_VOL", "BEAR_NORMAL_VOL"],
         "avoid_regimes": [],  # Listings work in any regime (event-driven)
         "signal_types": ["cex_listing", "listing_announcement", "listing_rumor"],
         "max_signal_age_min": 120,
@@ -211,6 +213,7 @@ def select_strategy(
     signal: dict = None,
     current_regime: str = "UNKNOWN",
     seed: int = None,
+    eligible_strategies: list = None,  # v3.0: tier-filtered strategies
 ) -> dict:
     """Select the best strategy for a given signal using Thompson Sampling.
 
@@ -246,7 +249,16 @@ def select_strategy(
     eligible = {}
     excluded = {}
 
-    for name, registry in STRATEGY_REGISTRY.items():
+    # v3.0: Filter by tier-eligible strategies first
+    if eligible_strategies is not None:
+        tier_excluded = [name for name in STRATEGY_REGISTRY if name not in eligible_strategies]
+        for name in tier_excluded:
+            excluded[name] = "tier_ineligible"
+        registry_to_check = {k: v for k, v in STRATEGY_REGISTRY.items() if k in eligible_strategies}
+    else:
+        registry_to_check = STRATEGY_REGISTRY
+
+    for name, registry in registry_to_check.items():
         strat_state = state["strategies"].get(name, {"alpha": 1, "beta": 1})
 
         # Check strategy status
@@ -275,11 +287,13 @@ def select_strategy(
             # Exploitation: use expected value (mean of Beta)
             sample = alpha / (alpha + beta_param)
 
-        # Regime affinity bonus/penalty
+        # Regime affinity bonus/penalty (v3.0: added cautious handling)
         if current_regime in registry.get("preferred_regimes", []):
             sample *= 1.15  # 15% bonus
         elif current_regime in registry.get("neutral_regimes", []):
             pass  # No modifier
+        elif current_regime in registry.get("cautious_regimes", []):
+            sample *= 0.85  # v3.0: 15% penalty for cautious regimes
         else:
             sample *= (1 - REGIME_PENALTY)  # 30% penalty for unknown regimes
 

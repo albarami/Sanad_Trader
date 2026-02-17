@@ -61,6 +61,13 @@ try:
 except ImportError:
     HAS_NOTIFIER = False
 
+# v3.0 imports
+from token_profile import (
+    build_token_profile, meme_safety_gate, get_eligible_strategies,
+    TIER_MAP, lint_prompt, validate_evidence, PRE_TRADE_MUHASABA
+)
+from tier_prompts import get_bull_prompt, get_bear_prompt
+
 # Load thresholds
 with open(CONFIG_DIR / "thresholds.yaml", "r") as f:
     THRESHOLDS = yaml.safe_load(f)
@@ -751,10 +758,57 @@ Return your analysis as valid JSON with these exact keys:
 
 
 # ─────────────────────────────────────────────
+# STAGE 2.5: TOKEN PROFILE & TIER CLASSIFICATION (v3.0)
+# ─────────────────────────────────────────────
+
+def stage_2_5_token_profile(signal, sanad_result):
+    """
+    Build TokenProfile and classify asset tier.
+    For TIER_3 (memes/microcaps), run meme_safety_gate BEFORE LLM processing.
+    This saves API credits by rejecting obvious scams deterministically.
+    """
+    print(f"\n{'='*60}")
+    print(f"STAGE 2.5: TOKEN PROFILE & CLASSIFICATION")
+    print(f"{'='*60}")
+    
+    # Build profile from signal data
+    profile = build_token_profile(signal)
+    
+    print(f"  Token: {profile.symbol}")
+    print(f"  Tier: {profile.asset_tier} → {TIER_MAP.get(profile.asset_tier, 'UNKNOWN')}")
+    if profile.market_cap:
+        print(f"  Market Cap: ${profile.market_cap:,.0f}")
+    if profile.liquidity_usd:
+        print(f"  Liquidity: ${profile.liquidity_usd:,.0f}")
+    if profile.age_days:
+        print(f"  Age: {profile.age_days} days")
+    if profile.holder_top10_pct:
+        print(f"  Top 10 Holders: {profile.holder_top10_pct:.1f}%")
+    if profile.rugcheck_score:
+        print(f"  RugCheck: {profile.rugcheck_score}/100")
+    
+    # Check for SKIP tier (stablecoins)
+    simple_tier = TIER_MAP.get(profile.asset_tier, "TIER_3")
+    if simple_tier == "SKIP":
+        return None, f"Asset tier {profile.asset_tier} → SKIP (stablecoins not traded)"
+    
+    # TIER_3 safety gate — hard blocks before LLM
+    if simple_tier == "TIER_3":
+        passed, block_reason = meme_safety_gate(profile)
+        if not passed:
+            print(f"  ⛔ TIER_3 SAFETY GATE BLOCK: {block_reason}")
+            return None, f"TIER_3 safety gate: {block_reason}"
+        else:
+            print(f"  ✓ TIER_3 safety gate passed")
+    
+    return profile, None
+
+
+# ─────────────────────────────────────────────
 # STAGE 3: STRATEGY MATCH
 # ─────────────────────────────────────────────
 
-def stage_3_strategy_match(signal, sanad_result):
+def stage_3_strategy_match(signal, sanad_result, profile=None):
     """
     Select the best strategy for this signal.
     Currently: meme-momentum only. More strategies added in Phase 4.
@@ -785,7 +839,16 @@ def stage_3_strategy_match(signal, sanad_result):
     except Exception as e:
         print(f"  Regime classifier error ({e}) — using UNKNOWN")
 
-    # ── Thompson Sampling: select best strategy for this signal + regime ──
+    # ── Get tier for strategy filtering (v3.0) ──
+    simple_tier = TIER_MAP.get(profile.asset_tier, "TIER_3") if profile else "TIER_3"
+    eligible_by_tier = get_eligible_strategies(profile, regime_tag) if profile else []
+    
+    if eligible_by_tier:
+        print(f"  Eligible strategies by tier: {eligible_by_tier}")
+    else:
+        print(f"  WARNING: No strategies eligible for tier={simple_tier}, regime={regime_tag}")
+    
+    # ── Thompson Sampling: select best strategy for this signal + regime + tier ──
     strategy_name = "meme-momentum"  # fallback default
     matched_exit_rules = {}
     thompson_result = {}
@@ -793,7 +856,11 @@ def stage_3_strategy_match(signal, sanad_result):
         from thompson_sampler import select_strategy as thompson_select
         from strategy_registry import get_active_strategies
 
-        thompson_result = thompson_select(signal=signal, current_regime=regime_tag)
+        thompson_result = thompson_select(
+            signal=signal, 
+            current_regime=regime_tag,
+            eligible_strategies=eligible_by_tier  # v3.0: pass tier-filtered list
+        )
         thompson_pick = thompson_result.get("selected")
 
         if thompson_pick:
@@ -922,15 +989,19 @@ def stage_3_strategy_match(signal, sanad_result):
 # STAGE 4: BULL / BEAR DEBATE
 # ─────────────────────────────────────────────
 
-def stage_4_debate(signal, sanad_result, strategy_result):
+def stage_4_debate(signal, sanad_result, strategy_result, profile=None):
     """
     Run Bull (Al-Baqarah) and Bear (Al-Dahhak) debate.
-    Both argue simultaneously (or sequentially for cost control).
+    v3.0: Uses tier-specific prompts based on asset classification.
     Critical rule: NEVER skip the Bear.
     """
     print(f"\n{'='*60}")
     print(f"STAGE 4: BULL / BEAR DEBATE")
     print(f"{'='*60}")
+    
+    # Determine tier for prompt selection (v3.0)
+    simple_tier = TIER_MAP.get(profile.asset_tier, "TIER_3") if profile else "TIER_3"
+    print(f"  Using {simple_tier} prompts")
 
     context = f"""TOKEN: {signal['token']}
 THESIS: {signal['thesis']}
@@ -942,11 +1013,38 @@ POSITION SIZE: ${strategy_result.get('position_usd', 'N/A')}
 REAL-TIME INTELLIGENCE: {sanad_result.get('perplexity_intel', 'N/A')}
 EXCHANGE DATA: {sanad_result.get('price_context', 'N/A')}"""
 
-    # ── BULL (Al-Baqarah) ──
-    print("  [4a] Bull Al-Baqarah arguing FOR...")
+    # ── BULL (Al-Baqarah) — tier-specific prompt (v3.0) ──
+    print(f"  [4a] Bull Al-Baqarah arguing FOR ({simple_tier})...")
+    
+    # Get tier-specific Bull prompt
+    tier_bull_system = get_bull_prompt(simple_tier)
+    
+    # v3.0: Get RAG context (expert knowledge)
+    rag_context = ""
+    try:
+        from vector_db import get_rag_context
+        rag_context = get_rag_context(
+            token=signal['token'],
+            tier=simple_tier,
+            strategy=strategy_result.get("strategy_name", ""),
+            regime=strategy_result.get("regime_tag", "UNKNOWN"),
+            n_results=2,
+        )
+        if rag_context:
+            print(f"  RAG: Retrieved {len(rag_context.split(chr(10)))} lines of expert knowledge")
+    except Exception as e:
+        print(f"  RAG: Error ({e})")
+    
+    # Lint the context to ensure no tier-inappropriate language
+    lint_ok, violations = lint_prompt(context, simple_tier, strategy_result.get("strategy_name", ""))
+    if not lint_ok:
+        print(f"  WARNING: Context contains tier-inappropriate language:")
+        for v in violations:
+            print(f"    - {v}")
+    
     bull_message = f"""{context}
 
-Argue FOR this trade. Address all 7 points in your mandate: entry thesis, market microstructure, social momentum, on-chain evidence, historical pattern match, risk/reward calculation, and position sizing.
+{rag_context}
 
 Return valid JSON with these exact keys:
 {{
@@ -970,7 +1068,7 @@ Return valid JSON with these exact keys:
 }}"""
 
     bull_response = call_claude(
-        system_prompt=BULL_PROMPT,
+        system_prompt=tier_bull_system,  # v3.0: tier-specific prompt
         user_message=bull_message,
         model="claude-opus-4-6",
         max_tokens=3000,
@@ -979,6 +1077,16 @@ Return valid JSON with these exact keys:
     if not bull_result:
         print("  WARNING: Bull response parse failed, using defaults")
         bull_result = {"conviction": 50, "thesis": "Parse failed", "supporting_evidence": []}
+
+    # v3.0: Validate evidence completeness
+    evidence_list = bull_result.get('supporting_evidence', [])
+    sufficient, evidence_count = validate_evidence(evidence_list, simple_tier)
+    if not sufficient:
+        print(f"  ⚠️ Bull evidence insufficient: {evidence_count} required fields (need 3+)")
+        # Downgrade conviction by 20 points
+        original_conviction = bull_result.get('conviction', 50)
+        bull_result['conviction'] = max(0, original_conviction - 20)
+        print(f"    Conviction downgraded: {original_conviction} → {bull_result['conviction']}")
 
     print(f"  Bull Conviction: {bull_result.get('conviction', 'N/A')}/100")
     print(f"  Bull Thesis: {bull_result.get('thesis', 'N/A')}")
@@ -992,9 +1100,17 @@ Return valid JSON with these exact keys:
     print(f"  Bull Invalidation: {bull_result.get('invalidation_point', 'N/A')}")
     print(f"  Bull Risk Ack: {bull_result.get('risk_acknowledgment', 'N/A')}")
 
-    # ── BEAR (Al-Dahhak) — NEVER SKIP ──
-    print("  [4b] Bear Al-Dahhak arguing AGAINST...")
+    # ── BEAR (Al-Dahhak) — NEVER SKIP — tier-specific (v3.0) ──
+    print(f"  [4b] Bear Al-Dahhak arguing AGAINST ({simple_tier})...")
+    
+    # Get tier-specific Bear prompt
+    tier_bear_system = get_bear_prompt(simple_tier)
+    
+    # Bear uses same RAG context as Bull (for counter-arguments)
+    
     bear_message = f"""{context}
+
+{rag_context}
 
 BULL'S ARGUMENT:
 Conviction: {bull_result.get('conviction', 'N/A')}/100
@@ -1030,7 +1146,7 @@ Apply your Muḥāsibī pre-reasoning discipline (Khawāṭir → Murāqaba → 
 }}"""
 
     bear_response = call_claude(
-        system_prompt=BEAR_PROMPT,
+        system_prompt=tier_bear_system,  # v3.0: tier-specific prompt
         user_message=bear_message,
         model="claude-opus-4-6",
         max_tokens=5000,
@@ -1058,16 +1174,21 @@ Apply your Muḥāsibī pre-reasoning discipline (Khawāṭir → Murāqaba → 
 # STAGE 5: AL-MUHASBI JUDGE
 # ─────────────────────────────────────────────
 
-def stage_5_judge(signal, sanad_result, strategy_result, bull_result, bear_result):
+def stage_5_judge(signal, sanad_result, strategy_result, bull_result, bear_result, profile=None):
     """
     Al-Muhasbi Judge — independent GPT-powered review.
-    6-point checklist. Verdict: APPROVE / REJECT / REVISE.
+    v3.0: Adds tier-specific veto rules.
+    Verdict: APPROVE / REJECT / REVISE.
     Mandate: capital preservation, when in doubt REJECT.
     CRITICAL: Never override REJECT.
     """
     print(f"\n{'='*60}")
     print(f"STAGE 5: AL-MUHASBI JUDGE")
     print(f"{'='*60}")
+    
+    # Get tier for veto rules (v3.0)
+    simple_tier = TIER_MAP.get(profile.asset_tier, "TIER_3") if profile else "TIER_3"
+    circulating_pct = profile.circulating_pct if profile else 100
 
     judge_message = f"""TRADE PROPOSAL FOR REVIEW:
 
@@ -1111,6 +1232,17 @@ BEAR CASE (Al-Dahhak):
 - Liquidity Assessment: {bear_result.get('liquidity_assessment', 'N/A')}
 - Timing Assessment: {bear_result.get('timing_assessment', 'N/A')}
 - Must Be True: {bear_result.get('what_must_be_true', 'N/A')}
+
+TIER-SPECIFIC VETO RULES (v3.0 — ENFORCE STRICTLY):
+- TIER_1 justified by "social media momentum" / "meme narrative" → VETO (wrong analytical framework)
+- TIER_3 justified by "macro-economic factors" / "institutional flow" → VETO (wrong analytical framework)
+- TIER_2 missing FDV analysis when circulating <30% → VETO (tokenomics blind spot)
+- TIER_3 missing holder concentration / LP lock data → VETO (on-chain blind spot)
+- Bull conviction >70 without 3+ evidence fields → VETO (overconfident without data)
+- Empty or missing disconfirmation analysis → downgrade confidence 15 points
+
+Current tier: {simple_tier}
+Circulating supply: {circulating_pct:.1f}% (relevant for TIER_2 FDV analysis)
 
 Execute your full 5-step Muḥāsibī discipline (Khawāṭir → Murāqaba → Mujāhada → 7-point checklist → Verdict). Return ONLY valid JSON:
 {{
@@ -1159,6 +1291,61 @@ Execute your full 5-step Muḥāsibī discipline (Khawāṭir → Murāqaba → 
 
     verdict = judge_result.get("verdict", "REJECT")
     confidence = judge_result.get("confidence_score", 0)
+    
+    # v3.0: Apply tier-specific veto rules (hard overrides)
+    veto_triggered = False
+    veto_reason = None
+    
+    bull_thesis_lower = (bull_result.get('thesis', '') + ' ' + ' '.join(bull_result.get('supporting_evidence', []))).lower()
+    
+    if simple_tier == "TIER_1":
+        # TIER_1: veto if using meme/social language
+        forbidden = ["social media momentum", "meme narrative", "viral", "community hype"]
+        for kw in forbidden:
+            if kw in bull_thesis_lower:
+                veto_triggered = True
+                veto_reason = f"TIER_1 veto: Bull uses inappropriate language '{kw}'"
+                break
+    
+    elif simple_tier == "TIER_3":
+        # TIER_3: veto if using macro language
+        forbidden = ["macro-economic", "macroeconomic", "institutional flow", "etf inflow", "federal reserve"]
+        for kw in forbidden:
+            if kw in bull_thesis_lower:
+                veto_triggered = True
+                veto_reason = f"TIER_3 veto: Bull uses inappropriate language '{kw}'"
+                break
+        
+        # TIER_3: veto if missing holder/LP data
+        evidence_text = ' '.join(bull_result.get('supporting_evidence', [])).lower()
+        if "holder concentration" not in evidence_text and "top 10" not in evidence_text:
+            veto_triggered = True
+            veto_reason = "TIER_3 veto: Missing holder concentration analysis"
+        elif "lp lock" not in evidence_text and "liquidity lock" not in evidence_text:
+            veto_triggered = True
+            veto_reason = "TIER_3 veto: Missing LP lock analysis"
+    
+    elif simple_tier == "TIER_2":
+        # TIER_2: veto if circulating <30% and no FDV analysis
+        if circulating_pct < 30:
+            evidence_text = ' '.join(bull_result.get('supporting_evidence', [])).lower()
+            if "fdv" not in evidence_text and "fully diluted" not in evidence_text:
+                veto_triggered = True
+                veto_reason = f"TIER_2 veto: Circulating {circulating_pct:.1f}% but no FDV analysis"
+    
+    # Universal veto: high conviction without evidence
+    if bull_result.get('conviction', 0) > 70:
+        evidence_count = len(bull_result.get('supporting_evidence', []))
+        if evidence_count < 3:
+            veto_triggered = True
+            veto_reason = f"Universal veto: Conviction {bull_result['conviction']} >70 with only {evidence_count} evidence fields"
+    
+    if veto_triggered:
+        print(f"\n  ⛔ TIER VETO TRIGGERED: {veto_reason}")
+        verdict = "REJECT"
+        judge_result["verdict"] = "REJECT"
+        judge_result["tier_veto"] = veto_reason
+        confidence = 0
 
     print(f"  Verdict: {verdict}")
     print(f"  Confidence: {confidence}/100")
@@ -1291,7 +1478,9 @@ def stage_7_execute(signal, sanad_result, strategy_result, bull_result, bear_res
     final_action = "EXECUTE" if policy_result["result"] == "PASS" else "REJECT"
     rejection_reason = policy_result.get("output", "") if final_action == "REJECT" else None
 
-    # Build full decision record
+    # Build full decision record (v3.0: include token profile)
+    profile_dict = profile.to_dict() if profile else {}
+    
     decision_record = {
         "correlation_id": correlation_id,
         "timestamp": datetime.now(timezone.utc).isoformat(),
@@ -1300,6 +1489,8 @@ def stage_7_execute(signal, sanad_result, strategy_result, bull_result, bear_res
             "source": signal["source"],
             "thesis": signal["thesis"],
         },
+        "token_profile": profile_dict,  # v3.0
+        "asset_tier": profile.asset_tier if profile else "UNKNOWN",  # v3.0
         "sanad": {
             "trust_score": sanad_result.get("trust_score", 0),
             "grade": sanad_result.get("grade", "FAILED"),
@@ -1640,20 +1831,26 @@ def run_pipeline(signal):
         print(f"\nPIPELINE BLOCKED at Stage 2: {error}")
         return {"final_action": "REJECT", "stage": 2, "reason": error}
 
+    # Stage 2.5: Token Profile & Classification (v3.0)
+    profile, error = stage_2_5_token_profile(signal, sanad_result)
+    if error:
+        print(f"\nPIPELINE BLOCKED at Stage 2.5: {error}")
+        return {"final_action": "REJECT", "stage": 2.5, "reason": error}
+
     # Stage 3: Strategy Match
-    strategy_result, error = stage_3_strategy_match(signal, sanad_result)
+    strategy_result, error = stage_3_strategy_match(signal, sanad_result, profile)
     if error:
         print(f"\nPIPELINE BLOCKED at Stage 3: {error}")
         return {"final_action": "REJECT", "stage": 3, "reason": error}
 
     # Stage 4: Bull/Bear Debate
-    bull_result, bear_result, error = stage_4_debate(signal, sanad_result, strategy_result)
+    bull_result, bear_result, error = stage_4_debate(signal, sanad_result, strategy_result, profile)
     if error:
         print(f"\nPIPELINE BLOCKED at Stage 4: {error}")
         return {"final_action": "REJECT", "stage": 4, "reason": error}
 
     # Stage 5: Al-Muhasbi Judge
-    judge_result, error = stage_5_judge(signal, sanad_result, strategy_result, bull_result, bear_result)
+    judge_result, error = stage_5_judge(signal, sanad_result, strategy_result, bull_result, bear_result, profile)
     if error:
         print(f"\nPIPELINE BLOCKED at Stage 5: {error}")
         return {"final_action": "REJECT", "stage": 5, "reason": error}
