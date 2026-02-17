@@ -447,6 +447,8 @@ def close_position(position, current_price, reason, detail=""):
             "exit_price": current_price,
             "pnl_pct": pnl_pct,
             "pnl_usd": net_pnl_usd,
+            "source": position.get("signal_source", "unknown"),
+            "strategy": position.get("strategy_name", "unknown"),
         })
         trade_history["trades"] = trades
         save_json_atomic(th_path, trade_history)

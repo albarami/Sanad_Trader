@@ -1450,6 +1450,7 @@ def _add_position(signal, strategy_result, order, sanad_result, bull_result=None
             "bull_invalidation": bull_result.get("invalidation_point", "N/A") if bull_result else "N/A",
             "bull_timeframe": bull_result.get("timeframe", "N/A") if bull_result else "N/A",
             "strategy_name": strategy_result.get("strategy_name", ""),
+            "signal_source": signal.get("source", "unknown"),
             "sanad_score": sanad_result.get("trust_score", 0),
             "status": "OPEN",
             "opened_at": datetime.now(timezone.utc).isoformat(),
