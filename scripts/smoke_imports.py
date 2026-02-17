@@ -23,6 +23,9 @@ def check(label, fn):
 def assert_len(lst, expected):
     assert len(lst) == expected, f"Expected {expected}, got {len(lst)}"
 
+def assert_eq(actual, expected):
+    assert actual == expected, f"Expected {expected}, got {actual}"
+
 print("=== Sanad v3.0 Smoke Import Test ===\n")
 
 # ── token_profile.py ──
@@ -39,6 +42,8 @@ check("REQUIRED_EVIDENCE", lambda: __import__('token_profile').REQUIRED_EVIDENCE
 check("PRE_TRADE_MUHASABA", lambda: __import__('token_profile').PRE_TRADE_MUHASABA)
 check("POST_TRADE_REASON_CODES", lambda: __import__('token_profile').POST_TRADE_REASON_CODES)
 check("TokenProfile.market_cap_usd alias", lambda: __import__('token_profile').TokenProfile(symbol='X', market_cap=1).market_cap_usd)
+check("TokenProfile.from_dict(market_cap_usd=...)", lambda: assert_eq(
+    __import__('token_profile').TokenProfile.from_dict({'symbol': 'BTC', 'market_cap_usd': 100}).market_cap, 100))
 
 # ── tier_prompts.py ──
 print("\ntier_prompts.py:")

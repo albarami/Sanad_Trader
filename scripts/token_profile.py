@@ -82,6 +82,24 @@ class TokenProfile:
     def canonical_id(self) -> Optional[str]:
         return self.address or self.symbol.lower()
 
+    @classmethod
+    def from_dict(cls, data: dict) -> 'TokenProfile':
+        """Construct from dict, mapping architecture-doc field names to code names."""
+        mapped = dict(data)
+        aliases = {
+            'market_cap_usd': 'market_cap',
+            'fdv_usd': 'fdv',
+            'canonical_id': 'address',
+        }
+        for old_key, new_key in aliases.items():
+            if old_key in mapped and new_key not in mapped:
+                mapped[new_key] = mapped.pop(old_key)
+            elif old_key in mapped:
+                mapped.pop(old_key)
+        # Only pass fields the dataclass knows about
+        valid = {k: v for k, v in mapped.items() if k in cls.__dataclass_fields__}
+        return cls(**valid)
+
     def to_dict(self) -> dict:
         """Convert to dict for JSON serialization."""
         return asdict(self)
