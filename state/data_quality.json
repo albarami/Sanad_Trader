@@ -1,6 +1,6 @@
 {
-  "status": "OK",
-  "timestamp": "2026-02-17T23:31:28.736163+00:00",
+  "status": "WARN",
+  "timestamp": "2026-02-17T23:46:33.055725+00:00",
   "checks": [
     {
       "check": "timestamp_skew",
@@ -19,11 +19,25 @@
     },
     {
       "check": "stale_detection",
-      "status": "OK",
-      "issues": []
+      "status": "WARN",
+      "issues": [
+        {
+          "symbol": "WIFUSDT",
+          "stale_price": 0.231,
+          "consecutive_polls": 5,
+          "severity": "WARN"
+        },
+        {
+          "symbol": "BONKUSDT",
+          "stale_price": 6.51e-06,
+          "consecutive_polls": 5,
+          "severity": "WARN"
+        }
+      ]
     }
   ],
   "summary": {
-    "OK": 4
+    "OK": 3,
+    "WARN": 1
   }
 }
