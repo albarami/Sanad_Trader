@@ -1,9 +1,9 @@
 {
   "mode": "paper",
   "overall_status": "WARNING",
-  "open_positions": 1,
-  "total_exposure_pct": 0.0525,
-  "daily_pnl_pct": 0.000428,
+  "open_positions": 0,
+  "total_exposure_pct": 0.0,
+  "daily_pnl_pct": 0.000769,
   "checks": {
     "kill_switch": {
       "status": "OK",
@@ -38,5 +38,5 @@
       "detail": "All closed"
     }
   },
-  "heartbeat_timestamp": "2026-02-17T21:40:47.665790+00:00"
+  "heartbeat_timestamp": "2026-02-17T22:40:46.692456+00:00"
 }

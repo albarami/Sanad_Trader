@@ -1,19 +1,19 @@
 {
   "strategy_name": "cex-listing-play",
-  "total_trades": 1,
-  "wins": 1,
+  "total_trades": 2,
+  "wins": 2,
   "losses": 0,
-  "total_pnl_usd": 0.2868,
-  "total_pnl_pct": 0.002436,
+  "total_pnl_usd": 7.9749,
+  "total_pnl_pct": 0.018103,
   "win_rate": 1.0,
-  "avg_pnl_pct": 0.002436,
-  "best_trade_pct": 0.002436,
+  "avg_pnl_pct": 0.009052,
+  "best_trade_pct": 0.015667,
   "worst_trade_pct": 0.0,
   "by_regime": {
     "BEAR_HIGH_VOL": {
-      "trades": 1,
-      "wins": 1,
-      "pnl_pct": 0.002436
+      "trades": 2,
+      "wins": 2,
+      "pnl_pct": 0.018103
     }
   },
   "recent_trades": [
@@ -22,9 +22,15 @@
       "pnl_pct": 0.002436,
       "is_win": true,
       "regime": "BEAR_HIGH_VOL"
+    },
+    {
+      "timestamp": "2026-02-17T22:33:05.034138+00:00",
+      "pnl_pct": 0.015667,
+      "is_win": true,
+      "regime": "BEAR_HIGH_VOL"
     }
   ],
   "parameter_changes": [],
   "created_at": "2026-02-17T19:02:59.432859+00:00",
-  "updated_at": "2026-02-17T19:02:59.432907+00:00"
+  "updated_at": "2026-02-17T22:33:05.034142+00:00"
 }

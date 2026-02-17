@@ -486,22 +486,24 @@ def close_position(position, current_price, reason, detail=""):
 
 
 def update_portfolio(positions_data, closed_pnls):
-    """Recalculate portfolio after closes."""
+    """Recalculate portfolio after closes. Balance always derived from trade_history.json."""
     portfolio = load_json(STATE_DIR / "portfolio.json")
     if not portfolio:
         print("[POSITION MONITOR] ERROR: Cannot load portfolio.json for update")
         return
 
-    # Sum all closed trade P&L
     all_positions = positions_data.get("positions", [])
-    total_closed_pnl = sum(
-        p.get("pnl_usd", 0) for p in all_positions if p["status"] == "CLOSED"
-    )
-
     open_positions = [p for p in all_positions if p["status"] == "OPEN"]
 
+    # ALWAYS derive balance from trade_history.json (source of truth)
     starting = portfolio.get("starting_balance_usd", 10000.0)
-    current = starting + total_closed_pnl
+    trade_history = load_json(STATE_DIR / "trade_history.json") or {}
+    trades = trade_history.get("trades", trade_history) if isinstance(trade_history, dict) else trade_history
+    total_realized_pnl = sum(
+        float(t.get("pnl_usd", t.get("net_pnl_usd", 0)) or 0)
+        for t in trades if isinstance(t, dict)
+    )
+    current = starting + total_realized_pnl
     peak = max(portfolio.get("peak_balance_usd", starting), current)
 
     # Recalculate exposure

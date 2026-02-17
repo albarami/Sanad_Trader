@@ -124,6 +124,20 @@
       "source": "coingecko_trending",
       "strategy": "whale-following",
       "regime_at_entry": "UNKNOWN"
+    },
+    {
+      "token": "XRP",
+      "symbol": "XRPUSDT",
+      "timestamp": "2026-02-17T22:33:01.934319+00:00",
+      "side": "SELL",
+      "reason": "TIME_EXIT",
+      "entry_price": 1.4553,
+      "exit_price": 1.4781,
+      "pnl_pct": 0.015666872809729906,
+      "pnl_usd": 7.688073803339493,
+      "source": "CoinGecko trending #12",
+      "strategy": "cex-listing-play",
+      "regime_at_entry": "BEAR_HIGH_VOL"
     }
   ]
 }
