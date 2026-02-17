@@ -2,7 +2,7 @@
   "binance": {
     "error_rate_pct": 0.0,
     "websocket_connected": true,
-    "last_check": "2026-02-16T19:24:45.362879+00:00",
+    "last_check": "2026-02-17T21:10:01.076996+00:00",
     "api_reachable": true,
     "authenticated": true
   },

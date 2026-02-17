@@ -19,7 +19,7 @@ from datetime import datetime, timezone, timedelta
 from pathlib import Path
 
 SCRIPT_DIR = Path(__file__).resolve().parent
-BASE_DIR = SCRIPT_DIR.parent
+BASE_DIR = Path(os.environ.get("SANAD_HOME", str(SCRIPT_DIR.parent)))
 STATE_DIR = BASE_DIR / "state"
 STRATEGY_DIR = BASE_DIR / "genius-memory" / "strategy-evolution"
 CHANGE_LOG_PATH = STATE_DIR / "strategy_changes.json"

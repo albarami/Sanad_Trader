@@ -15,7 +15,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 # Load .env from config directory
-BASE_DIR = Path("/data/.openclaw/workspace/trading")
+BASE_DIR = Path(os.environ.get("SANAD_HOME", "/data/.openclaw/workspace/trading"))
 ENV_PATH = BASE_DIR / "config" / ".env"
 
 try:

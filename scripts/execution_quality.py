@@ -22,7 +22,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 SCRIPT_DIR = Path(__file__).resolve().parent
-BASE_DIR = SCRIPT_DIR.parent
+BASE_DIR = Path(os.environ.get("SANAD_HOME", str(SCRIPT_DIR.parent)))
 STATE_DIR = BASE_DIR / "state"
 OMS_ORDERS_PATH = STATE_DIR / "oms_orders.json"
 EQ_STATE_PATH = STATE_DIR / "execution_quality.json"

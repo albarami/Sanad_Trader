@@ -27,7 +27,7 @@ from pathlib import Path
 # CONFIGURATION
 # ─────────────────────────────────────────────
 
-BASE_DIR = Path("/data/.openclaw/workspace/trading")
+BASE_DIR = Path(os.environ.get("SANAD_HOME", "/data/.openclaw/workspace/trading"))
 CONFIG_PATH = BASE_DIR / "config" / "thresholds.yaml"
 KILL_SWITCH_PATH = BASE_DIR / "config" / "kill_switch.flag"
 STATE_DIR = BASE_DIR / "state"

@@ -1,0 +1,38 @@
+{
+  "trade_id": "PAPER-1771303448844",
+  "token": "RAY",
+  "timestamp": "2026-02-17T11:24:04.145348+00:00",
+  "outcome": "WIN",
+  "metrics": {
+    "entry_price": 0.691,
+    "exit_price": 0.696,
+    "pnl_usd": 1.2475,
+    "pnl_pct": 0.007236,
+    "hold_duration_hours": 6.66,
+    "max_adverse_excursion": 0.0,
+    "max_favorable_excursion": 0.007236
+  },
+  "exit": {
+    "quality": "GOOD",
+    "exit_reason": "TRAILING_STOP",
+    "notes": [
+      "Captured 100% of max favorable excursion"
+    ]
+  },
+  "regime": {
+    "tag": "BEAR_HIGH_VOL",
+    "primary": "BEAR",
+    "volatility": "HIGH_VOL"
+  },
+  "trade_details": {
+    "source": "unknown",
+    "strategy": "meme-momentum",
+    "sanad_score": 85,
+    "risk_reward_ratio": "1:1.39 at market entry ($0.092 risk / $0.128 reward) or 1:2.14 on limit fill at $0.670 ($0.070 risk / $0.150 reward). The limit entry achieves the minimum 1:2 threshold.",
+    "bull_stop_loss": "$0.600 \u2014 just below the 24h low of $0.605, which represents the demand zone where buyers stepped in during this session. A break below invalidates the momentum thesis.",
+    "bull_target_price": "$0.82 \u2014 this represents a retest of prior resistance levels and a ~19% move from current price, consistent with momentum continuation patterns on mid-cap Solana ecosystem tokens after trending on Birdeye aggregators",
+    "stop_loss_pct": 0.001,
+    "take_profit_pct": 0.18668596237337196,
+    "position_usd": 200.0
+  }
+}

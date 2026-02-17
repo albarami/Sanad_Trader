@@ -14,11 +14,12 @@ Used by: sanad_pipeline.py (Stage 2: source trust scoring)
 """
 
 import json
+import os
 from pathlib import Path
 from datetime import datetime, timezone
 
 SCRIPT_DIR = Path(__file__).resolve().parent
-BASE_DIR = SCRIPT_DIR.parent
+BASE_DIR = Path(os.environ.get("SANAD_HOME", str(SCRIPT_DIR.parent)))
 UCB1_STATE = BASE_DIR / "state" / "ucb1_scores.json"
 STATIC_GRADES_PATH = BASE_DIR / "config" / "source_grades_static.json"
 SOURCE_ACCURACY_DIR = BASE_DIR / "genius-memory" / "source-accuracy"

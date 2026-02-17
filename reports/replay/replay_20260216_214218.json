@@ -1,0 +1,140 @@
+{
+  "title": "Replay Report \u2014 FAST mode",
+  "generated_at": "2026-02-16T21:42:18.628748+00:00",
+  "summary": {
+    "total_signals": 954,
+    "passed": 0,
+    "blocked": 954,
+    "pass_rate": "0.0%"
+  },
+  "block_reasons": {
+    "missing_required_fields": 954,
+    "stale_signal": 17
+  },
+  "by_source": {
+    "unknown": {
+      "total": 845,
+      "passed": 0,
+      "blocked": 845
+    },
+    "meme_radar": {
+      "total": 101,
+      "passed": 0,
+      "blocked": 101
+    },
+    "sentiment_scanner": {
+      "total": 4,
+      "passed": 0,
+      "blocked": 4
+    },
+    "onchain_analytics": {
+      "total": 1,
+      "passed": 0,
+      "blocked": 1
+    },
+    "telegram_sniffer": {
+      "total": 3,
+      "passed": 0,
+      "blocked": 3
+    }
+  },
+  "by_token": {
+    "UNKNOWN": {
+      "total": 842,
+      "passed": 0,
+      "blocked": 842
+    },
+    "INIT": {
+      "total": 16,
+      "passed": 0,
+      "blocked": 16
+    },
+    "BTC": {
+      "total": 18,
+      "passed": 0,
+      "blocked": 18
+    },
+    "ZAMA": {
+      "total": 4,
+      "passed": 0,
+      "blocked": 4
+    },
+    "AAVE": {
+      "total": 7,
+      "passed": 0,
+      "blocked": 7
+    },
+    "SOL": {
+      "total": 15,
+      "passed": 0,
+      "blocked": 15
+    },
+    "ATOM": {
+      "total": 1,
+      "passed": 0,
+      "blocked": 1
+    },
+    "TAO": {
+      "total": 15,
+      "passed": 0,
+      "blocked": 15
+    },
+    "PENGU": {
+      "total": 13,
+      "passed": 0,
+      "blocked": 13
+    },
+    "ETH": {
+      "total": 6,
+      "passed": 0,
+      "blocked": 6
+    },
+    "positions": {
+      "total": 1,
+      "passed": 0,
+      "blocked": 1
+    },
+    "SUI": {
+      "total": 1,
+      "passed": 0,
+      "blocked": 1
+    },
+    "7GCihgDB8fe6KNjn2MYt": {
+      "total": 1,
+      "passed": 0,
+      "blocked": 1
+    },
+    "0x6982508145454Ce325": {
+      "total": 1,
+      "passed": 0,
+      "blocked": 1
+    },
+    "WIF": {
+      "total": 1,
+      "passed": 0,
+      "blocked": 1
+    },
+    "XRP": {
+      "total": 3,
+      "passed": 0,
+      "blocked": 3
+    },
+    "RPL": {
+      "total": 5,
+      "passed": 0,
+      "blocked": 5
+    },
+    "ESP": {
+      "total": 4,
+      "passed": 0,
+      "blocked": 4
+    }
+  },
+  "by_direction": {
+    "UNKNOWN": {
+      "total": 954,
+      "passed": 0,
+      "blocked": 954
+    }
+  }
+}

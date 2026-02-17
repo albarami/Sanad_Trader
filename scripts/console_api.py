@@ -16,7 +16,7 @@ from pathlib import Path
 from typing import Optional
 
 SCRIPT_DIR = Path(__file__).resolve().parent
-BASE_DIR = SCRIPT_DIR.parent
+BASE_DIR = Path(os.environ.get("SANAD_HOME", str(SCRIPT_DIR.parent)))
 STATE_DIR = BASE_DIR / "state"
 CONFIG_DIR = BASE_DIR / "config"
 REPORTS_DIR = BASE_DIR / "reports"

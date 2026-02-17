@@ -9,8 +9,12 @@
     "SHIBUSDT",
     "WIFUSDT",
     "BONKUSDT",
-    "FLOKIUSDT"
+    "FLOKIUSDT",
+    "RAYUSDT",
+    "LINKUSDT",
+    "METUSDT",
+    "XRPUSDT"
   ],
-  "updated_at": "2026-02-15",
+  "updated_at": "2026-02-17",
   "notes": "Core meme coin watchlist for price monitoring. Add tokens as strategies identify them."
 }

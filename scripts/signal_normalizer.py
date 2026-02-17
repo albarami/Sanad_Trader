@@ -22,7 +22,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 SCRIPT_DIR = Path(__file__).resolve().parent
-BASE_DIR = SCRIPT_DIR.parent
+BASE_DIR = Path(os.environ.get("SANAD_HOME", str(SCRIPT_DIR.parent)))
 SIGNALS_DIR = BASE_DIR / "signals"
 sys.path.insert(0, str(SCRIPT_DIR))
 

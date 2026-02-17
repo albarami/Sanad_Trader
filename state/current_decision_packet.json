@@ -1,22 +1,25 @@
 {
   "token": {
-    "symbol": "CHUD",
-    "deployment_timestamp": "2026-01-05T18:48:39.308522+00:00"
+    "symbol": "HORZ",
+    "deployment_timestamp": "2026-01-07T04:18:38.185091+00:00"
   },
-  "symbol": "CHUDUSDT",
+  "symbol": "HORZUSDT",
   "venue": "DEX",
   "exchange": "raydium",
-  "strategy_name": "meme-momentum",
+  "strategy_name": "cex-listing-play",
   "data_timestamps": {
-    "price_timestamp": "2026-02-16T09:48:39.308548+00:00",
-    "onchain_timestamp": "2026-02-16T09:48:39.308550+00:00"
+    "price_timestamp": "2026-02-17T19:18:38.185148+00:00",
+    "onchain_timestamp": "2026-02-17T19:18:38.185158+00:00"
   },
   "current_price": null,
   "sanad_verification": {
-    "sanad_trust_score": 78,
-    "grade": "Mashhur",
-    "recommendation": "PROCEED",
-    "rugpull_flags": []
+    "sanad_trust_score": 0,
+    "grade": "Ahad",
+    "recommendation": "BLOCK",
+    "rugpull_flags": [
+      "lp_not_locked",
+      "extreme_infancy"
+    ]
   },
   "market_data": {
     "estimated_slippage_bps": 0,
@@ -25,11 +28,12 @@
     "price_change_pct_window": 0
   },
   "trade_intent": {
-    "position_size_pct": 0.02,
-    "position_usd": 200.0
+    "position_size_pct": 0.0525,
+    "position_usd": 524.65
   },
-  "trade_confidence_score": 86,
+  "trade_confidence_score": 99,
   "almuhasbi_verdict": "REJECT",
+  "almuhasbi_confidence": 99,
   "dex_sim_result": null,
   "volatility_30min_pct": 0,
   "has_verified_catalyst": false

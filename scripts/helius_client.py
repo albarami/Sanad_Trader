@@ -8,6 +8,7 @@ Provides: holder concentration, Sybil detection, token metadata, tx simulation.
 """
 
 import json
+import os
 import sys
 import time
 import requests
@@ -19,7 +20,7 @@ from collections import defaultdict
 # Paths & Config
 # ---------------------------------------------------------------------------
 SCRIPT_DIR = Path(__file__).resolve().parent
-BASE_DIR = SCRIPT_DIR.parent
+BASE_DIR = Path(os.environ.get("SANAD_HOME", str(SCRIPT_DIR.parent)))
 CONFIG_ENV = BASE_DIR / "config" / ".env"
 
 # Load API key

@@ -1,0 +1,32 @@
+{
+  "contracts": {
+    "fakescam111111111111111111111111111111111111": {
+      "token": "FAKESCAM",
+      "reason": "Test entry",
+      "source": "test",
+      "chain": "solana",
+      "confidence": 0.8,
+      "added_at": "2026-02-16T20:31:44.177619+00:00"
+    },
+    "mockmint111111111111111111111111111111111111": {
+      "token": "SCAMCOIN",
+      "reason": "Auto-detected: mint_not_revoked, freeze_authority_active, top_holder_dominant, sybil_holders",
+      "source": "rugpull_scanner",
+      "chain": "solana",
+      "confidence": 1.0,
+      "added_at": "2026-02-16T20:31:44.177893+00:00"
+    },
+    "scamaddress1111111111111111111111111111111": {
+      "token": "RUGPULL",
+      "reason": "Known scam",
+      "source": "red_team",
+      "chain": "solana",
+      "confidence": 0.99,
+      "added_at": "2026-02-16T21:29:58.236006+00:00"
+    }
+  },
+  "stats": {
+    "total": 3,
+    "last_updated": "2026-02-16T21:29:58.236014+00:00"
+  }
+}

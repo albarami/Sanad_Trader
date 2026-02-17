@@ -27,7 +27,7 @@ except ImportError:
 # Paths
 # ---------------------------------------------------------------------------
 SCRIPT_DIR = Path(__file__).resolve().parent
-BASE_DIR = SCRIPT_DIR.parent  # /data/.openclaw/workspace/trading
+BASE_DIR = Path(os.environ.get("SANAD_HOME", str(SCRIPT_DIR.parent)))
 SIGNALS_CG = BASE_DIR / "signals" / "coingecko"
 SIGNALS_DEX = BASE_DIR / "signals" / "dexscreener"
 SIGNALS_BE = BASE_DIR / "signals" / "birdeye"
@@ -637,6 +637,15 @@ def run_router():
         regime_adjustment = 5
     elif fg_regime == "EXTREME_FEAR":
         regime_adjustment = 15
+    # Derive regime_tag for bear-market filter (BEAR_HIGH_VOL / BEAR_LOW_VOL)
+    regime_tag = "UNKNOWN"
+    if fg_regime in ("EXTREME_FEAR", "FEAR"):
+        regime_tag = "BEAR_HIGH_VOL"  # conservative: treat fear as bear
+    elif fg_regime in ("EXTREME_GREED", "GREED"):
+        regime_tag = "BULL"
+    elif fg_regime == "NEUTRAL":
+        regime_tag = "NEUTRAL"
+
     if fg_value is not None:
         adj_str = f"+{regime_adjustment}" if regime_adjustment > 0 else str(regime_adjustment)
         _log(f"Market regime: {fg_regime} ({fg_value}) — applying {adj_str} to all scores")

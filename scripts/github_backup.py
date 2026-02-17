@@ -13,7 +13,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 SCRIPT_DIR = Path(__file__).resolve().parent
-BASE_DIR = SCRIPT_DIR.parent
+BASE_DIR = Path(os.environ.get("SANAD_HOME", str(SCRIPT_DIR.parent)))
 REPO_DIR = BASE_DIR / "repo"
 MAX_FILE_SIZE = 5 * 1024 * 1024  # 5MB max per file
 

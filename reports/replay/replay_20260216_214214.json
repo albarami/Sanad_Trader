@@ -1,0 +1,94 @@
+{
+  "title": "Replay Report \u2014 FAST mode",
+  "generated_at": "2026-02-16T21:42:14.514671+00:00",
+  "summary": {
+    "total_signals": 30,
+    "passed": 4,
+    "blocked": 26,
+    "pass_rate": "13.3%"
+  },
+  "block_reasons": {
+    "stale_signal": 26
+  },
+  "by_source": {
+    "telegram_sniffer": {
+      "total": 7,
+      "passed": 1,
+      "blocked": 6
+    },
+    "meme_radar": {
+      "total": 8,
+      "passed": 1,
+      "blocked": 7
+    },
+    "fear_greed": {
+      "total": 4,
+      "passed": 1,
+      "blocked": 3
+    },
+    "coingecko": {
+      "total": 4,
+      "passed": 0,
+      "blocked": 4
+    },
+    "dexscreener": {
+      "total": 7,
+      "passed": 1,
+      "blocked": 6
+    }
+  },
+  "by_token": {
+    "PEPE": {
+      "total": 6,
+      "passed": 0,
+      "blocked": 6
+    },
+    "SOL": {
+      "total": 4,
+      "passed": 0,
+      "blocked": 4
+    },
+    "BONK": {
+      "total": 2,
+      "passed": 0,
+      "blocked": 2
+    },
+    "WIF": {
+      "total": 6,
+      "passed": 2,
+      "blocked": 4
+    },
+    "SHIB": {
+      "total": 5,
+      "passed": 1,
+      "blocked": 4
+    },
+    "MYRO": {
+      "total": 3,
+      "passed": 0,
+      "blocked": 3
+    },
+    "DOGE": {
+      "total": 3,
+      "passed": 1,
+      "blocked": 2
+    },
+    "FLOKI": {
+      "total": 1,
+      "passed": 0,
+      "blocked": 1
+    }
+  },
+  "by_direction": {
+    "LONG": {
+      "total": 18,
+      "passed": 4,
+      "blocked": 14
+    },
+    "SHORT": {
+      "total": 12,
+      "passed": 0,
+      "blocked": 12
+    }
+  }
+}

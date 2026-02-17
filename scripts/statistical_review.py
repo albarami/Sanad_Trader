@@ -20,7 +20,7 @@ from datetime import datetime, timezone, timedelta
 from pathlib import Path
 
 SCRIPT_DIR = Path(__file__).resolve().parent
-BASE_DIR = SCRIPT_DIR.parent
+BASE_DIR = Path(os.environ.get("SANAD_HOME", str(SCRIPT_DIR.parent)))
 TRADE_HISTORY = BASE_DIR / "state" / "trade_history.json"
 PATTERNS_DIR = BASE_DIR / "genius-memory" / "patterns"
 REVIEWS_DIR = BASE_DIR / "genius-memory" / "statistical-reviews"

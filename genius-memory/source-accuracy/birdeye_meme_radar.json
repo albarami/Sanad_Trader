@@ -1,0 +1,19 @@
+{
+  "source_name": "birdeye_meme_radar",
+  "total_signals": 77,
+  "trades_executed": 0,
+  "wins": 0,
+  "losses": 0,
+  "total_pnl_usd": 0.0,
+  "total_pnl_pct": 0.0,
+  "avg_pnl_pct": 0.0,
+  "win_rate": 0.0,
+  "ucb1_score": 50,
+  "grade": "C",
+  "last_signal_at": "2026-02-17T20:51:34.272101+00:00",
+  "last_trade_at": null,
+  "last_win_at": null,
+  "last_recalc_at": null,
+  "created_at": "2026-02-17T11:26:47.824148+00:00",
+  "history": []
+}

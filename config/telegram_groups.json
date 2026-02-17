@@ -26,7 +26,7 @@
     },
     {
       "name": "Wu Blockchain",
-      "id": "WuBlockchain",
+      "id": "wublockchainenglish",
       "grade": "B",
       "enabled": true,
       "strategy": "cex-listing-play",

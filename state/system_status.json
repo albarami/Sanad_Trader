@@ -1,9 +1,9 @@
 {
-  "mode": "PAPER",
-  "overall_status": "WARNING",
-  "open_positions": 0,
-  "total_exposure_pct": 0.0,
-  "daily_pnl_pct": 0.0,
+  "mode": "paper",
+  "overall_status": "ALERT",
+  "open_positions": 1,
+  "total_exposure_pct": 0.0525,
+  "daily_pnl_pct": 0.000428,
   "checks": {
     "kill_switch": {
       "status": "OK",
@@ -25,9 +25,11 @@
       "alerts": []
     },
     "cron_health": {
-      "status": "OK",
-      "detail": "0 cron issues",
-      "alerts": []
+      "status": "ALERT",
+      "detail": "1 cron issues",
+      "alerts": [
+        "meme_radar: never ran"
+      ]
     },
     "ntp_sync": {
       "status": "WARNING",
@@ -38,5 +40,5 @@
       "detail": "All closed"
     }
   },
-  "heartbeat_timestamp": "2026-02-16T19:20:46.597720+00:00"
+  "heartbeat_timestamp": "2026-02-17T21:11:00.339158+00:00"
 }

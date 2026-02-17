@@ -9,7 +9,11 @@ import os
 from pathlib import Path
 
 SCRIPT_DIR = Path(__file__).resolve().parent
-BASE_DIR = SCRIPT_DIR.parent
+
+# SANAD_HOME: canonical base directory. Env var takes priority over __file__ inference.
+BASE_DIR = Path(os.environ.get("SANAD_HOME", "")) if os.environ.get("SANAD_HOME") else SCRIPT_DIR.parent
+SANAD_HOME = BASE_DIR
+STATE_DIR = BASE_DIR / "state"
 
 ENV_PATHS = [
     BASE_DIR / ".env",
@@ -48,5 +52,20 @@ def get_key(key_name: str) -> str | None:
     return os.environ.get(key_name)
 
 
+def get_base_dir() -> Path:
+    """Return SANAD_HOME (canonical base directory). Use this instead of Path(__file__).resolve().parent.parent."""
+    return BASE_DIR
+
+
+def get_state_dir() -> Path:
+    """Return state directory."""
+    return STATE_DIR
+
+
 # Auto-load on import
 load_env()
+# Re-resolve BASE_DIR after env is loaded (SANAD_HOME may now be set)
+if os.environ.get("SANAD_HOME"):
+    BASE_DIR = Path(os.environ["SANAD_HOME"])
+    SANAD_HOME = BASE_DIR
+    STATE_DIR = BASE_DIR / "state"

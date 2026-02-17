@@ -29,7 +29,7 @@ from pathlib import Path
 # Paths
 # ─────────────────────────────────────────────────────────
 SCRIPT_DIR = Path(__file__).resolve().parent
-BASE_DIR = SCRIPT_DIR.parent  # /data/.openclaw/workspace/trading
+BASE_DIR = Path(os.environ.get("SANAD_HOME", str(SCRIPT_DIR.parent)))
 STATE_DIR = BASE_DIR / "state"
 POSITIONS_PATH = STATE_DIR / "positions.json"
 PORTFOLIO_PATH = STATE_DIR / "portfolio.json"

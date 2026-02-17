@@ -22,11 +22,12 @@ Returns: position size as % of portfolio
 """
 
 import json
+import os
 import yaml
 from pathlib import Path
 
 SCRIPT_DIR = Path(__file__).resolve().parent
-BASE_DIR = SCRIPT_DIR.parent
+BASE_DIR = Path(os.environ.get("SANAD_HOME", str(SCRIPT_DIR.parent)))
 STRATEGY_DIR = BASE_DIR / "genius-memory" / "strategy-evolution"
 THRESHOLDS_PATH = BASE_DIR / "config" / "thresholds.yaml"
 TRADE_HISTORY_PATH = BASE_DIR / "state" / "trade_history.json"

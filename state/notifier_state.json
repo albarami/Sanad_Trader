@@ -1,6 +1,6 @@
 {
-  "sent": 5,
-  "failed": 0,
+  "sent": 63,
+  "failed": 7,
   "history": [
     {
       "level": "L1",
@@ -36,7 +36,462 @@
       "message": "Trades: 0\nP&L: +0.00% ($+0.00)\nWin Rate: 0%\nBalance: $0.00\nMax DD: 0.0%\nSignals: 79 processed, 0 rejected",
       "channel": "telegram",
       "at": "2026-02-16T19:25:06.391685+00:00"
+    },
+    {
+      "level": "L3",
+      "title": "Security Audit",
+      "message": "Severity: CRITICAL\nIssues: 8\n\u2022 /data/.openclaw/workspace/trading/.env: permissions 644 (should be 600)\n\u2022 /data/.openclaw/workspace/trading/config/.env: permissions 640 (should be 600)\n\u2022 /data/.opencla",
+      "channel": "telegram",
+      "at": "2026-02-16T19:25:08.510876+00:00"
+    },
+    {
+      "level": "L2",
+      "title": "Weekly Intelligence Brief",
+      "message": "*Weekly Intelligence Brief*\nDate: 2026-02-16\n\n*30-Day Performance:*\nTrades: 0\nWin Rate: 0.0%\nTotal Return: +0.00%\nSharpe: 0.00\nMax DD: 0.0%\n\n*GPT Verdict:* CRITICAL\nThe current system lacks sufficient",
+      "channel": "telegram",
+      "at": "2026-02-16T19:36:32.882371+00:00"
+    },
+    {
+      "level": "L2",
+      "title": "Weekly Market Research",
+      "message": "### Weekly Macro Crypto Analysis (Week of Feb 9-16, 2026)\n\n**1. BTC/ETH Price Action and Key Levels**  \nBTC consolidated between $65,000-$70,000 amid a 47.5% YTD drawdown, reflecting orderly deleverag",
+      "channel": "telegram",
+      "at": "2026-02-16T19:36:38.993752+00:00"
+    },
+    {
+      "level": "L3",
+      "title": "Model Alert",
+      "message": "Unavailable: gpt-5.3-codex",
+      "channel": "telegram",
+      "at": "2026-02-16T19:39:47.102129+00:00"
+    },
+    {
+      "level": "L3",
+      "title": "Model Alert",
+      "message": "Unavailable: gpt-5.3-codex",
+      "channel": "telegram",
+      "at": "2026-02-16T19:40:05.532819+00:00"
+    },
+    {
+      "level": "L4",
+      "title": "KILL SWITCH ACTIVATED",
+      "message": "Reason: test\nAll trading HALTED.",
+      "channel": "telegram",
+      "at": "2026-02-16T21:06:10.795990+00:00"
+    },
+    {
+      "level": "L2",
+      "title": "Trade Executed",
+      "message": "\ud83d\udfe2 *PAPER TRADE EXECUTED*\n\n*RAY* / USDT\nSide: LONG\nEntry: $0.6910\nSize: $200.00 (289.86 units)\nStrategy: meme-momentum\nSanad Score: 85\nTarget: $0.82 (~19%)\nStop Loss: $0.600 (-13.2%)\nR:R: 1:1.39\nFee: $",
+      "channel": "telegram",
+      "at": "2026-02-17T04:47:19.752772+00:00"
+    },
+    {
+      "level": "L2",
+      "title": "System Active",
+      "message": "\u2696\ufe0f *Sanad Trader \u2014 Active*\n\n\ud83d\udcca *Open Positions:*\n1. RAY/USDT LONG @ $0.691\n2. SOL/USDT LONG @ $86.36\n\n\ud83c\udfaf 3 slots open (5 max)\n\ud83d\udd04 Router scanning every 15 min\n\ud83d\udc41 Position monitor every 60s\n\ud83d\udcf1 Notifications:",
+      "channel": "telegram",
+      "at": "2026-02-17T04:56:53.464908+00:00"
+    },
+    {
+      "level": "L2",
+      "title": "Trade Executed",
+      "message": "\ud83d\udfe2 *PAPER TRADE EXECUTED*\n\n*LINK* / USDT\nSide: LONG\nEntry: $8.9200\nSize: $200.00 (22.42 units)\nStrategy: meme-momentum\nSanad Score: 77\nTarget: $10.20 \u2014 this represents the psychological $10 level plus ",
+      "channel": "telegram",
+      "at": "2026-02-17T05:03:11.695096+00:00"
+    },
+    {
+      "level": "L2",
+      "title": "Trade Executed",
+      "message": "\ud83d\udfe2 *PAPER TRADE EXECUTED*\n\n*LINK* / USDT\nSide: LONG\nEntry: $8.9100\nSize: $200.00 (22.45 units)\nStrategy: meme-momentum\nSanad Score: 67\nTarget: $9.75 \u2014 targeting a retest of the psychological $10 zone w",
+      "channel": "telegram",
+      "at": "2026-02-17T05:03:52.029879+00:00"
+    },
+    {
+      "level": "L2",
+      "title": "Test",
+      "message": "\ud83d\udd14 *Notification Test*\n\nCurrent positions:\n\u2022 RAY -1.88%\n\u2022 SOL -0.83%\n\u2022 LINK -1.35%\n\n_If you see this, notifications are working._",
+      "channel": "telegram",
+      "at": "2026-02-17T05:37:48.036143+00:00"
+    },
+    {
+      "level": "L1",
+      "title": "Test",
+      "message": "\ud83e\uddea subprocess test",
+      "channel": "log_only",
+      "at": "2026-02-17T05:38:06.700955+00:00"
+    },
+    {
+      "level": "L2",
+      "title": "RAY Position",
+      "message": "\ud83d\udfe2 *Position Open: RAY*\n\nEntry: $0.691\nCurrent: $0.6790 (-1.74%)\nStrategy: meme-momentum\nSanad: 85\nSL: 13.2% | TP: 18.7%",
+      "channel": "telegram",
+      "at": "2026-02-17T05:38:29.572235+00:00"
+    },
+    {
+      "level": "L2",
+      "title": "SOL Position",
+      "message": "\ud83d\udfe2 *Position Open: SOL*\n\nEntry: $86.36\nCurrent: $85.6200 (-0.86%)\nStrategy: meme-momentum\nSanad: 77\nSL: 5.0% | TP: 10.0%",
+      "channel": "telegram",
+      "at": "2026-02-17T05:38:30.196673+00:00"
+    },
+    {
+      "level": "L2",
+      "title": "LINK Position",
+      "message": "\ud83d\udfe2 *Position Open: LINK*\n\nEntry: $8.92\nCurrent: $8.8200 (-1.12%)\nStrategy: meme-momentum\nSanad: 77\nSL: 7.0% | TP: 14.3%",
+      "channel": "telegram",
+      "at": "2026-02-17T05:38:30.914354+00:00"
+    },
+    {
+      "level": "L2",
+      "title": "BUY RAY",
+      "message": "\ud83d\udfe2 *BUY \u2014 RAY/USDT*\n\nAction: BUY (LONG)\nEntry: $0.6910\nNow: $0.6800 (-1.59%)\nSize: $200\n\n\ud83c\udfaf Take Profit: $0.8200 (+18.7%)\n\ud83d\uded1 Stop Loss: $0.6000 (-13.2%)\n\nStrategy: meme-momentum\nSanad Score: 85\nStatus: H",
+      "channel": "telegram",
+      "at": "2026-02-17T05:41:50.086398+00:00"
+    },
+    {
+      "level": "L2",
+      "title": "BUY SOL",
+      "message": "\ud83d\udfe2 *BUY \u2014 SOL/USDT*\n\nAction: BUY (LONG)\nEntry: $86.3600\nNow: $86.0600 (-0.35%)\nSize: $200\n\n\ud83c\udfaf Take Profit: $94.9960 (+10.0%)\n\ud83d\uded1 Stop Loss: $82.0000 (-5.0%)\n\nStrategy: meme-momentum\nSanad Score: 77\nStatus",
+      "channel": "telegram",
+      "at": "2026-02-17T05:41:50.719047+00:00"
+    },
+    {
+      "level": "L2",
+      "title": "BUY LINK",
+      "message": "\ud83d\udfe2 *BUY \u2014 LINK/USDT*\n\nAction: BUY (LONG)\nEntry: $8.9200\nNow: $8.8500 (-0.78%)\nSize: $200\n\n\ud83c\udfaf Take Profit: $10.2000 (+14.3%)\n\ud83d\uded1 Stop Loss: $8.3000 (-7.0%)\n\nStrategy: meme-momentum\nSanad Score: 77\nStatus: ",
+      "channel": "telegram",
+      "at": "2026-02-17T05:41:51.352948+00:00"
+    },
+    {
+      "level": "L2",
+      "title": "System Audit Deployed",
+      "message": "\u2696\ufe0f *AL-MU\u1e24\u0100SIB\u012a SYSTEM AUDIT \u2014 DEPLOYED*\n\n\ud83d\udd27 *Changes Live:*\n\n*Exits (affects open positions):*\n\u2022 Trailing stop: 5% activation, 3% trail\n\u2022 CEX tokens: no fixed TP (trailing handles exit)\n\u2022 Breakeven st",
+      "channel": "telegram",
+      "at": "2026-02-17T10:47:04.327790+00:00"
+    },
+    {
+      "level": "L2",
+      "title": "Approved Changes Live",
+      "message": "\u2696\ufe0f *AL-MU\u1e24\u0100SIB\u012a APPROVED CHANGES \u2014 LIVE*\n\n\u2705 Trailing: +8% activation, 5% trail\n\u2705 Breakeven stop at +5% (SL \u2192 entry)\n\u2705 Momentum decay exit (2h return + volume)\n\u2705 Max hold: 24h\n\u2705 Router: 5min cycle, 75 ",
+      "channel": "telegram",
+      "at": "2026-02-17T10:57:05.953435+00:00"
+    },
+    {
+      "level": "L2",
+      "title": "BUY ETH",
+      "message": "\ud83d\udfe2 *BUY \u2014 ETH/USDT*\n\nAction: BUY (LONG)\nEntry: $1,966.2000\nSize: $200 (0.10 units)\n\nStrategy: meme-momentum\nSanad Score: 77\nFee: $0.20\n\n_All 15 policy gates passed \u2705_",
+      "channel": "telegram",
+      "at": "2026-02-17T10:58:18.970263+00:00"
+    },
+    {
+      "level": "L2",
+      "title": "BUY BTC",
+      "message": "\ud83d\udfe2 *BUY \u2014 BTC/USDT*\n\nAction: BUY (LONG)\nEntry: $67,880.5500\nSize: $200 (0.00 units)\n\nStrategy: meme-momentum\nSanad Score: 82\nFee: $0.20\n\n_All 15 policy gates passed \u2705_",
+      "channel": "telegram",
+      "at": "2026-02-17T11:02:29.880294+00:00"
+    },
+    {
+      "level": "L2",
+      "title": "Intelligence Wired",
+      "message": "\u2696\ufe0f *TIER 1 INTELLIGENCE WIRED*\n\n\u2705 Sentiment Scanner: every 15min via Perplexity\n  \u2192 Rising bullish +20, falling bearish -15\n\n\u2705 UCB1 Source Scoring: adaptive source grading\n  \u2192 Grade A source +15, Grad",
+      "channel": "telegram",
+      "at": "2026-02-17T11:05:03.645152+00:00"
+    },
+    {
+      "level": "L2",
+      "title": "BUY ETH",
+      "message": "\ud83d\udfe2 *BUY \u2014 ETH/USDT*\n\nAction: BUY (LONG)\nEntry: $1,969.0700\nSize: $200 (0.10 units)\n\nStrategy: meme-momentum\nSanad Score: 75\nFee: $0.20\n\n_All 15 policy gates passed \u2705_",
+      "channel": "telegram",
+      "at": "2026-02-17T11:17:39.748315+00:00"
+    },
+    {
+      "level": "L2",
+      "title": "Tier 2 Wired",
+      "message": "\u2696\ufe0f *TIER 2 INTELLIGENCE WIRED*\n\n\u2705 On-Chain Analytics: every 10min\n  \u2192 BTC volume, whale clusters, SOL demand\n  \u2192 4th signal source in router\n\n\u2705 Data Quality Gates: pre-check every cycle\n  \u2192 Blocks on ",
+      "channel": "telegram",
+      "at": "2026-02-17T11:18:12.648952+00:00"
+    },
+    {
+      "level": "L2",
+      "title": "SELL RAY",
+      "message": "\ud83d\udfe2 *SELL \u2014 RAY/USDT*\n\nAction: SELL (TRAILING_STOP)\nEntry: $0.6910\nExit: $0.6960\nP&L: +0.7% (+$1.25)\nHold: 6.7h\n\nStrategy: meme-momentum\nSanad Score: 85",
+      "channel": "failed",
+      "at": "2026-02-17T11:24:04.143261+00:00"
+    },
+    {
+      "level": "L1",
+      "title": "Signal Rejected",
+      "message": "\ud83d\udd34 *Signal Rejected*\n\nToken: IF\nReason: {\n  \"result\": \"BLOCK\",\n  \"gates_passed\": [\n    1,\n    2,\n    3,\n    4,\n    5,\n    6,\n    7,\n    8,\n    9,\n    10,\n    11,\n    12,\n    13,\n    14\n  ],\n  \"gate_fai",
+      "channel": "log_only",
+      "at": "2026-02-17T11:33:31.562175+00:00"
+    },
+    {
+      "level": "L1",
+      "title": "Signal Rejected",
+      "message": "\ud83d\udd34 *Signal Rejected*\n\nToken: IF\nReason: {\n  \"result\": \"BLOCK\",\n  \"gates_passed\": [\n    1,\n    2,\n    3,\n    4,\n    5,\n    6,\n    7,\n    8,\n    9,\n    10,\n    11,\n    12,\n    13,\n    14\n  ],\n  \"gate_fai",
+      "channel": "log_only",
+      "at": "2026-02-17T11:48:26.296598+00:00"
+    },
+    {
+      "level": "L2",
+      "title": "Daily Report",
+      "message": "\u2696\ufe0f *SANAD TRADER \u2014 DAILY REPORT*\n\ud83d\udcc5 Tuesday, February 17 2026\n\n\ud83d\udcb0 *Portfolio:* $10,001.25\n\ud83d\udfe2 Cumulative P&L: $+1.25 (+0.01%)\n\ud83d\udcc8 Peak: $10,001.25 | Drawdown: 0.00%\n\ud83d\udcb5 Unrealized: $-5.54\n\n\ud83d\udcca *Open Positions (",
+      "channel": "telegram",
+      "at": "2026-02-17T12:04:04.917233+00:00"
+    },
+    {
+      "level": "L2",
+      "title": "Weekly Analysis",
+      "message": "\u2696\ufe0f *SANAD TRADER \u2014 WEEKLY ANALYSIS*\n\ud83d\udcc5 Week ending February 17, 2026\n\n\ud83d\udcb0 *Portfolio:* $10,001.25\n\ud83d\udfe2 Cumulative: $+1.25 (+0.01%)\n\ud83d\udcc8 Peak: $10,001.25 | Drawdown: 0.00%\n\ud83d\udcca Sharpe: -0.01\n\n\ud83d\udccb *This Week (5 trade",
+      "channel": "telegram",
+      "at": "2026-02-17T12:12:49.495051+00:00"
+    },
+    {
+      "level": "L2",
+      "title": "BUY MET",
+      "message": "\ud83d\udfe2 *BUY \u2014 MET/USDT*\n\nAction: BUY (LONG)\nEntry: $0.2272\nSize: $60 (264.24 units)\n\nStrategy: sentiment-divergence\nSanad Score: 78\nFee: $0.06\n\n_All 15 policy gates passed \u2705_",
+      "channel": "telegram",
+      "at": "2026-02-17T12:48:58.549969+00:00"
+    },
+    {
+      "level": "L2",
+      "title": "System Check",
+      "message": "\u2696\ufe0f Sanad Trader: System health check \u2014 all 8 sources active, 5/5 positions open, 25 crons running.",
+      "channel": "telegram",
+      "at": "2026-02-17T13:21:40.526641+00:00"
+    },
+    {
+      "level": "L2",
+      "title": "System Test",
+      "message": "\ud83d\udfe2 *SYSTEM TEST*\n\n5/5 positions open. 25 crons. 8 signal sources.\nAll intelligence wired. \u2696\ufe0f",
+      "channel": "telegram",
+      "at": "2026-02-17T13:22:30.232079+00:00"
+    },
+    {
+      "level": "L1",
+      "title": "Signal Rejected",
+      "message": "\ud83d\udd34 *Signal Rejected*\n\nToken: HYPE\nReason: {\n  \"result\": \"BLOCK\",\n  \"gates_passed\": [\n    1,\n    2,\n    3,\n    4,\n    5,\n    6,\n    7,\n    8,\n    9,\n    10,\n    11\n  ],\n  \"gate_failed\": 12,\n  \"gate_fail",
+      "channel": "log_only",
+      "at": "2026-02-17T13:33:25.805785+00:00"
+    },
+    {
+      "level": "L2",
+      "title": "SELL SOL",
+      "message": "\ud83d\udd34 *SELL \u2014 SOL/USDT*\n\nAction: SELL (TIME_EXIT)\nEntry: $86.3600\nExit: $84.9600\nP&L: -1.6% ($-3.44)\nHold: 8.8h\n\nStrategy: whale-following\nSanad Score: 77",
+      "channel": "failed",
+      "at": "2026-02-17T13:35:41.546006+00:00"
+    },
+    {
+      "level": "L2",
+      "title": "SELL LINK",
+      "message": "\ud83d\udd34 *SELL \u2014 LINK/USDT*\n\nAction: SELL (TIME_EXIT)\nEntry: $8.9200\nExit: $8.8100\nP&L: -1.2% ($-2.66)\nHold: 8.5h\n\nStrategy: whale-following\nSanad Score: 77",
+      "channel": "failed",
+      "at": "2026-02-17T13:35:43.592460+00:00"
+    },
+    {
+      "level": "L2",
+      "title": "Mode Update",
+      "message": "\u2696\ufe0f *Trading Mode Updated*\n\n\ud83c\udfaf Target: 0.5-2% daily wallet profit\n\n*New Settings:*\n\u2022 Position size: 7.5% ($750/trade)\n\u2022 Max positions: 10\n\u2022 Stop-loss: 3%\n\u2022 Take-profit: 6-8%\n\u2022 Trailing: activate +4%, tr",
+      "channel": "telegram",
+      "at": "2026-02-17T13:37:05.657320+00:00"
+    },
+    {
+      "level": "L2",
+      "title": "System Status",
+      "message": "\u2696\ufe0f *FULL SYSTEM STATUS \u2014 ALL GREEN*\n\n*\ud83e\udd16 LLM Agents:*\n\u2705 Anthropic (Opus 4.6) \u2014 Sanad/Bull/Bear\n\u2705 OpenAI (GPT 5.3 Codex) \u2014 Al-Muhasbi Judge\n\u2705 Perplexity (Sonar Pro) \u2014 Intelligence\n\u2705 Haiku 4.5 \u2014 Executio",
+      "channel": "failed",
+      "at": "2026-02-17T13:44:14.249496+00:00"
+    },
+    {
+      "level": "L2",
+      "title": "Status",
+      "message": "FULL SYSTEM STATUS - ALL GREEN\n\nLLM Agents:\n  Anthropic (Opus 4.6) - Sanad/Bull/Bear OK\n  OpenAI (GPT 5.3 Codex) - Al-Muhasbi OK\n  Perplexity (Sonar Pro) - Intelligence OK\n  Haiku 4.5 - Execution OK\n\n",
+      "channel": "telegram",
+      "at": "2026-02-17T13:44:22.530801+00:00"
+    },
+    {
+      "level": "L1",
+      "title": "Signal Rejected",
+      "message": "\ud83d\udd34 *Signal Rejected*\n\nToken: BTW\nReason: {\n  \"result\": \"BLOCK\",\n  \"gates_passed\": [\n    1,\n    2,\n    3,\n    4,\n    5,\n    6,\n    7,\n    8,\n    9,\n    10,\n    11,\n    12,\n    13,\n    14\n  ],\n  \"gate_fa",
+      "channel": "log_only",
+      "at": "2026-02-17T13:48:32.481062+00:00"
+    },
+    {
+      "level": "L1",
+      "title": "Signal Rejected",
+      "message": "\ud83d\udd34 *Signal Rejected*\n\nToken: PSOL\nReason: {\n  \"result\": \"BLOCK\",\n  \"gates_passed\": [\n    1,\n    2,\n    3,\n    4,\n    5,\n    6,\n    7,\n    8,\n    9,\n    10,\n    11,\n    12,\n    13,\n    14\n  ],\n  \"gate_f",
+      "channel": "log_only",
+      "at": "2026-02-17T14:04:03.087159+00:00"
+    },
+    {
+      "level": "L2",
+      "title": "BUY XRP",
+      "message": "\ud83d\udfe2 *BUY \u2014 XRP/USDT*\n\nAction: BUY (LONG)\nEntry: $1.4553\nSize: $525 (360.57 units)\n\nStrategy: cex-listing-play\nSanad Score: 77\nFee: $0.52\n\n_All 15 policy gates passed \u2705_",
+      "channel": "telegram",
+      "at": "2026-02-17T14:32:55.855189+00:00"
+    },
+    {
+      "level": "L1",
+      "title": "Signal Rejected",
+      "message": "\ud83d\udd34 *Signal Rejected*\n\nToken: ZORA\nReason: {\n  \"result\": \"BLOCK\",\n  \"gates_passed\": [\n    1,\n    2,\n    3,\n    4,\n    5,\n    6,\n    7,\n    8,\n    9,\n    10,\n    11,\n    12,\n    13,\n    14\n  ],\n  \"gate_f",
+      "channel": "log_only",
+      "at": "2026-02-17T14:48:10.716586+00:00"
+    },
+    {
+      "level": "L1",
+      "title": "Signal Rejected",
+      "message": "\ud83d\udd34 *Signal Rejected*\n\nToken: EGOD\nReason: {\n  \"result\": \"BLOCK\",\n  \"gates_passed\": [\n    1,\n    2,\n    3,\n    4,\n    5,\n    6,\n    7,\n    8,\n    9,\n    10,\n    11,\n    12,\n    13,\n    14\n  ],\n  \"gate_f",
+      "channel": "log_only",
+      "at": "2026-02-17T15:03:42.839879+00:00"
+    },
+    {
+      "level": "L1",
+      "title": "Signal Rejected",
+      "message": "\ud83d\udd34 *Signal Rejected*\n\nToken: PUMP\nReason: {\n  \"result\": \"BLOCK\",\n  \"gates_passed\": [\n    1,\n    2,\n    3,\n    4,\n    5,\n    6,\n    7,\n    8,\n    9,\n    10,\n    11,\n    12,\n    13,\n    14\n  ],\n  \"gate_f",
+      "channel": "log_only",
+      "at": "2026-02-17T15:18:42.308586+00:00"
+    },
+    {
+      "level": "L2",
+      "title": "SELL MET",
+      "message": "\ud83d\udd34 *SELL \u2014 MET/USDT*\n\nAction: SELL (STOP_LOSS)\nEntry: $0.2272\nExit: $0.2195\nP&L: -3.4% ($-2.09)\nHold: 2.8h\n\nStrategy: sentiment-divergence\nSanad Score: 78",
+      "channel": "failed",
+      "at": "2026-02-17T15:35:26.443469+00:00"
+    },
+    {
+      "level": "L1",
+      "title": "Signal Rejected",
+      "message": "\ud83d\udd34 *Signal Rejected*\n\nToken: SPACE\nReason: {\n  \"result\": \"BLOCK\",\n  \"gates_passed\": [\n    1,\n    2,\n    3,\n    4,\n    5,\n    6,\n    7,\n    8,\n    9,\n    10,\n    11,\n    12,\n    13,\n    14\n  ],\n  \"gate_",
+      "channel": "log_only",
+      "at": "2026-02-17T16:03:14.630887+00:00"
+    },
+    {
+      "level": "L1",
+      "title": "Signal Rejected",
+      "message": "\ud83d\udd34 *Signal Rejected*\n\nToken: FT\nReason: {\n  \"result\": \"BLOCK\",\n  \"gates_passed\": [\n    1,\n    2,\n    3,\n    4,\n    5,\n    6,\n    7,\n    8,\n    9,\n    10,\n    11,\n    12,\n    13,\n    14\n  ],\n  \"gate_fai",
+      "channel": "log_only",
+      "at": "2026-02-17T16:18:31.044862+00:00"
+    },
+    {
+      "level": "L1",
+      "title": "Signal Rejected",
+      "message": "\ud83d\udd34 *Signal Rejected*\n\nToken: XORCA\nReason: {\n  \"result\": \"BLOCK\",\n  \"gates_passed\": [\n    1,\n    2,\n    3,\n    4,\n    5,\n    6,\n    7,\n    8,\n    9,\n    10,\n    11,\n    12,\n    13,\n    14\n  ],\n  \"gate_",
+      "channel": "log_only",
+      "at": "2026-02-17T17:02:53.488622+00:00"
+    },
+    {
+      "level": "L1",
+      "title": "Signal Rejected",
+      "message": "\ud83d\udd34 *Signal Rejected*\n\nToken: SAROS\nReason: {\n  \"result\": \"BLOCK\",\n  \"gates_passed\": [\n    1,\n    2,\n    3,\n    4,\n    5,\n    6,\n    7,\n    8,\n    9,\n    10,\n    11,\n    12,\n    13,\n    14\n  ],\n  \"gate_",
+      "channel": "log_only",
+      "at": "2026-02-17T17:18:43.651011+00:00"
+    },
+    {
+      "level": "L1",
+      "title": "Signal Rejected",
+      "message": "\ud83d\udd34 *Signal Rejected*\n\nToken: MAYA\nReason: {\n  \"result\": \"BLOCK\",\n  \"gates_passed\": [\n    1,\n    2,\n    3,\n    4,\n    5,\n    6,\n    7,\n    8,\n    9,\n    10,\n    11,\n    12,\n    13,\n    14\n  ],\n  \"gate_f",
+      "channel": "log_only",
+      "at": "2026-02-17T17:33:40.513816+00:00"
+    },
+    {
+      "level": "L2",
+      "title": "Diag",
+      "message": "Test from diagnostic - ignore",
+      "channel": "telegram",
+      "at": "2026-02-17T17:47:19.591048+00:00"
+    },
+    {
+      "level": "L2",
+      "title": "4h Summary",
+      "message": "4-HOUR OVERNIGHT SUMMARY (9:46 PM - 1:46 AM)\n\nPipeline: 12 decisions\n  1 BUY: XRP at $1.4553 (cex-listing-play, $525)\n  1 CLOSE: MET stop-loss -3.39% (-$2.09)\n  10 REJECTIONS: BTW, PSOL, ZORA, EGOD, P",
+      "channel": "telegram",
+      "at": "2026-02-17T17:47:33.150599+00:00"
+    },
+    {
+      "level": "L1",
+      "title": "Signal Rejected",
+      "message": "\ud83d\udd34 *Signal Rejected*\n\nToken: MEGA\nReason: {\n  \"result\": \"BLOCK\",\n  \"gates_passed\": [\n    1,\n    2,\n    3,\n    4,\n    5,\n    6,\n    7,\n    8,\n    9,\n    10,\n    11,\n    12,\n    13,\n    14\n  ],\n  \"gate_f",
+      "channel": "log_only",
+      "at": "2026-02-17T17:48:08.447660+00:00"
+    },
+    {
+      "level": "L2",
+      "title": "Intelligence Status",
+      "message": "INTELLIGENCE LOOP STATUS (post-MET loss)\n\nThompson Sampling: LEARNING\n  whale-following: 0W 2L (downgraded)\n  sentiment-divergence: 0W 1L (MET loss recorded)\n  cex-listing-play: selected for XRP (no r",
+      "channel": "telegram",
+      "at": "2026-02-17T17:53:25.704746+00:00"
+    },
+    {
+      "level": "L1",
+      "title": "Signal Rejected",
+      "message": "\ud83d\udd34 *Signal Rejected*\n\nToken: MELON\nReason: {\n  \"result\": \"BLOCK\",\n  \"gates_passed\": [\n    1,\n    2,\n    3,\n    4,\n    5,\n    6,\n    7,\n    8,\n    9,\n    10,\n    11,\n    12,\n    13,\n    14\n  ],\n  \"gate_",
+      "channel": "log_only",
+      "at": "2026-02-17T18:03:32.382469+00:00"
+    },
+    {
+      "level": "L2",
+      "title": "Critical Fix",
+      "message": "CRITICAL SYSTEM UPDATE\n\nAUDIT FINDING: Judge (Al-Muhasbi) was right 100% of the time.\n9/9 executed trades overrode his REJECT verdict.\nAll closed trades lost money.\n\nROOT CAUSE: Pipeline fed garbage m",
+      "channel": "telegram",
+      "at": "2026-02-17T18:10:17.170102+00:00"
+    },
+    {
+      "level": "L1",
+      "title": "Signal Rejected",
+      "message": "\ud83d\udd34 *Signal Rejected*\n\nToken: TRUMPSTEIN\nReason: {\n  \"result\": \"BLOCK\",\n  \"gates_passed\": [\n    1,\n    2,\n    3,\n    4,\n    5,\n    6,\n    7,\n    8,\n    9,\n    10,\n    11,\n    12,\n    13,\n    14\n  ],\n  \"",
+      "channel": "log_only",
+      "at": "2026-02-17T18:18:38.152411+00:00"
+    },
+    {
+      "level": "L1",
+      "title": "Signal Rejected",
+      "message": "\ud83d\udd34 *Signal Rejected*\n\nToken: DOGE-1 \nReason: {\n  \"result\": \"BLOCK\",\n  \"gates_passed\": [\n    1,\n    2,\n    3,\n    4,\n    5,\n    6,\n    7,\n    8,\n    9,\n    10,\n    11,\n    12,\n    13,\n    14\n  ],\n  \"gat",
+      "channel": "log_only",
+      "at": "2026-02-17T18:33:55.947366+00:00"
+    },
+    {
+      "level": "L1",
+      "title": "Signal Rejected",
+      "message": "\ud83d\udd34 *Signal Rejected*\n\nToken: OMFG\nReason: {\n  \"result\": \"BLOCK\",\n  \"gates_passed\": [\n    1,\n    2,\n    3,\n    4,\n    5,\n    6,\n    7,\n    8,\n    9,\n    10,\n    11,\n    12,\n    13,\n    14\n  ],\n  \"gate_f",
+      "channel": "log_only",
+      "at": "2026-02-17T18:48:16.335695+00:00"
+    },
+    {
+      "level": "L2",
+      "title": "SELL BTC",
+      "message": "\ud83d\udfe2 SELL BTC/USDT\n\nReason: TIME_EXIT\nEntry: 67,880.5500\nExit: 68,045.9400\nPnL: +0.2% (+0.29)\nHold: 8.0h\n\nStrategy: cex-listing-play\nSanad Score: 82",
+      "channel": "failed",
+      "at": "2026-02-17T19:02:58.249670+00:00"
+    },
+    {
+      "level": "L1",
+      "title": "Signal Rejected",
+      "message": "\ud83d\udd34 *Signal Rejected*\n\nToken: USEFUL\nReason: {\n  \"result\": \"BLOCK\",\n  \"gates_passed\": [\n    1,\n    2,\n    3,\n    4,\n    5,\n    6,\n    7,\n    8,\n    9,\n    10,\n    11,\n    12,\n    13,\n    14\n  ],\n  \"gate",
+      "channel": "log_only",
+      "at": "2026-02-17T19:03:26.372057+00:00"
+    },
+    {
+      "level": "L1",
+      "title": "Signal Rejected",
+      "message": "\ud83d\udd34 *Signal Rejected*\n\nToken: HORZ\nReason: {\n  \"result\": \"BLOCK\",\n  \"gates_passed\": [\n    1,\n    2,\n    3,\n    4,\n    5,\n    6,\n    7,\n    8,\n    9,\n    10,\n    11,\n    12,\n    13,\n    14\n  ],\n  \"gate_f",
+      "channel": "log_only",
+      "at": "2026-02-17T19:14:06.881769+00:00"
+    },
+    {
+      "level": "L2",
+      "title": "SELL ETH",
+      "message": "\ud83d\udfe2 SELL ETH/USDT\n\nReason: TIME_EXIT\nEntry: 1,969.0700\nExit: 2,013.2300\nPnL: +2.2% (+4.28)\nHold: 8.0h\n\nStrategy: whale-following\nSanad Score: 75",
+      "channel": "failed",
+      "at": "2026-02-17T19:17:57.508006+00:00"
+    },
+    {
+      "level": "L1",
+      "title": "Signal Rejected",
+      "message": "\ud83d\udd34 *Signal Rejected*\n\nToken: HORZ\nReason: {\n  \"result\": \"BLOCK\",\n  \"gates_passed\": [\n    1,\n    2,\n    3,\n    4,\n    5,\n    6,\n    7,\n    8,\n    9,\n    10,\n    11,\n    12,\n    13,\n    14\n  ],\n  \"gate_f",
+      "channel": "log_only",
+      "at": "2026-02-17T19:18:38.352435+00:00"
     }
   ],
-  "last_sent": "2026-02-16T19:25:06.391692+00:00"
+  "last_sent": "2026-02-17T19:18:38.352444+00:00"
 }

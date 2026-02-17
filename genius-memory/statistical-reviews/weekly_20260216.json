@@ -34,18 +34,21 @@
     "sample_size_adequate": false,
     "statistically_significant_patterns": [],
     "noise_patterns": [
-      "unknown"
+      "unknown strategy 50% win rate",
+      "any inferred edge from 4 trades"
     ],
     "strategy_verdicts": {
       "unknown": "DEACTIVATE"
     },
     "recommendations": [
-      "Increase the number of trades to at least 30 to 50 for more robust statistical testing;",
-      "Review the strategy's market conditions to find any underlying causes for the negative returns;",
-      "Consider redesigning or re-evaluating the 'unknown' strategy due to unfavorable results."
+      "Do not evaluate performance with n=4 trades; require minimum 30\u201350 trades for preliminary assessment and 100+ for robust inference.",
+      "Run a binomial test against p=0.5 baseline before claiming edge; at 2/4 wins, p-value = 1.0 (no edge).",
+      "Do not compute or report Sharpe ratio until at least 30 independent returns exist; current estimate would be statistically meaningless.",
+      "Pause live deployment until sufficient trade frequency is achieved; zero trades in 7/30/90-day windows indicates system inactivity or filtering too strict.",
+      "Log and segment trades by clearly defined strategy labels; 'unknown' prevents attribution and proper statistical validation."
     ],
     "confidence_level": "high",
-    "summary": "The trading system's performance data lacks sufficient sample size for meaningful statistical analysis, with only four trades executed by an 'unknown' strategy. This leads to a high likelihood of noise rather than real patterns, and the negative returns suggest that this strategy should be deactivated. Further data collection and strategy refinement are recommended to derive statistically significant insights."
+    "summary": "There is no statistically valid evidence of edge. Four trades with a 50% win rate is indistinguishable from random noise, and rolling periods show zero activity. The system should be paused or restructured until adequate sample size is obtained."
   },
-  "generated_at": "2026-02-16T19:08:07.992381+00:00"
+  "generated_at": "2026-02-16T19:41:14.197409+00:00"
 }

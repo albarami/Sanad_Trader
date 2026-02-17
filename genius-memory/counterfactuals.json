@@ -3,7 +3,7 @@
   "significant_edges": 2,
   "significance_rate": 50.0,
   "avg_edge_vs_nothing": 0.57,
-  "avg_edge_percentile": 50.0,
+  "avg_edge_percentile": 50.5,
   "by_strategy": {
     "unknown": {
       "trades": 4,
@@ -20,11 +20,11 @@
       "actual_pnl_pct": 31.56,
       "edge_vs_nothing": 31.56,
       "edge_percentile": 100.0,
-      "random_baseline_mean": -0.22,
-      "random_baseline_std": 2.92,
+      "random_baseline_mean": -0.1,
+      "random_baseline_std": 2.85,
       "is_significant": true,
       "hold_hours": 24,
-      "analyzed_at": "2026-02-16T18:23:48.979634+00:00"
+      "analyzed_at": "2026-02-16T19:36:32.877836+00:00"
     },
     {
       "trade_id": "unknown",
@@ -33,11 +33,11 @@
       "actual_pnl_pct": -36.87,
       "edge_vs_nothing": -36.87,
       "edge_percentile": 0.0,
-      "random_baseline_mean": -0.16,
-      "random_baseline_std": 3.05,
+      "random_baseline_mean": 0.01,
+      "random_baseline_std": 3.2,
       "is_significant": false,
       "hold_hours": 24,
-      "analyzed_at": "2026-02-16T18:23:48.979857+00:00"
+      "analyzed_at": "2026-02-16T19:36:32.878044+00:00"
     },
     {
       "trade_id": "unknown",
@@ -45,12 +45,12 @@
       "strategy": "unknown",
       "actual_pnl_pct": -6.9,
       "edge_vs_nothing": -6.9,
-      "edge_percentile": 0.0,
-      "random_baseline_mean": 0.26,
-      "random_baseline_std": 3.17,
+      "edge_percentile": 2.0,
+      "random_baseline_mean": -0.07,
+      "random_baseline_std": 2.81,
       "is_significant": false,
       "hold_hours": 24,
-      "analyzed_at": "2026-02-16T18:23:48.980048+00:00"
+      "analyzed_at": "2026-02-16T19:36:32.878234+00:00"
     },
     {
       "trade_id": "unknown",
@@ -59,12 +59,12 @@
       "actual_pnl_pct": 14.5,
       "edge_vs_nothing": 14.5,
       "edge_percentile": 100.0,
-      "random_baseline_mean": 0.65,
-      "random_baseline_std": 3.05,
+      "random_baseline_mean": -0.21,
+      "random_baseline_std": 3.1,
       "is_significant": true,
       "hold_hours": 24,
-      "analyzed_at": "2026-02-16T18:23:48.980230+00:00"
+      "analyzed_at": "2026-02-16T19:36:32.878425+00:00"
     }
   ],
-  "analyzed_at": "2026-02-16T18:23:48.980269+00:00"
+  "analyzed_at": "2026-02-16T19:36:32.878449+00:00"
 }

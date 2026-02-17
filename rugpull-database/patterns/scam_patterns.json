@@ -1,0 +1,47 @@
+{
+  "mint_not_revoked": {
+    "description": "Mint authority still active \u2014 can inflate supply",
+    "severity": "CRITICAL",
+    "weight": 30
+  },
+  "freeze_authority_active": {
+    "description": "Freeze authority active \u2014 can freeze holder accounts",
+    "severity": "CRITICAL",
+    "weight": 25
+  },
+  "lp_unlocked": {
+    "description": "Liquidity pool not locked \u2014 can rug by removing LP",
+    "severity": "HIGH",
+    "weight": 20
+  },
+  "top_holder_dominant": {
+    "description": "Single wallet holds >50% supply",
+    "severity": "HIGH",
+    "weight": 20
+  },
+  "suspicious_age_volume": {
+    "description": "Token < 1hr old with >$100K volume \u2014 pump setup",
+    "severity": "MEDIUM",
+    "weight": 15
+  },
+  "honeypot_detected": {
+    "description": "Buy succeeds but sell simulation fails \u2014 honeypot",
+    "severity": "CRITICAL",
+    "weight": 40
+  },
+  "sybil_holders": {
+    "description": "Coordinated wallet cluster detected in top holders",
+    "severity": "HIGH",
+    "weight": 20
+  },
+  "copy_token": {
+    "description": "Name/symbol mimics established token",
+    "severity": "MEDIUM",
+    "weight": 15
+  },
+  "no_social_presence": {
+    "description": "No website, no Twitter, no Telegram",
+    "severity": "LOW",
+    "weight": 5
+  }
+}

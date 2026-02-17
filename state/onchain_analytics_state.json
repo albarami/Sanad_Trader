@@ -1,16 +1,17 @@
 {
-  "last_run": "2026-02-16T15:12:40.556682+00:00",
+  "last_run": "2026-02-17T21:06:20.604652+00:00",
   "cooldowns": {
-    "btc_volume": "2026-02-16T15:12:43.991155+00:00"
+    "btc_volume": "2026-02-17T19:36:25.347276+00:00",
+    "whale_movement": "2026-02-17T21:06:23.860546+00:00"
   },
-  "total_signals": 1,
+  "total_signals": 7,
   "last_btc_data": {
-    "mempool_bytes": 718751.5,
-    "mempool_change_pct": 254.57655631033958,
-    "hash_rate_th": 1232582254.1975844,
-    "hash_rate_7d_change_pct": 20.858895705521512,
-    "tx_volume_usd": 1929666958.9573793,
-    "tx_volume_change_pct": -49.748636856636544
+    "mempool_bytes": 116775.0,
+    "mempool_change_pct": -28.412257121225586,
+    "hash_rate_th": 1094933474.5410013,
+    "hash_rate_7d_change_pct": 21.527777777777782,
+    "tx_volume_usd": 4693867812.997321,
+    "tx_volume_change_pct": 143.24756099536836
   },
   "last_sol_data": {
     "avg_priority_fee": 0.0,
@@ -18,5 +19,5 @@
     "sample_slots": 150,
     "network_demand": "LOW"
   },
-  "whale_alerts_count": 0
+  "whale_alerts_count": 3
 }

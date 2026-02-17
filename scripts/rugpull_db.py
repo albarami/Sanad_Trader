@@ -16,7 +16,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 SCRIPT_DIR = Path(__file__).resolve().parent
-BASE_DIR = SCRIPT_DIR.parent
+BASE_DIR = Path(os.environ.get("SANAD_HOME", str(SCRIPT_DIR.parent)))
 STATE_DIR = BASE_DIR / "state"
 RUGPULL_DB = STATE_DIR / "rugpull_db.json"
 ONCHAIN_STATE = STATE_DIR / "onchain_analytics_state.json"

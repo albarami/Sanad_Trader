@@ -6,13 +6,14 @@ Fetches crypto market sentiment from alternative.me.
 """
 
 import json
+import os
 import sys
 import requests
 from datetime import datetime, timezone
 from pathlib import Path
 
 SCRIPT_DIR = Path(__file__).resolve().parent
-BASE_DIR = SCRIPT_DIR.parent
+BASE_DIR = Path(os.environ.get("SANAD_HOME", str(SCRIPT_DIR.parent)))
 SIGNALS_DIR = BASE_DIR / "signals" / "market"
 OUTPUT_PATH = SIGNALS_DIR / "fear_greed_latest.json"
 

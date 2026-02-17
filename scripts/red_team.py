@@ -27,7 +27,7 @@ from datetime import datetime, timezone, timedelta
 from pathlib import Path
 
 SCRIPT_DIR = Path(__file__).resolve().parent
-BASE_DIR = SCRIPT_DIR.parent
+BASE_DIR = Path(os.environ.get("SANAD_HOME", str(SCRIPT_DIR.parent)))
 STATE_DIR = BASE_DIR / "state"
 RED_TEAM_DIR = BASE_DIR / "red-team"
 SIGNALS_DIR = BASE_DIR / "signals"

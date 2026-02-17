@@ -9,6 +9,7 @@ We invert it so our rugcheck_score 0-100 = higher is safer (intuitive).
 """
 
 import json
+import os
 import sys
 import time
 import requests
@@ -19,7 +20,7 @@ from pathlib import Path
 # Paths
 # ---------------------------------------------------------------------------
 SCRIPT_DIR = Path(__file__).resolve().parent
-BASE_DIR = SCRIPT_DIR.parent
+BASE_DIR = Path(os.environ.get("SANAD_HOME", str(SCRIPT_DIR.parent)))
 SIGNALS_DIR = BASE_DIR / "signals" / "rugcheck"
 
 # ---------------------------------------------------------------------------

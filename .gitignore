@@ -1,27 +1,29 @@
-# Sanad Trader .gitignore — Phase 12.6
+# Runtime state — never version
+state/
+logs/
+tmp/
+signals/
+execution-logs/
 
-# Secrets and credentials
-.env
-.env.*
-secrets/
-*.key
-*.pem
-
-# Burner wallet keypairs
-burner-wallets/
-*.keypair
-
-# OS and editor
-.DS_Store
-*.swp
-*.swo
-*~
-
-# Node
-node_modules/
+# ChromaDB
+state/chromadb/
 
 # Python
 __pycache__/
 *.pyc
-.venv/
-state/chromadb/
+*.pyo
+
+# Environment
+.env
+config/.env
+
+# Misc runtime
+*.session
+*.log
+data/
+
+# Old repo subtree (now merged)
+repo/
+
+# Junk directory from early setup
+{signals,strategies,execution-logs,genius-memory,source-accuracy,config,red-team,audit-hashes,stress-tests,replay,paper-portfolio}

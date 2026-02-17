@@ -11,12 +11,13 @@ This tells us:
 - Which rejection reasons correlate with missed opportunities
 """
 import json
+import os
 import sys
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
 
 SCRIPT_DIR = Path(__file__).resolve().parent
-BASE_DIR = SCRIPT_DIR.parent
+BASE_DIR = Path(os.environ.get("SANAD_HOME", str(SCRIPT_DIR.parent)))
 STATE_DIR = BASE_DIR / "state"
 CF_PATH = STATE_DIR / "counterfactual_rejections.json"
 REPORT_PATH = BASE_DIR / "genius-memory" / "counterfactual_report.json"

@@ -1,0 +1,544 @@
+{
+  "passed": 89,
+  "failed": 0,
+  "warnings": 0,
+  "total": 89,
+  "pass_rate": 1.0,
+  "results": [
+    {
+      "category": "1. Core Infrastructure",
+      "test": "env_loader imports",
+      "status": "\u2705",
+      "detail": ""
+    },
+    {
+      "category": "1. Core Infrastructure",
+      "test": "env_loader.get_key works",
+      "status": "\u2705",
+      "detail": ""
+    },
+    {
+      "category": "1. Core Infrastructure",
+      "test": "state/ directory exists",
+      "status": "\u2705",
+      "detail": ""
+    },
+    {
+      "category": "1. Core Infrastructure",
+      "test": "config/ directory exists",
+      "status": "\u2705",
+      "detail": ""
+    },
+    {
+      "category": "1. Core Infrastructure",
+      "test": "thresholds.yaml exists",
+      "status": "\u2705",
+      "detail": ""
+    },
+    {
+      "category": "1. Core Infrastructure",
+      "test": "portfolio.json exists",
+      "status": "\u2705",
+      "detail": ""
+    },
+    {
+      "category": "1. Core Infrastructure",
+      "test": ".env file exists",
+      "status": "\u2705",
+      "detail": ""
+    },
+    {
+      "category": "1. Core Infrastructure",
+      "test": "thresholds.yaml parses",
+      "status": "\u2705",
+      "detail": ""
+    },
+    {
+      "category": "2. Exchange Clients",
+      "test": "binance_client imports",
+      "status": "\u2705",
+      "detail": ""
+    },
+    {
+      "category": "2. Exchange Clients",
+      "test": "binance_client.get_ticker_24h(BTCUSDT)",
+      "status": "\u2705",
+      "detail": ""
+    },
+    {
+      "category": "2. Exchange Clients",
+      "test": "binance_client.get_price(SOLUSDT)",
+      "status": "\u2705",
+      "detail": ""
+    },
+    {
+      "category": "2. Exchange Clients",
+      "test": "mexc_client imports",
+      "status": "\u2705",
+      "detail": ""
+    },
+    {
+      "category": "3. Data Feeds",
+      "test": "coingecko_client imports",
+      "status": "\u2705",
+      "detail": ""
+    },
+    {
+      "category": "3. Data Feeds",
+      "test": "dexscreener_client imports",
+      "status": "\u2705",
+      "detail": ""
+    },
+    {
+      "category": "3. Data Feeds",
+      "test": "helius_client imports + has functions",
+      "status": "\u2705",
+      "detail": ""
+    },
+    {
+      "category": "3. Data Feeds",
+      "test": "birdeye_client imports",
+      "status": "\u2705",
+      "detail": ""
+    },
+    {
+      "category": "3. Data Feeds",
+      "test": "rugcheck_client imports",
+      "status": "\u2705",
+      "detail": ""
+    },
+    {
+      "category": "4. Signal Pipeline",
+      "test": "signal_normalizer imports",
+      "status": "\u2705",
+      "detail": ""
+    },
+    {
+      "category": "4. Signal Pipeline",
+      "test": "normalize_signal (meme_radar)",
+      "status": "\u2705",
+      "detail": ""
+    },
+    {
+      "category": "4. Signal Pipeline",
+      "test": "normalize_all_signals from disk",
+      "status": "\u2705",
+      "detail": ""
+    },
+    {
+      "category": "4. Signal Pipeline",
+      "test": "signal_router imports",
+      "status": "\u2705",
+      "detail": ""
+    },
+    {
+      "category": "4. Signal Pipeline",
+      "test": "signal_queue imports",
+      "status": "\u2705",
+      "detail": ""
+    },
+    {
+      "category": "4. Signal Pipeline",
+      "test": "cross_feed_validator imports",
+      "status": "\u2705",
+      "detail": ""
+    },
+    {
+      "category": "5. AI Agents",
+      "test": "sanad_pipeline imports",
+      "status": "\u2705",
+      "detail": ""
+    },
+    {
+      "category": "5. AI Agents",
+      "test": "sanad_pipeline has all 6 stages",
+      "status": "\u2705",
+      "detail": ""
+    },
+    {
+      "category": "5. AI Agents",
+      "test": "agent prompts exist (\u22653/5)",
+      "status": "\u2705",
+      "detail": ""
+    },
+    {
+      "category": "5. AI Agents",
+      "test": "call_claude function exists",
+      "status": "\u2705",
+      "detail": ""
+    },
+    {
+      "category": "5. AI Agents",
+      "test": "call_perplexity function exists",
+      "status": "\u2705",
+      "detail": ""
+    },
+    {
+      "category": "6. Safety Systems",
+      "test": "policy_engine imports",
+      "status": "\u2705",
+      "detail": ""
+    },
+    {
+      "category": "6. Safety Systems",
+      "test": "policy_engine has gate function",
+      "status": "\u2705",
+      "detail": ""
+    },
+    {
+      "category": "6. Safety Systems",
+      "test": "secret_scanner hook exists",
+      "status": "\u2705",
+      "detail": ""
+    },
+    {
+      "category": "6. Safety Systems",
+      "test": "kill_switch state accessible",
+      "status": "\u2705",
+      "detail": ""
+    },
+    {
+      "category": "6. Safety Systems",
+      "test": "threat_auto_response imports",
+      "status": "\u2705",
+      "detail": ""
+    },
+    {
+      "category": "6. Safety Systems",
+      "test": "red_team imports",
+      "status": "\u2705",
+      "detail": ""
+    },
+    {
+      "category": "6. Safety Systems",
+      "test": "red_team has run_all_attacks",
+      "status": "\u2705",
+      "detail": ""
+    },
+    {
+      "category": "7. Risk Management",
+      "test": "kelly_criterion imports",
+      "status": "\u2705",
+      "detail": ""
+    },
+    {
+      "category": "7. Risk Management",
+      "test": "kelly_criterion calculates",
+      "status": "\u2705",
+      "detail": ""
+    },
+    {
+      "category": "7. Risk Management",
+      "test": "safety_guardrails imports",
+      "status": "\u2705",
+      "detail": ""
+    },
+    {
+      "category": "7. Risk Management",
+      "test": "partial_fill_sim imports",
+      "status": "\u2705",
+      "detail": ""
+    },
+    {
+      "category": "7. Risk Management",
+      "test": "partial_fill_sim.simulate_fill",
+      "status": "\u2705",
+      "detail": ""
+    },
+    {
+      "category": "8. On-Chain Security",
+      "test": "rugpull_scanner imports",
+      "status": "\u2705",
+      "detail": ""
+    },
+    {
+      "category": "8. On-Chain Security",
+      "test": "rugpull_scanner functions exist",
+      "status": "\u2705",
+      "detail": ""
+    },
+    {
+      "category": "8. On-Chain Security",
+      "test": "honeypot_detector imports",
+      "status": "\u2705",
+      "detail": ""
+    },
+    {
+      "category": "8. On-Chain Security",
+      "test": "honeypot_detector.check_honeypot exists",
+      "status": "\u2705",
+      "detail": ""
+    },
+    {
+      "category": "8. On-Chain Security",
+      "test": "holder_analyzer imports",
+      "status": "\u2705",
+      "detail": ""
+    },
+    {
+      "category": "8. On-Chain Security",
+      "test": "holder_analyzer math (gini/hhi)",
+      "status": "\u2705",
+      "detail": ""
+    },
+    {
+      "category": "8. On-Chain Security",
+      "test": "rugpull blacklist file exists",
+      "status": "\u2705",
+      "detail": ""
+    },
+    {
+      "category": "9. Execution",
+      "test": "burner_wallets imports",
+      "status": "\u2705",
+      "detail": ""
+    },
+    {
+      "category": "9. Execution",
+      "test": "burner wallet lifecycle (paper)",
+      "status": "\u2705",
+      "detail": ""
+    },
+    {
+      "category": "9. Execution",
+      "test": "dex_shadow imports",
+      "status": "\u2705",
+      "detail": ""
+    },
+    {
+      "category": "9. Execution",
+      "test": "dex_shadow.DexShadowTracker has entry/exit",
+      "status": "\u2705",
+      "detail": ""
+    },
+    {
+      "category": "10. Monitoring",
+      "test": "heartbeat imports",
+      "status": "\u2705",
+      "detail": ""
+    },
+    {
+      "category": "10. Monitoring",
+      "test": "reconciliation imports",
+      "status": "\u2705",
+      "detail": ""
+    },
+    {
+      "category": "10. Monitoring",
+      "test": "price_snapshot imports",
+      "status": "\u2705",
+      "detail": ""
+    },
+    {
+      "category": "10. Monitoring",
+      "test": "onchain_analytics imports",
+      "status": "\u2705",
+      "detail": ""
+    },
+    {
+      "category": "10. Monitoring",
+      "test": "social_sentiment imports",
+      "status": "\u2705",
+      "detail": ""
+    },
+    {
+      "category": "10. Monitoring",
+      "test": "state/heartbeat_state.json exists",
+      "status": "\u2705",
+      "detail": ""
+    },
+    {
+      "category": "10. Monitoring",
+      "test": "state/price_cache.json exists",
+      "status": "\u2705",
+      "detail": ""
+    },
+    {
+      "category": "11. Notifications",
+      "test": "notifier imports",
+      "status": "\u2705",
+      "detail": ""
+    },
+    {
+      "category": "11. Notifications",
+      "test": "notifier has all alert functions",
+      "status": "\u2705",
+      "detail": ""
+    },
+    {
+      "category": "12. Analytics & Genius Memory",
+      "test": "pattern_extractor imports",
+      "status": "\u2705",
+      "detail": ""
+    },
+    {
+      "category": "12. Analytics & Genius Memory",
+      "test": "statistical_review imports",
+      "status": "\u2705",
+      "detail": ""
+    },
+    {
+      "category": "12. Analytics & Genius Memory",
+      "test": "counterfactual imports",
+      "status": "\u2705",
+      "detail": ""
+    },
+    {
+      "category": "12. Analytics & Genius Memory",
+      "test": "ucb1_scorer imports",
+      "status": "\u2705",
+      "detail": ""
+    },
+    {
+      "category": "12. Analytics & Genius Memory",
+      "test": "ucb1_scorer has scoring function",
+      "status": "\u2705",
+      "detail": ""
+    },
+    {
+      "category": "12. Analytics & Genius Memory",
+      "test": "replay_engine imports",
+      "status": "\u2705",
+      "detail": ""
+    },
+    {
+      "category": "12. Analytics & Genius Memory",
+      "test": "replay_engine fast mode works",
+      "status": "\u2705",
+      "detail": ""
+    },
+    {
+      "category": "13. Console API",
+      "test": "console_api imports",
+      "status": "\u2705",
+      "detail": ""
+    },
+    {
+      "category": "13. Console API",
+      "test": "all 10 API GET endpoints return 200",
+      "status": "\u2705",
+      "detail": ""
+    },
+    {
+      "category": "13. Console API",
+      "test": "API control action (mode_switch)",
+      "status": "\u2705",
+      "detail": ""
+    },
+    {
+      "category": "13. Console API",
+      "test": "API auth blocks without key",
+      "status": "\u2705",
+      "detail": ""
+    },
+    {
+      "category": "14. Cron Job Scripts",
+      "test": "daily_report.py exists",
+      "status": "\u2705",
+      "detail": ""
+    },
+    {
+      "category": "14. Cron Job Scripts",
+      "test": "weekly_analysis.py exists",
+      "status": "\u2705",
+      "detail": ""
+    },
+    {
+      "category": "14. Cron Job Scripts",
+      "test": "weekly_research.py exists",
+      "status": "\u2705",
+      "detail": ""
+    },
+    {
+      "category": "14. Cron Job Scripts",
+      "test": "security_audit.py exists",
+      "status": "\u2705",
+      "detail": ""
+    },
+    {
+      "category": "14. Cron Job Scripts",
+      "test": "github_backup.py exists",
+      "status": "\u2705",
+      "detail": ""
+    },
+    {
+      "category": "14. Cron Job Scripts",
+      "test": "model_check.py exists",
+      "status": "\u2705",
+      "detail": ""
+    },
+    {
+      "category": "14. Cron Job Scripts",
+      "test": "dust_sweeper.py exists",
+      "status": "\u2705",
+      "detail": ""
+    },
+    {
+      "category": "14. Cron Job Scripts",
+      "test": "rugpull_db.py exists",
+      "status": "\u2705",
+      "detail": ""
+    },
+    {
+      "category": "14. Cron Job Scripts",
+      "test": "crontab config exists",
+      "status": "\u2705",
+      "detail": ""
+    },
+    {
+      "category": "15. Production NFRs",
+      "test": "production_nfrs imports",
+      "status": "\u2705",
+      "detail": ""
+    },
+    {
+      "category": "15. Production NFRs",
+      "test": "GracefulShutdown initializes",
+      "status": "\u2705",
+      "detail": ""
+    },
+    {
+      "category": "15. Production NFRs",
+      "test": "ProcessLock acquire/release",
+      "status": "\u2705",
+      "detail": ""
+    },
+    {
+      "category": "15. Production NFRs",
+      "test": "strategy_registry imports",
+      "status": "\u2705",
+      "detail": ""
+    },
+    {
+      "category": "15. Production NFRs",
+      "test": "strategy_registry (5 strategies, matching works)",
+      "status": "\u2705",
+      "detail": ""
+    },
+    {
+      "category": "16. Documentation",
+      "test": "config-spec.md exists",
+      "status": "\u2705",
+      "detail": ""
+    },
+    {
+      "category": "16. Documentation",
+      "test": "data-dictionary.md exists",
+      "status": "\u2705",
+      "detail": ""
+    },
+    {
+      "category": "16. Documentation",
+      "test": "tools-spec.md exists",
+      "status": "\u2705",
+      "detail": ""
+    },
+    {
+      "category": "16. Documentation",
+      "test": "MASTER_BUILD_PLAN.md exists",
+      "status": "\u2705",
+      "detail": ""
+    }
+  ],
+  "timestamp": "2026-02-16T22:07:14.773633+00:00"
+}

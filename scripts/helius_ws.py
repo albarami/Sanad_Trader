@@ -25,7 +25,7 @@ from pathlib import Path
 from collections import deque
 
 SCRIPT_DIR = Path(__file__).resolve().parent
-BASE_DIR = SCRIPT_DIR.parent
+BASE_DIR = Path(os.environ.get("SANAD_HOME", str(SCRIPT_DIR.parent)))
 CONFIG_DIR = BASE_DIR / "config"
 STATE_DIR = BASE_DIR / "state"
 SIGNALS_DIR = BASE_DIR / "signals" / "helius_ws"

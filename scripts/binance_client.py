@@ -31,7 +31,7 @@ from pathlib import Path
 from collections import deque
 
 # Load environment
-BASE_DIR = Path("/data/.openclaw/workspace/trading")
+BASE_DIR = Path(os.environ.get("SANAD_HOME", "/data/.openclaw/workspace/trading"))
 ENV_PATH = BASE_DIR / "config" / ".env"
 STATE_DIR = BASE_DIR / "state"
 LOGS_DIR = BASE_DIR / "execution-logs"

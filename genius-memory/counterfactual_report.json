@@ -1,0 +1,17 @@
+{
+  "total_checked": 1,
+  "missed_winners": 0,
+  "correct_rejections": 0,
+  "neutral": 1,
+  "gate_accuracy_pct": 100.0,
+  "avg_missed_pnl": 0.0,
+  "avg_correct_rejection_loss": 0.0,
+  "by_reason": {
+    "null": {
+      "total": 1,
+      "missed": 0,
+      "correct": 0
+    }
+  },
+  "updated_at": "2026-02-17T17:55:12.217357+00:00"
+}

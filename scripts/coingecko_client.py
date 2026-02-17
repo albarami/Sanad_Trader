@@ -17,7 +17,7 @@ from pathlib import Path
 # Paths
 # ---------------------------------------------------------------------------
 SCRIPT_DIR = Path(__file__).resolve().parent
-BASE_DIR = SCRIPT_DIR.parent  # /data/.openclaw/workspace/trading
+BASE_DIR = Path(os.environ.get("SANAD_HOME", str(SCRIPT_DIR.parent)))
 CONFIG_ENV = BASE_DIR / "config" / ".env"
 SIGNALS_DIR = BASE_DIR / "signals" / "coingecko"
 WATCHLIST_PATH = BASE_DIR / "config" / "watchlist.json"

@@ -43,6 +43,87 @@
       "exit_price": 68403.25,
       "pnl_pct": -0.144959375,
       "pnl_usd": -29.162883125
+    },
+    {
+      "token": "RAY",
+      "symbol": "RAYUSDT",
+      "timestamp": "2026-02-17T11:24:01.843939+00:00",
+      "side": "SELL",
+      "reason": "TRAILING_STOP",
+      "entry_price": 0.691,
+      "exit_price": 0.696,
+      "pnl_pct": 0.007235890014471787,
+      "pnl_usd": 1.2475362318840593
+    },
+    {
+      "token": "SOL",
+      "symbol": "SOLUSDT",
+      "timestamp": "2026-02-17T13:35:39.368045+00:00",
+      "side": "SELL",
+      "reason": "TIME_EXIT",
+      "entry_price": 86.36,
+      "exit_price": 84.96,
+      "pnl_pct": -0.016211208893006087,
+      "pnl_usd": -3.43939779965259,
+      "source": "coingecko_trending",
+      "strategy": "whale-following",
+      "regime_at_entry": "UNKNOWN"
+    },
+    {
+      "token": "LINK",
+      "symbol": "LINKUSDT",
+      "timestamp": "2026-02-17T13:35:42.357825+00:00",
+      "side": "SELL",
+      "reason": "TIME_EXIT",
+      "entry_price": 8.92,
+      "exit_price": 8.81,
+      "pnl_pct": -0.012331838565022358,
+      "pnl_usd": -2.663901345291467,
+      "source": "coingecko_trending",
+      "strategy": "whale-following",
+      "regime_at_entry": "UNKNOWN"
+    },
+    {
+      "token": "MET",
+      "symbol": "METUSDT",
+      "timestamp": "2026-02-17T15:35:24.017486+00:00",
+      "side": "SELL",
+      "reason": "STOP_LOSS",
+      "entry_price": 0.2272,
+      "exit_price": 0.2195,
+      "pnl_pct": -0.03389084507042259,
+      "pnl_usd": -2.0926869000440367,
+      "source": "Birdeye trending",
+      "strategy": "sentiment-divergence",
+      "regime_at_entry": "BEAR_HIGH_VOL"
+    },
+    {
+      "token": "BTC",
+      "symbol": "BTCUSDT",
+      "timestamp": "2026-02-17T19:02:55.912267+00:00",
+      "side": "SELL",
+      "reason": "TIME_EXIT",
+      "entry_price": 67880.55,
+      "exit_price": 68045.94,
+      "pnl_pct": 0.002436485856405103,
+      "pnl_usd": 0.28680919807703664,
+      "source": "coingecko_trending",
+      "strategy": "cex-listing-play",
+      "regime_at_entry": "UNKNOWN"
+    },
+    {
+      "token": "ETH",
+      "symbol": "ETHUSDT",
+      "timestamp": "2026-02-17T19:17:55.431974+00:00",
+      "side": "SELL",
+      "reason": "TIME_EXIT",
+      "entry_price": 1969.07,
+      "exit_price": 2013.23,
+      "pnl_pct": 0.022426830940494795,
+      "pnl_usd": 4.280880821910859,
+      "source": "coingecko_trending",
+      "strategy": "whale-following",
+      "regime_at_entry": "UNKNOWN"
     }
   ]
 }

@@ -34,7 +34,7 @@ from pathlib import Path
 # Paths
 # ─────────────────────────────────────────────────────────
 SCRIPT_DIR = Path(__file__).resolve().parent
-BASE_DIR = SCRIPT_DIR.parent  # /data/.openclaw/workspace/trading
+BASE_DIR = Path(os.environ.get("SANAD_HOME", str(SCRIPT_DIR.parent)))
 FEAR_GREED_PATH = BASE_DIR / "signals" / "market" / "fear_greed_latest.json"
 REGIME_DIR = BASE_DIR / "genius-memory" / "regime-data"
 REGIME_LATEST = REGIME_DIR / "latest.json"

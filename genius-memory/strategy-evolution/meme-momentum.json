@@ -1,0 +1,30 @@
+{
+  "strategy_name": "meme-momentum",
+  "total_trades": 1,
+  "wins": 1,
+  "losses": 0,
+  "total_pnl_usd": 1.2475,
+  "total_pnl_pct": 0.007236,
+  "win_rate": 1.0,
+  "avg_pnl_pct": 0.007236,
+  "best_trade_pct": 0.007236,
+  "worst_trade_pct": 0.0,
+  "by_regime": {
+    "BEAR_HIGH_VOL": {
+      "trades": 1,
+      "wins": 1,
+      "pnl_pct": 0.007236
+    }
+  },
+  "recent_trades": [
+    {
+      "timestamp": "2026-02-17T11:24:04.350163+00:00",
+      "pnl_pct": 0.007236,
+      "is_win": true,
+      "regime": "BEAR_HIGH_VOL"
+    }
+  ],
+  "parameter_changes": [],
+  "created_at": "2026-02-17T11:24:04.350112+00:00",
+  "updated_at": "2026-02-17T11:24:04.350166+00:00"
+}

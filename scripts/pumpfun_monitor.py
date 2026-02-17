@@ -23,7 +23,7 @@ from datetime import datetime, timezone, timedelta
 from pathlib import Path
 
 SCRIPT_DIR = Path(__file__).resolve().parent
-BASE_DIR = SCRIPT_DIR.parent
+BASE_DIR = Path(os.environ.get("SANAD_HOME", str(SCRIPT_DIR.parent)))
 SIGNALS_DIR = BASE_DIR / "signals" / "pumpfun"
 STATE_PATH = BASE_DIR / "state" / "pumpfun_monitor_state.json"
 LOGS_DIR = BASE_DIR / "execution-logs"

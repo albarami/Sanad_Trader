@@ -1,0 +1,22 @@
+{
+  "week_ending": "2026-02-17",
+  "balance": 10001.25,
+  "cumulative_pnl": 1.25,
+  "weekly_trades": 5,
+  "weekly_win_rate": 60.0,
+  "weekly_pnl_usd": -55.181676133670386,
+  "total_trades": 5,
+  "all_time_win_rate": 60.0,
+  "drawdown": 0.0,
+  "sharpe": "-0.01",
+  "days_active": 0,
+  "strategy_stats": {
+    "unknown": {
+      "trades": 5,
+      "wins": 3,
+      "avg_pnl": -0.31359535488297685
+    }
+  },
+  "cf_accuracy": 0,
+  "generated_at": "2026-02-17T12:12:48.829128+00:00"
+}

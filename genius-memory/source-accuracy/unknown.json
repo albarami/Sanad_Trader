@@ -1,0 +1,28 @@
+{
+  "source_name": "unknown",
+  "total_signals": 0,
+  "trades_executed": 1,
+  "wins": 1,
+  "losses": 0,
+  "total_pnl_usd": 1.2475,
+  "total_pnl_pct": 0.007236,
+  "avg_pnl_pct": 0.007236,
+  "win_rate": 1.0,
+  "ucb1_score": 50,
+  "grade": "C",
+  "last_signal_at": null,
+  "last_trade_at": "2026-02-17T11:24:04.349623+00:00",
+  "last_win_at": "2026-02-17T11:24:04.349614+00:00",
+  "last_recalc_at": "2026-02-17T11:24:04.349924+00:00",
+  "created_at": "2026-02-17T11:24:04.349607+00:00",
+  "history": [
+    {
+      "timestamp": "2026-02-17T11:24:04.349620+00:00",
+      "token": "RAY",
+      "trade_id": "PAPER-1771303448844",
+      "is_win": true,
+      "pnl_usd": 1.2475,
+      "pnl_pct": 0.007236
+    }
+  ]
+}

@@ -30,7 +30,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 SCRIPT_DIR = Path(__file__).resolve().parent
-BASE_DIR = SCRIPT_DIR.parent
+BASE_DIR = Path(os.environ.get("SANAD_HOME", str(SCRIPT_DIR.parent)))
 STATE_DIR = BASE_DIR / "state"
 WALLETS_DIR = STATE_DIR / "burner_wallets"
 VAULT_PATH = STATE_DIR / "master_vault.json"

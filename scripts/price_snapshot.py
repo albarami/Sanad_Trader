@@ -11,11 +11,12 @@ This is a data-plane task — deterministic Python, NOT an LLM.
 """
 
 import json
+import os
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
-BASE_DIR = Path("/data/.openclaw/workspace/trading")
+BASE_DIR = Path(os.environ.get("SANAD_HOME", "/data/.openclaw/workspace/trading"))
 STATE_DIR = BASE_DIR / "state"
 CONFIG_DIR = BASE_DIR / "config"
 

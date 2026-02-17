@@ -18,7 +18,7 @@ import shutil
 from datetime import datetime, timezone
 from pathlib import Path
 
-BASE_DIR = Path("/data/.openclaw/workspace/trading")
+BASE_DIR = Path(os.environ.get("SANAD_HOME", "/data/.openclaw/workspace/trading"))
 SCRIPTS_DIR = BASE_DIR / "scripts"
 STATE_DIR = BASE_DIR / "state"
 
