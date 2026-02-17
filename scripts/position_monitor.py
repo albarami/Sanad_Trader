@@ -105,7 +105,18 @@ def save_trailing_stops(data):
 # Trailing stop parameters — Al-Muhasbi audit: let winners run, cut losers fast
 TRAILING_ACTIVATION_PCT = 0.08   # Al-Muhasbi approved: +8% (not 5%, not 15%)
 TRAILING_DROP_PCT = 0.05         # Al-Muhasbi approved: 5% from HWM (not 3%, not 8%)
-MAX_HOLD_HOURS = 24              # Al-Muhasbi approved: 24h for meme-momentum (not 12, not 48)
+_default_max_hold = 24
+try:
+    import yaml as _yaml
+    _thresholds = _yaml.safe_load(open(BASE_DIR / "config" / "thresholds.yaml"))
+    _mode = _thresholds.get("mode", "paper")
+    if _mode == "paper" and "paper_max_hold_hours" in _thresholds.get("risk", {}):
+        _default_max_hold = _thresholds["risk"]["paper_max_hold_hours"]
+    elif "max_hold_hours" in _thresholds.get("risk", {}):
+        _default_max_hold = _thresholds["risk"]["max_hold_hours"]
+except Exception:
+    pass
+MAX_HOLD_HOURS = _default_max_hold  # Paper: 12h, Live: 24h (Al-Muhasbi approved)
 FLASH_CRASH_PCT = 0.10           # 10% drop in 15 minutes
 FLASH_CRASH_WINDOW_MIN = 15      # 15-minute window
 
@@ -642,6 +653,10 @@ def run_monitor():
             pnl = close_position(position, current_price, reason, detail)
             closed_pnls.append(pnl)
             continue
+
+        should_close = False
+        close_reason = ""
+        close_detail = ""
 
         # ── Exit Condition G: Whale Exit Signal ──
         try:

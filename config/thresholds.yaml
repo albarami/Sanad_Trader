@@ -5,9 +5,10 @@ risk:
   max_drawdown_pct: 0.15
   stop_loss_default_pct: 0.15
   take_profit_default_pct: 0.3
-  max_positions: 5
-  paper_max_positions: 5
+  max_positions: 8
+  paper_max_positions: 8
   live_max_positions: 3
+  paper_max_hold_hours: 12
 sanad:
   minimum_trade_score: 40
   minimum_source_grade: C
