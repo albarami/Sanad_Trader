@@ -55,6 +55,11 @@ except Exception:
 
 import yaml
 import binance_client
+try:
+    import notifier
+    HAS_NOTIFIER = True
+except ImportError:
+    HAS_NOTIFIER = False
 
 # Load thresholds
 with open(CONFIG_DIR / "thresholds.yaml", "r") as f:
@@ -1229,11 +1234,48 @@ def stage_7_execute(signal, sanad_result, strategy_result, bull_result, bear_res
 
             # Update positions state
             _add_position(signal, strategy_result, order, sanad_result, bull_result)
+
+            # ── TELEGRAM NOTIFICATION ──
+            if HAS_NOTIFIER:
+                try:
+                    bull_tp = bull_result.get("target_price", "?") if bull_result else "?"
+                    bull_sl = bull_result.get("stop_loss", "?") if bull_result else "?"
+                    notifier.send(
+                        f"🟢 *PAPER TRADE EXECUTED*\n\n"
+                        f"*{signal['token']}* / USDT\n"
+                        f"Side: LONG\n"
+                        f"Entry: ${order['price']:,.4f}\n"
+                        f"Size: ${order['quantity'] * order['price']:,.2f} ({order['quantity']:,.2f} units)\n"
+                        f"Strategy: {strategy_result.get('strategy_name', '?') if strategy_result else '?'}\n"
+                        f"Sanad Score: {sanad_result.get('trust_score', '?')}\n"
+                        f"Target: {bull_tp}\n"
+                        f"Stop Loss: {bull_sl}\n"
+                        f"Fee: ${order['fee_usd']:,.2f}\n\n"
+                        f"_All 15 policy gates passed ✅_",
+                        level="L2",
+                        title="Trade Executed"
+                    )
+                except Exception as e:
+                    print(f"  Telegram notification error: {e}")
         else:
             decision_record["execution"] = {"error": "Paper order failed"}
             print(f"  WARNING: Paper order execution failed")
     else:
-        print(f"  REJECTED: {rejection_reason}")
+        rejection_reason_short = str(rejection_reason)[:200] if rejection_reason else "Unknown"
+        print(f"  REJECTED: {rejection_reason_short}")
+
+        # Notify rejections too (L1 = low priority)
+        if HAS_NOTIFIER:
+            try:
+                notifier.send(
+                    f"🔴 *Signal Rejected*\n\n"
+                    f"Token: {signal.get('token', '?')}\n"
+                    f"Reason: {rejection_reason_short}",
+                    level="L1",
+                    title="Signal Rejected"
+                )
+            except Exception:
+                pass
 
     # Log to execution-logs
     _log_decision(decision_record)
