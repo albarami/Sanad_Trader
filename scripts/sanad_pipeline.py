@@ -1238,22 +1238,20 @@ def stage_7_execute(signal, sanad_result, strategy_result, bull_result, bear_res
             # ── TELEGRAM NOTIFICATION ──
             if HAS_NOTIFIER:
                 try:
-                    bull_tp = bull_result.get("target_price", "?") if bull_result else "?"
-                    bull_sl = bull_result.get("stop_loss", "?") if bull_result else "?"
+                    size_usd = order['quantity'] * order['price']
+                    strat = strategy_result.get('strategy_name', '?') if strategy_result else '?'
+                    sanad_sc = sanad_result.get('trust_score', '?') if sanad_result else '?'
                     notifier.send(
-                        f"🟢 *PAPER TRADE EXECUTED*\n\n"
-                        f"*{signal['token']}* / USDT\n"
-                        f"Side: LONG\n"
+                        f"🟢 *BUY — {signal['token']}/USDT*\n\n"
+                        f"Action: BUY (LONG)\n"
                         f"Entry: ${order['price']:,.4f}\n"
-                        f"Size: ${order['quantity'] * order['price']:,.2f} ({order['quantity']:,.2f} units)\n"
-                        f"Strategy: {strategy_result.get('strategy_name', '?') if strategy_result else '?'}\n"
-                        f"Sanad Score: {sanad_result.get('trust_score', '?')}\n"
-                        f"Target: {bull_tp}\n"
-                        f"Stop Loss: {bull_sl}\n"
+                        f"Size: ${size_usd:,.0f} ({order['quantity']:,.2f} units)\n\n"
+                        f"Strategy: {strat}\n"
+                        f"Sanad Score: {sanad_sc}\n"
                         f"Fee: ${order['fee_usd']:,.2f}\n\n"
                         f"_All 15 policy gates passed ✅_",
                         level="L2",
-                        title="Trade Executed"
+                        title=f"BUY {signal['token']}"
                     )
                 except Exception as e:
                     print(f"  Telegram notification error: {e}")
