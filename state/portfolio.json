@@ -2,7 +2,7 @@
   "mode": "paper",
   "starting_balance_usd": 10000.0,
   "current_balance_usd": 9948.88,
-  "daily_pnl_pct": 0.000769,
+  "daily_pnl_pct": 0.0,
   "current_drawdown_pct": 0.005112,
   "peak_balance_usd": 10005.31,
   "open_position_count": 0,

@@ -3,7 +3,7 @@
   "overall_status": "WARNING",
   "open_positions": 0,
   "total_exposure_pct": 0.0,
-  "daily_pnl_pct": 0.000769,
+  "daily_pnl_pct": 0.0,
   "checks": {
     "kill_switch": {
       "status": "OK",
@@ -38,5 +38,5 @@
       "detail": "All closed"
     }
   },
-  "heartbeat_timestamp": "2026-02-17T22:40:46.692456+00:00"
+  "heartbeat_timestamp": "2026-02-17T23:20:01.712593+00:00"
 }

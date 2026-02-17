@@ -746,13 +746,9 @@ Return your analysis as valid JSON with these exact keys:
     is_paper = portfolio.get("mode", "paper") == "paper"
     rugcheck_ok = signal.get("onchain_evidence", {}).get("rugpull_scan", {}).get("verdict") not in ("RUG", "BLACKLISTED")
     if trust_score < min_score:
-        if is_paper and trust_score >= 0 and rugcheck_ok:
-            print(f"  ⚠️ PAPER MODE: Trust score {trust_score} < {min_score} — allowing with CAUTION")
-            sanad_result["paper_mode_override"] = True
-        else:
-            print(f"  BLOCKED: Trust score {trust_score} < {min_score} minimum")
-            sanad_result["recommendation"] = "BLOCK"
-            return sanad_result, f"Trust score {trust_score} < {min_score}"
+        print(f"  BLOCKED: Trust score {trust_score} < {min_score} minimum")
+        sanad_result["recommendation"] = "BLOCK"
+        # No paper mode override — BLOCK means BLOCK regardless of mode
 
     return sanad_result, None
 
@@ -976,6 +972,9 @@ def stage_3_strategy_match(signal, sanad_result, profile=None):
         "regime_tag": regime_tag,
         "regime_size_modifier": regime_size_modifier,
         "thompson_mode": thompson_result.get("mode", "fallback"),
+        # v3.0 telemetry
+        "eligible_strategies": eligible_by_tier,
+        "meme_safety_gate": "N/A",  # set in stage 2.5 if applicable
     }
 
     print(f"  Strategy: {strategy_name}")
@@ -1037,6 +1036,7 @@ EXCHANGE DATA: {sanad_result.get('price_context', 'N/A')}"""
     
     # Lint the context to ensure no tier-inappropriate language
     lint_ok, violations = lint_prompt(context, simple_tier, strategy_result.get("strategy_name", ""))
+    strategy_result["lint_result"] = "PASS" if lint_ok else f"FAIL: {'; '.join(violations)}"
     if not lint_ok:
         print(f"  WARNING: Context contains tier-inappropriate language:")
         for v in violations:
@@ -1421,7 +1421,7 @@ def stage_6_policy_engine(signal, sanad_result, strategy_result, bull_result, be
             "position_size_pct": strategy_result.get("position_pct", 0),
             "position_usd": strategy_result.get("position_usd", 0),
         },
-        "trade_confidence_score": judge_result.get("confidence_score", 0),
+        "trade_confidence_score": 0 if judge_result.get("verdict") == "REJECT" else judge_result.get("confidence_score", 0),
         "almuhasbi_verdict": judge_result.get("verdict", "REJECT"),
         "almuhasbi_confidence": judge_result.get("confidence_score", 0),
         "dex_sim_result": signal.get("dex_sim_result", None),
@@ -1491,6 +1491,11 @@ def stage_7_execute(signal, sanad_result, strategy_result, bull_result, bear_res
         },
         "token_profile": profile_dict,  # v3.0
         "asset_tier": profile.asset_tier if profile else "UNKNOWN",  # v3.0
+        "regime_tag": strategy_result.get("regime_tag", "UNKNOWN"),  # v3.0 telemetry
+        "eligible_strategies": strategy_result.get("eligible_strategies", []),  # v3.0
+        "selected_strategy": strategy_result.get("strategy_name", "NONE"),  # v3.0
+        "meme_safety_gate": strategy_result.get("meme_safety_gate", "N/A"),  # v3.0
+        "lint_result": strategy_result.get("lint_result", "N/A"),  # v3.0
         "sanad": {
             "trust_score": sanad_result.get("trust_score", 0),
             "grade": sanad_result.get("grade", "FAILED"),
@@ -1780,6 +1785,25 @@ def _add_position(signal, strategy_result, order, sanad_result, bull_result=None
         print(f"[PIPELINE] Error updating positions: {e}")
 
 
+def _log_decision_short_circuit(signal, sanad_result):
+    """Log a short-circuited BLOCK decision without wasting LLM calls."""
+    from datetime import datetime, timezone
+    record = {
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "signal": {"token": signal.get("token", "?"), "source": signal.get("source", "?")},
+        "sanad": {
+            "trust_score": sanad_result.get("trust_score", 0),
+            "grade": sanad_result.get("grade", "?"),
+            "recommendation": "BLOCK",
+            "rugpull_flags": sanad_result.get("rugpull_flags", []),
+        },
+        "short_circuited": True,
+        "judge": {"verdict": "REJECT", "confidence_score": 100, "reasoning": "Short-circuited: Sanad BLOCK before LLM debate"},
+        "final_action": "REJECT",
+    }
+    _log_decision(record)
+
+
 def _log_decision(record):
     """Log decision to execution-logs/decisions.jsonl"""
     try:
@@ -1830,6 +1854,13 @@ def run_pipeline(signal):
     if error:
         print(f"\nPIPELINE BLOCKED at Stage 2: {error}")
         return {"final_action": "REJECT", "stage": 2, "reason": error}
+
+    # SHORT-CIRCUIT: If Sanad says BLOCK, stop before burning LLM credits
+    if sanad_result.get("recommendation") == "BLOCK" and not sanad_result.get("paper_mode_override"):
+        trust = sanad_result.get("trust_score", 0)
+        print(f"\n⛔ SHORT-CIRCUIT: Sanad BLOCK (trust={trust}/100) — skipping LLM debate")
+        _log_decision_short_circuit(signal, sanad_result)
+        return {"final_action": "REJECT", "stage": 2, "reason": f"Sanad BLOCK (trust={trust})"}
 
     # Stage 2.5: Token Profile & Classification (v3.0)
     profile, error = stage_2_5_token_profile(signal, sanad_result)
