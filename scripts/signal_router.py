@@ -560,6 +560,26 @@ def run_router():
     except Exception as e:
         _log(f"Telegram sniffer signal load error: {e}")
 
+    # ── Source 7: Telegram Sniffer ──
+    try:
+        tg_dir = BASE_DIR / "signals" / "telegram_sniffer"
+        if tg_dir.exists():
+            tg_files = sorted(tg_dir.glob("*.json"), key=lambda p: p.stat().st_mtime, reverse=True)
+            for tg_file in tg_files[:15]:
+                age_min = (datetime.now(timezone.utc) - datetime.fromtimestamp(tg_file.stat().st_mtime, tz=timezone.utc)).total_seconds() / 60
+                if age_min < 30:
+                    tg_signal = json.loads(tg_file.read_text())
+                    tg_signal["_source_age_min"] = age_min
+                    tg_signal["_origin"] = "telegram_sniffer"
+                    if "source" not in tg_signal:
+                        tg_signal["source"] = "telegram_sniffer"
+                    all_signals.append(tg_signal)
+            tg_count = sum(1 for s in all_signals if s.get("_origin") == "telegram_sniffer")
+            if tg_count:
+                _log(f"Telegram sniffer: {tg_count} signals loaded")
+    except Exception as e:
+        _log(f"Telegram sniffer signal load error: {e}")
+
     if not all_signals:
         _log("No actionable signals — no recent data from either source.")
         state["last_run"] = now_str

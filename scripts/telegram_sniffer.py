@@ -391,14 +391,112 @@ def test_detection():
     _log("=== TEST COMPLETE ===")
 
 
+async def run_snapshot(max_messages: int = 20, max_age_min: int = 15):
+    """Snapshot mode: connect, read recent messages from channels, parse, disconnect.
+    Designed for cron execution (no persistent connection needed).
+    """
+    try:
+        from telethon import TelegramClient
+    except ImportError:
+        _log("ERROR: Telethon not installed")
+        return
+
+    api_id = os.environ.get("TELEGRAM_API_ID")
+    api_hash = os.environ.get("TELEGRAM_API_HASH")
+
+    if not api_id or not api_hash:
+        env_path = BASE_DIR / "config" / ".env"
+        if env_path.exists():
+            for line in env_path.read_text().splitlines():
+                if line.startswith("TELEGRAM_API_ID="):
+                    api_id = line.split("=", 1)[1].strip()
+                elif line.startswith("TELEGRAM_API_HASH="):
+                    api_hash = line.split("=", 1)[1].strip()
+
+    if not api_id or not api_hash:
+        _log("ERROR: TELEGRAM_API_ID and TELEGRAM_API_HASH not set")
+        return
+
+    session_path = str(BASE_DIR / "state" / "telegram_session")
+    if not Path(session_path + ".session").exists():
+        _log("ERROR: No Telegram session found. Run: python3 scripts/telegram_sniffer_auth.py")
+        return
+
+    ensure_config()
+    config = _load_json(CONFIG_PATH, DEFAULT_CONFIG)
+    groups = [g for g in config.get("groups", []) if g.get("enabled")]
+    settings = config.get("settings", DEFAULT_CONFIG["settings"])
+
+    if not groups:
+        _log("No enabled groups in config")
+        return
+
+    state = _load_json(STATE_PATH, {"signals_emitted": 0, "messages_scanned": 0, "cooldowns": {}})
+    cutoff = _now() - timedelta(minutes=max_age_min)
+    signals_found = 0
+
+    _log(f"Snapshot mode: reading last {max_messages} messages from {len(groups)} channels (max {max_age_min}min old)")
+
+    async with TelegramClient(session_path, int(api_id), api_hash) as client:
+        for group in groups:
+            group_id = group["id"]
+            group_name = group.get("name", group_id)
+            group_grade = group.get("grade", "C")
+
+            try:
+                entity = await client.get_entity(group_id)
+                messages = await client.get_messages(entity, limit=max_messages)
+
+                for msg in messages:
+                    if not msg.text or len(msg.text) < 5:
+                        continue
+                    if msg.date.replace(tzinfo=timezone.utc) < cutoff:
+                        continue
+
+                    state["messages_scanned"] = state.get("messages_scanned", 0) + 1
+
+                    findings = detect_tokens(msg.text)
+                    if not findings:
+                        continue
+
+                    strength = calc_signal_strength(msg.text, findings)
+                    if strength < settings.get("min_signal_strength", 30):
+                        continue
+
+                    # Check hourly limit
+                    if state.get("signals_this_hour", 0) >= settings.get("max_signals_per_hour", 10):
+                        break
+
+                    for finding in findings:
+                        token_key = finding.get("token", finding.get("contract", "?"))
+                        if _check_cooldown(token_key, state, settings.get("cooldown_hours", 1)):
+                            continue
+
+                        emit_signal(finding, strength, msg.text, group_name, group_grade, group.get("strategy", ""))
+                        _set_cooldown(token_key, state, settings.get("cooldown_hours", 1))
+                        state["signals_emitted"] = state.get("signals_emitted", 0) + 1
+                        state["signals_this_hour"] = state.get("signals_this_hour", 0) + 1
+                        signals_found += 1
+
+                _log(f"  {group_name}: scanned {len(messages)} messages")
+            except Exception as e:
+                _log(f"  {group_name}: error — {e}")
+
+    _save_json(STATE_PATH, state)
+    _log(f"Snapshot done: {signals_found} signals from {len(groups)} channels")
+
+
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument("--test", action="store_true", help="Run offline detection test")
     parser.add_argument("--listen", action="store_true", help="Start live listener")
+    parser.add_argument("--snapshot", action="store_true", help="Snapshot: read recent messages and exit")
     args = parser.parse_args()
 
     if args.listen:
         asyncio.run(run_listener())
+    elif args.snapshot:
+        asyncio.run(run_snapshot())
     else:
         test_detection()
