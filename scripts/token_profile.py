@@ -69,6 +69,19 @@ class TokenProfile:
     asset_tier: Optional[str] = None  # TIER_1, TIER_2, TIER_3, SKIP, WHALE
     mc_to_liquidity_ratio: Optional[float] = None
     
+    # ── Doc-compatibility aliases (architecture doc uses _usd suffix) ──
+    @property
+    def market_cap_usd(self) -> Optional[float]:
+        return self.market_cap
+
+    @property
+    def fdv_usd(self) -> Optional[float]:
+        return self.fdv
+
+    @property
+    def canonical_id(self) -> Optional[str]:
+        return self.address or self.symbol.lower()
+
     def to_dict(self) -> dict:
         """Convert to dict for JSON serialization."""
         return asdict(self)

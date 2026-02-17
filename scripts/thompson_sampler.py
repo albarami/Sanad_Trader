@@ -100,7 +100,7 @@ def _save_json_atomic(path: Path, data):
 # ─────────────────────────────────────────────────────────
 # Known strategies and their regime affinities
 # v3.0: Added regime-tier matrix rules
-STRATEGY_REGISTRY = {
+THOMPSON_STRATEGIES = {
     "meme-momentum": {
         "preferred_regimes": ["BULL_NORMAL_VOL", "BULL_LOW_VOL", "BULL_HIGH_VOL"],  # v3.0: PREFERRED in BULL for TIER_3
         "neutral_regimes": [],  # v3.0: removed sideways neutrality
@@ -147,6 +147,10 @@ STRATEGY_REGISTRY = {
 # ─────────────────────────────────────────────────────────
 # Thompson State Management
 # ─────────────────────────────────────────────────────────
+# Backward-compat alias (canonical name is THOMPSON_STRATEGIES)
+STRATEGY_REGISTRY = THOMPSON_STRATEGIES
+
+
 def _load_state() -> dict:
     """Load Thompson Sampling state."""
     state = _load_json(THOMPSON_STATE, None)
@@ -164,7 +168,7 @@ def _load_state() -> dict:
     }
 
     # Initialize each strategy with Beta(1, 1) — uniform prior
-    for name in STRATEGY_REGISTRY:
+    for name in THOMPSON_STRATEGIES:
         state["strategies"][name] = {
             "alpha": 1,       # 1 + wins
             "beta": 1,        # 1 + losses
@@ -251,12 +255,12 @@ def select_strategy(
 
     # v3.0: Filter by tier-eligible strategies first
     if eligible_strategies is not None:
-        tier_excluded = [name for name in STRATEGY_REGISTRY if name not in eligible_strategies]
+        tier_excluded = [name for name in THOMPSON_STRATEGIES if name not in eligible_strategies]
         for name in tier_excluded:
             excluded[name] = "tier_ineligible"
-        registry_to_check = {k: v for k, v in STRATEGY_REGISTRY.items() if k in eligible_strategies}
+        registry_to_check = {k: v for k, v in THOMPSON_STRATEGIES.items() if k in eligible_strategies}
     else:
-        registry_to_check = STRATEGY_REGISTRY
+        registry_to_check = THOMPSON_STRATEGIES
 
     for name, registry in registry_to_check.items():
         strat_state = state["strategies"].get(name, {"alpha": 1, "beta": 1})
@@ -348,7 +352,7 @@ def rank_strategies(
     state = _load_state()
     rankings = []
 
-    for name, registry in STRATEGY_REGISTRY.items():
+    for name, registry in THOMPSON_STRATEGIES.items():
         strat_state = state["strategies"].get(name, {"alpha": 1, "beta": 1})
         alpha = strat_state.get("alpha", 1)
         beta_param = strat_state.get("beta", 1)

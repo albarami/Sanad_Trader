@@ -21,6 +21,7 @@
 
 # === Every 6 hours ===
 0 */6 * * * cd /data/.openclaw/workspace/trading && python3 scripts/github_backup.py >> logs/backup.log 2>&1
+0 */6 * * * cd /data/.openclaw/workspace/trading && python3 -c "from scripts.vector_db import run; run()" >> logs/vector_db.log 2>&1
 
 # === Weekly ===
 0 1 * * 0 cd /data/.openclaw/workspace/trading && python3 scripts/dust_sweeper.py >> logs/dust.log 2>&1
