@@ -31,6 +31,7 @@ BASE_DIR = SCRIPT_DIR.parent  # /data/.openclaw/workspace/trading
 SIGNALS_CG = BASE_DIR / "signals" / "coingecko"
 SIGNALS_DEX = BASE_DIR / "signals" / "dexscreener"
 SIGNALS_BE = BASE_DIR / "signals" / "birdeye"
+SIGNALS_OC = BASE_DIR / "signals" / "onchain"
 FEAR_GREED_PATH = BASE_DIR / "signals" / "market" / "fear_greed_latest.json"
 STATE_DIR = BASE_DIR / "state"
 POSITIONS_PATH = STATE_DIR / "positions.json"
@@ -448,6 +449,23 @@ def run_router():
         state["daily_reset_date"] = today
         state["processed_hashes"] = []  # also reset processed hashes daily
 
+    # --- Data quality gate (Tier 2 wiring) ---
+    try:
+        from market_data_quality import run_all_checks
+        dq = run_all_checks()
+        dq_status = dq.get("status", "OK")
+        if dq_status == "BLOCK":
+            _log(f"Data quality BLOCK — skipping this cycle. Issues: {dq.get('checks', [])}")
+            state["last_run"] = now_str
+            state["data_quality_block"] = True
+            _save_json_atomic(ROUTER_STATE_PATH, state)
+            return
+        elif dq_status == "WARN":
+            _log(f"Data quality WARN — proceeding with caution")
+        state["data_quality_block"] = False
+    except Exception as e:
+        _log(f"Data quality check failed (proceeding anyway): {e}")
+
     # --- Budget check ---
     if state["daily_pipeline_runs"] >= MAX_DAILY_RUNS:
         _log(f"Daily pipeline budget exhausted ({state['daily_pipeline_runs']}/{MAX_DAILY_RUNS} runs). Skipping.")
@@ -459,6 +477,7 @@ def run_router():
     cg_path, cg_signals, cg_age = _latest_signal_file(SIGNALS_CG, exclude_names={"global_latest.json"})
     dex_path, dex_signals, dex_age = _latest_signal_file(SIGNALS_DEX)
     be_path, be_signals, be_age = _latest_signal_file(SIGNALS_BE)
+    oc_path, oc_signals, oc_age = _latest_signal_file(SIGNALS_OC)
 
     def _label(name, sigs, age, path):
         if sigs:
@@ -469,7 +488,8 @@ def run_router():
 
     _log(f"Loading signals: {_label('CoinGecko', cg_signals, cg_age, cg_path)}, "
          f"{_label('DexScreener', dex_signals, dex_age, dex_path)}, "
-         f"{_label('Birdeye', be_signals, be_age, be_path)}")
+         f"{_label('Birdeye', be_signals, be_age, be_path)}, "
+         f"{_label('OnChain', oc_signals, oc_age, oc_path)}")
 
     all_signals = []
     for s in cg_signals:
@@ -483,6 +503,10 @@ def run_router():
     for s in be_signals:
         s["_source_age_min"] = be_age
         s["_origin"] = "birdeye"
+        all_signals.append(s)
+    for s in oc_signals:
+        s["_source_age_min"] = oc_age
+        s["_origin"] = "onchain"
         all_signals.append(s)
 
     if not all_signals:
@@ -517,10 +541,11 @@ def run_router():
     cg_tokens = {s.get("token", "").upper() for s in cg_signals}
     dex_tokens = {s.get("token", "").upper() for s in dex_signals}
     be_tokens = {s.get("token", "").upper() for s in be_signals}
+    oc_tokens = {s.get("token", "").upper() for s in oc_signals}
     # Cross-source = token appears in 2+ sources
-    all_source_sets = [cg_tokens, dex_tokens, be_tokens]
+    all_source_sets = [cg_tokens, dex_tokens, be_tokens, oc_tokens]
     cross_source_tokens: set[str] = set()
-    all_unique = cg_tokens | dex_tokens | be_tokens
+    all_unique = cg_tokens | dex_tokens | be_tokens | oc_tokens
     for tok in all_unique:
         sources_count = sum(1 for s in all_source_sets if tok in s)
         if sources_count >= 2:
@@ -579,6 +604,20 @@ def run_router():
         state["signals_filtered"] = len(all_signals)
         _save_json_atomic(ROUTER_STATE_PATH, state)
         return
+
+    # --- Strategy pre-filter (Tier 2 wiring) ---
+    # Bonus for signals that match an active strategy
+    try:
+        from strategy_registry import match_signal_to_strategies
+        for idx, (s, sc) in enumerate(candidates):
+            matches = match_signal_to_strategies(s)
+            if matches:
+                strategy_names = [m["strategy"] for m in matches]
+                candidates[idx] = (s, sc + 15)  # Strategy match bonus
+                s["_matched_strategies"] = strategy_names
+        _log(f"Strategy filter: {sum(1 for s,_ in candidates if s.get('_matched_strategies'))} signals match active strategies")
+    except Exception as e:
+        _log(f"Strategy pre-filter failed (proceeding without): {e}")
 
     # --- Rank ---
     candidates.sort(key=lambda x: x[1], reverse=True)
