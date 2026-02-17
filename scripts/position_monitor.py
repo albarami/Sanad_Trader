@@ -103,41 +103,17 @@ def save_trailing_stops(data):
 # ─────────────────────────────────────────────
 
 # Trailing stop parameters — Al-Muhasbi audit: let winners run, cut losers fast
-TRAILING_ACTIVATION_PCT = 0.05   # Activate at 5% profit (was 15% — never triggered before TP)
-TRAILING_DROP_PCT = 0.03         # Close on 3% drop from high-water (was 8% — tighter for blue-chips)
-MAX_HOLD_HOURS = 48              # Time-based exit
+TRAILING_ACTIVATION_PCT = 0.08   # Al-Muhasbi approved: +8% (not 5%, not 15%)
+TRAILING_DROP_PCT = 0.05         # Al-Muhasbi approved: 5% from HWM (not 3%, not 8%)
+MAX_HOLD_HOURS = 24              # Al-Muhasbi approved: 24h for meme-momentum (not 12, not 48)
 FLASH_CRASH_PCT = 0.10           # 10% drop in 15 minutes
 FLASH_CRASH_WINDOW_MIN = 15      # 15-minute window
 
-# CEX blue-chip tokens use trailing stop INSTEAD of fixed TP
-CEX_BLUECHIP = {
-    "BONK", "WIF", "PEPE", "FLOKI", "RAY", "ORCA", "SOL", "JUP",
-    "DOGE", "SHIB", "PENGU", "TAO", "SUI", "VIRTUAL", "BTC", "ETH",
-    "AAVE", "UNI", "LINK", "ATOM", "HBAR", "XRP", "INIT", "ONDO",
-    "MOVE", "LDO", "RPL", "FOGO",
-}
-
 
 def check_stop_loss(position, current_price):
-    """Exit Condition A: Hard stop-loss with breakeven upgrade.
-    Once price reaches +3%, stop moves to entry (breakeven) — never give back a winner.
-    Blue-chips use tighter stops (5% default instead of 15%).
-    """
+    """Exit Condition A: Hard stop-loss."""
     entry = position["entry_price"]
-    token = position.get("token", "").upper()
-    unrealized_pct = (current_price - entry) / entry
-
-    # Breakeven stop: once +3%, stop moves to entry price
-    if unrealized_pct >= 0.03 and not position.get("_breakeven_set"):
-        position["_breakeven_set"] = True
-        position["stop_loss_pct"] = 0.001  # Essentially entry price (0.1% buffer for fees)
-        print(f"    [BREAKEVEN] {token} stop moved to entry @ ${entry:,.4f} (was +{unrealized_pct*100:.1f}%)")
-
     stop_pct = position.get("stop_loss_pct", 0.15)
-    # Blue-chips: default tighter stop (5%) if not already tighter
-    if token in CEX_BLUECHIP and stop_pct > 0.05 and not position.get("_breakeven_set"):
-        stop_pct = 0.05
-
     stop_price = entry * (1.0 - stop_pct)
 
     if current_price <= stop_price:
@@ -146,15 +122,7 @@ def check_stop_loss(position, current_price):
 
 
 def check_take_profit(position, current_price):
-    """Exit Condition B: Take-profit.
-    CEX blue-chips skip fixed TP — trailing stop handles exit (let winners run).
-    Only DEX/unknown tokens use fixed TP as safety net.
-    """
-    token = position.get("token", "").upper()
-    if token in CEX_BLUECHIP:
-        # Blue-chips: no fixed TP, trailing stop will handle exit
-        return False, None, None
-
+    """Exit Condition B: Take-profit."""
     entry = position["entry_price"]
     tp_pct = position.get("take_profit_pct", 0.30)
     tp_price = entry * (1.0 + tp_pct)
@@ -162,6 +130,34 @@ def check_take_profit(position, current_price):
     if current_price >= tp_price:
         return True, "TAKE_PROFIT", f"Price ${current_price:,.4f} >= target ${tp_price:,.4f} (+{tp_pct*100:.0f}%)"
     return False, None, None
+
+
+
+
+BREAKEVEN_ACTIVATION_PCT = 0.05  # Al-Muhasbi approved: move SL to entry at +5%
+
+
+def check_breakeven_stop(position, current_price):
+    """Exit Condition B2: Breakeven stop.
+    Once position reaches +5%, move stop loss to entry price.
+    This creates a zero-risk position — can only win or break even from here.
+    Does NOT close the position — modifies the stop loss in place.
+    Returns True if stop loss was updated, False otherwise.
+    """
+    entry = position["entry_price"]
+    unrealized_pct = (current_price - entry) / entry
+
+    # Only activate if position is up 5%+ and SL hasn't been moved to breakeven yet
+    current_sl = position.get("stop_loss_pct", 0.15)
+    breakeven_sl = 0.001  # 0.1% below entry — effectively breakeven with tiny buffer
+
+    if unrealized_pct >= BREAKEVEN_ACTIVATION_PCT and current_sl > breakeven_sl:
+        position["stop_loss_pct"] = breakeven_sl
+        position["breakeven_activated"] = True
+        token = position.get("token", "?")
+        print(f"    [BREAKEVEN] {token}: +{unrealized_pct*100:.1f}% — SL moved to entry (breakeven)")
+        return True
+    return False
 
 
 def check_trailing_stop(position, current_price, trailing_stops):
@@ -216,6 +212,62 @@ def check_time_exit(position):
 def check_volume_death(position, current_price):
     """Exit Condition E: Volume death (SKIPPED — no entry volume recorded)."""
     # TODO: Add entry_volume to position records in sanad_pipeline.py
+    return False, None, None
+
+
+
+
+def check_momentum_decay(position, current_price):
+    """Exit Condition E2: Momentum decay.
+    Al-Muhasbi approved: exit if BOTH conditions met:
+    1. 2-hour rolling return goes negative (price below 2h ago)
+    2. Current volume dropped >30% from entry volume
+    Both conditions required to avoid whipsaw on normal pullbacks.
+    """
+    import json
+    from pathlib import Path
+
+    token = position.get("token", "?")
+    entry = position["entry_price"]
+    symbol = position.get("symbol", "")
+
+    # Condition 1: Check 2-hour price trend
+    # Use price_history.json for historical comparison
+    history_path = Path("/data/.openclaw/workspace/trading/state/price_history.json")
+    try:
+        history = json.loads(history_path.read_text()) if history_path.exists() else {}
+        prices = history.get(symbol, [])
+        if len(prices) < 40:  # Need ~2h of 3-min snapshots (40 data points)
+            return False, None, None
+
+        price_2h_ago = prices[-40] if isinstance(prices[-40], (int, float)) else prices[-40].get("price", 0)
+        two_hour_return = (current_price - price_2h_ago) / price_2h_ago if price_2h_ago > 0 else 0
+
+        if two_hour_return >= 0:
+            return False, None, None  # Still positive — no decay
+
+        # Condition 2: Volume drop >30% from entry
+        # Use entry volume vs current volume from price cache
+        entry_vol = position.get("entry_volume_24h", 0)
+        if entry_vol <= 0:
+            return False, None, None  # No entry volume recorded — skip
+
+        cache_path = Path("/data/.openclaw/workspace/trading/state/price_cache.json")
+        cache = json.loads(cache_path.read_text()) if cache_path.exists() else {}
+        current_vol = cache.get(symbol, {}).get("volume_24h", 0)
+        if current_vol <= 0:
+            return False, None, None
+
+        vol_change = (current_vol - entry_vol) / entry_vol
+        if vol_change < -0.30:  # Volume dropped >30%
+            return True, "MOMENTUM_DECAY", (
+                f"2h return: {two_hour_return*100:.1f}% (negative) AND "
+                f"volume dropped {abs(vol_change)*100:.0f}% from entry. "
+                f"Both momentum decay conditions met."
+            )
+    except Exception as e:
+        print(f"    [MOMENTUM] Error checking {token}: {e}")
+
     return False, None, None
 
 
@@ -553,6 +605,10 @@ def run_monitor():
             closed_pnls.append(pnl)
             continue
 
+        # ── Exit Condition B2: Breakeven Stop ──
+        check_breakeven_stop(position, current_price)
+        # (does not close — modifies SL in place, then continues to other checks)
+
         # ── Exit Condition C: Trailing Stop ──
         triggered, reason, detail = check_trailing_stop(position, current_price, trailing_stops)
         if triggered:
@@ -569,6 +625,13 @@ def run_monitor():
 
         # ── Exit Condition E: Volume Death (SKIPPED) ──
         # TODO: Add entry_volume to position records in sanad_pipeline.py
+
+        # ── Exit Condition E2: Momentum Decay ──
+        triggered, reason, detail = check_momentum_decay(position, current_price)
+        if triggered:
+            pnl = close_position(position, current_price, reason, detail)
+            closed_pnls.append(pnl)
+            continue
 
     # ── Save state ──
     save_json_atomic(STATE_DIR / "positions.json", positions_data)
