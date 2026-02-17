@@ -1070,7 +1070,7 @@ Return valid JSON with these exact keys:
     bull_response = call_claude(
         system_prompt=tier_bull_system,  # v3.0: tier-specific prompt
         user_message=bull_message,
-        model="claude-sonnet-4-5-20250929",
+        model="claude-sonnet-4-6",
         max_tokens=3000,
     )
     bull_result = _parse_json_response(bull_response) if bull_response else None
@@ -1148,7 +1148,7 @@ Apply your Muḥāsibī pre-reasoning discipline (Khawāṭir → Murāqaba → 
     bear_response = call_claude(
         system_prompt=tier_bear_system,  # v3.0: tier-specific prompt
         user_message=bear_message,
-        model="claude-sonnet-4-5-20250929",
+        model="claude-sonnet-4-6",
         max_tokens=5000,
     )
     bear_result = _parse_json_response(bear_response) if bear_response else None
