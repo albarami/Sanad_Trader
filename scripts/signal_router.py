@@ -310,6 +310,50 @@ def _score_signal(signal: dict, age_minutes: float, is_cross_source: bool) -> in
     # In extreme fear, established tokens are bargains
     # (Fear/greed bonus applied externally by router)
 
+    # ── SENTIMENT OVERLAY (Tier 1 wiring) ──
+    # Read latest sentiment for this token if available
+    try:
+        sentiment_dir = BASE_DIR / "signals" / "sentiment"
+        if sentiment_dir.exists():
+            sent_files = sorted(sentiment_dir.glob("*.json"), key=lambda f: f.stat().st_mtime, reverse=True)
+            for sf in sent_files[:5]:  # Check last 5 sentiment files
+                sent_data = _load_json(sf, {})
+                sent_signals = sent_data.get("signals", [sent_data]) if "signals" in sent_data else [sent_data]
+                for ss in sent_signals:
+                    if ss.get("token", "").upper() == token:
+                        sent_score = ss.get("sentiment_score", 50)
+                        sent_trend = ss.get("trend", "stable")
+                        if sent_score >= 75 and sent_trend == "rising":
+                            score += 20  # Strong bullish sentiment + rising
+                        elif sent_score >= 60 and sent_trend == "rising":
+                            score += 10  # Moderate bullish + rising
+                        elif sent_score <= 25:
+                            score -= 15  # Extreme fear sentiment
+                        elif sent_score <= 40 and sent_trend == "falling":
+                            score -= 10  # Bearish + falling
+                        raise StopIteration  # Found match, stop searching
+    except StopIteration:
+        pass
+    except Exception:
+        pass  # Sentiment unavailable — no penalty
+
+    # ── UCB1 SOURCE WEIGHTING (Tier 1 wiring) ──
+    # Sources with better track records get a scoring bonus
+    try:
+        from ucb1_scorer import get_source_score
+        source_key = signal.get("source", "unknown")
+        ucb1 = get_source_score(source_key)
+        if not ucb1.get("cold_start", True):
+            ucb1_score = ucb1.get("score", 50)
+            if ucb1_score >= 80:
+                score += 15  # Grade A source — proven winner
+            elif ucb1_score >= 60:
+                score += 5   # Grade B — reliable
+            elif ucb1_score < 30:
+                score -= 15  # Grade D/F — historically bad
+    except Exception:
+        pass  # UCB1 unavailable — no adjustment
+
     return max(score, 0)  # floor at 0
 
 
@@ -636,6 +680,14 @@ def run_router():
     selected, selected_score = candidates[0]
     selected_token = selected.get("token", "?")
     _log(f"Selected: {selected_token} (score {selected_score}) → feeding to pipeline")
+
+    # --- Record signal in UCB1 ---
+    try:
+        from ucb1_scorer import record_signal
+        source_key = selected.get("source", selected.get("_origin", "unknown"))
+        record_signal(source_key)
+    except Exception as e:
+        _log(f"UCB1 record_signal failed: {e}")
 
     # --- Convert to pipeline format ---
     cross_labels = []
