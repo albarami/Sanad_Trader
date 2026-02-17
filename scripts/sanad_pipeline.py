@@ -757,10 +757,31 @@ def stage_3_strategy_match(signal, sanad_result):
     if not available:
         return None, "No strategies available"
 
-    # For now: single strategy (meme-momentum)
-    # TODO Phase 4: Thompson Sampling across multiple strategies
-    strategy_name = "meme-momentum"
+    # Match signal to best strategy via registry
+    strategy_name = "meme-momentum"  # fallback default
+    matched_exit_rules = {}
+    try:
+        sys.path.insert(0, str(SCRIPT_DIR))
+        from strategy_registry import match_signal_to_strategies
+        matches = match_signal_to_strategies(signal)
+        if matches:
+            # Pick first matched strategy (registry returns them in priority order)
+            best_match = matches[0]
+            strategy_name = best_match["strategy"]
+            matched_exit_rules = best_match.get("exit_rules", {})
+            print(f"  Strategy matched: {strategy_name} (from {len(matches)} candidates)")
+            if len(matches) > 1:
+                print(f"  Also matched: {', '.join(m['strategy'] for m in matches[1:])}")
+        else:
+            print(f"  No strategy match — defaulting to {strategy_name}")
+    except Exception as e:
+        print(f"  Strategy registry error ({e}) — defaulting to {strategy_name}")
+
     strategy_path = strategies_dir / f"{strategy_name}.md"
+    if not strategy_path.exists():
+        # Fallback to meme-momentum if matched strategy file missing
+        strategy_name = "meme-momentum"
+        strategy_path = strategies_dir / f"{strategy_name}.md"
 
     if not strategy_path.exists():
         return None, f"Strategy file not found: {strategy_name}"
@@ -793,6 +814,7 @@ def stage_3_strategy_match(signal, sanad_result):
         "balance_usd": balance,
         "sizing_mode": "cold_start" if trade_count < min_kelly_trades else "fractional_kelly",
         "trade_count": trade_count,
+        "exit_rules": matched_exit_rules,
     }
 
     print(f"  Strategy: {strategy_name}")
@@ -1337,6 +1359,43 @@ def _load_state(filename):
         return {}
 
 
+def _calc_stop_pct_with_strategy(entry_price, bull_result, strategy_result):
+    """Calculate stop-loss using strategy exit rules, with Bull override if valid."""
+    exit_rules = strategy_result.get("exit_rules", {})
+    strategy_sl = exit_rules.get("stop_loss_pct")
+
+    # Try Bull's specific price first
+    bull_sl = _calc_stop_pct(entry_price, bull_result) if bull_result else None
+
+    if strategy_sl:
+        strategy_sl_dec = strategy_sl / 100  # Convert from 5 → 0.05
+        if bull_sl and 0.03 <= bull_sl <= 0.25:
+            # Use Bull's if reasonable, but floor at strategy minimum
+            return max(bull_sl, strategy_sl_dec * 0.5)  # Don't go tighter than half strategy default
+        return strategy_sl_dec
+    elif bull_sl and 0.03 <= bull_sl <= 0.25:
+        return bull_sl
+    return THRESHOLDS["risk"]["stop_loss_default_pct"]
+
+
+def _calc_tp_pct_with_strategy(entry_price, bull_result, strategy_result):
+    """Calculate take-profit using strategy exit rules, with Bull override if valid."""
+    exit_rules = strategy_result.get("exit_rules", {})
+    strategy_tp = exit_rules.get("take_profit_pct")
+
+    bull_tp = _calc_tp_pct(entry_price, bull_result) if bull_result else None
+
+    if strategy_tp:
+        strategy_tp_dec = strategy_tp / 100  # Convert from 20 → 0.20
+        if bull_tp and 0.10 <= bull_tp <= 5.0:
+            # Use Bull's if reasonable, capped at 2x strategy default
+            return min(bull_tp, strategy_tp_dec * 2)
+        return strategy_tp_dec
+    elif bull_tp and 0.10 <= bull_tp <= 5.0:
+        return bull_tp
+    return THRESHOLDS["risk"]["take_profit_default_pct"]
+
+
 def _calc_stop_pct(entry_price, bull_result):
     """Calculate stop-loss percentage from Bull's specific price, with safety bounds."""
     try:
@@ -1382,8 +1441,8 @@ def _add_position(signal, strategy_result, order, sanad_result, bull_result=None
             "current_price": order["price"],
             "quantity": order["quantity"],
             "position_usd": strategy_result.get("position_usd", 0),
-            "stop_loss_pct": _calc_stop_pct(order["price"], bull_result) if bull_result else THRESHOLDS["risk"]["stop_loss_default_pct"],
-            "take_profit_pct": _calc_tp_pct(order["price"], bull_result) if bull_result else THRESHOLDS["risk"]["take_profit_default_pct"],
+            "stop_loss_pct": _calc_stop_pct_with_strategy(order["price"], bull_result, strategy_result),
+            "take_profit_pct": _calc_tp_pct_with_strategy(order["price"], bull_result, strategy_result),
             "bull_stop_loss": bull_result.get("stop_loss", "N/A") if bull_result else "N/A",
             "bull_target_price": bull_result.get("target_price", "N/A") if bull_result else "N/A",
             "bull_entry_price": bull_result.get("entry_price", "N/A") if bull_result else "N/A",

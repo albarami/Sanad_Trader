@@ -248,7 +248,11 @@ def match_signal_to_strategies(signal: dict) -> list:
             "sizing": strat.get("sizing", {}),
         })
 
-    return [m for m in matches if m["matched"]]
+    matched = [m for m in matches if m["matched"]]
+    # Priority order: cex-listing-play > whale-following > sentiment-divergence > meme-momentum > early-launch
+    priority = {"cex-listing-play": 1, "whale-following": 2, "sentiment-divergence": 3, "meme-momentum": 4, "early-launch": 5}
+    matched.sort(key=lambda m: priority.get(m["strategy"], 99))
+    return matched
 
 
 def save_strategy_stats(name: str, trade_result: dict):
