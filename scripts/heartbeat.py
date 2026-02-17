@@ -313,7 +313,7 @@ def check_cron_health():
     expected_crons = {
         "price_snapshot": 6,     # Every 3min, alert if >6min
         "reconciliation": 20,   # Every 10min, alert if >20min
-        "meme_radar": 10,       # Every 5min, alert if >10min
+        # meme_radar removed — not in crontab, was causing false alerts every cycle
     }
 
     for cron_name, max_age_min in expected_crons.items():
@@ -457,11 +457,11 @@ def run_heartbeat():
     check_summary = ", ".join(f"{k}={v['status']}" for k, v in results.items())
     log(f"HEARTBEAT END — Overall: {overall} ({check_summary})")
 
-    # Notify on non-OK status
-    if overall != "OK":
+    # Notify on ALERT or CRITICAL only (not WARNING — avoids spam for NTP/container issues)
+    if overall in ("ALERT", "CRITICAL"):
         alerts_detail = []
         for check_name, check_result in results.items():
-            if check_result["status"] not in ("OK",):
+            if check_result["status"] in ("ALERT", "CRITICAL"):
                 detail = check_result.get("detail", "")
                 alerts = check_result.get("alerts", [])
                 if alerts:
@@ -469,10 +469,11 @@ def run_heartbeat():
                 else:
                     alerts_detail.append(f"{check_name}: {detail}")
 
-        notify_whatsapp(
-            f"Heartbeat {overall}: {' | '.join(alerts_detail)}",
-            urgent=(overall == "CRITICAL")
-        )
+        if alerts_detail:
+            notify_whatsapp(
+                f"Heartbeat {overall}: {' | '.join(alerts_detail)}",
+                urgent=(overall == "CRITICAL")
+            )
 
     return results
 
