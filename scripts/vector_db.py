@@ -107,12 +107,31 @@ def get_collection():
 # 5.8.2 — Trade Log Embeddings
 # ─────────────────────────────────────────────────────────
 
+def _flatten_trade(trade: dict) -> dict:
+    """Flatten nested analysis dicts for uniform access."""
+    flat = dict(trade)
+    # Post-trade analyzer nests under metrics/trade_details/regime
+    if "metrics" in trade and isinstance(trade["metrics"], dict):
+        for k, v in trade["metrics"].items():
+            flat.setdefault(k, v)
+    if "trade_details" in trade and isinstance(trade["trade_details"], dict):
+        for k, v in trade["trade_details"].items():
+            flat.setdefault(k, v)
+    if "regime" in trade and isinstance(trade["regime"], dict):
+        flat.setdefault("regime_tag", trade["regime"].get("tag", "unknown"))
+        flat["regime"] = trade["regime"].get("tag", str(trade["regime"]))
+    if "exit" in trade and isinstance(trade["exit"], dict):
+        flat.setdefault("exit_reason", trade["exit"].get("reason", "unknown"))
+    return flat
+
+
 def _trade_to_document(trade: dict) -> str:
     """Convert a trade record to a text document for embedding."""
+    trade = _flatten_trade(trade)
     parts = []
 
     token = trade.get("token", trade.get("symbol", "unknown"))
-    strategy = trade.get("strategy", "unknown")
+    strategy = trade.get("strategy", trade.get("strategy_name", "unknown"))
     result = "WIN" if trade.get("pnl_pct", 0) > 0 else "LOSS"
     pnl = trade.get("pnl_pct", 0)
     regime = trade.get("regime", trade.get("regime_at_entry", "unknown"))
@@ -143,6 +162,7 @@ def _trade_to_document(trade: dict) -> str:
 
 def _trade_metadata(trade: dict) -> dict:
     """Extract metadata for filtering."""
+    trade = _flatten_trade(trade)
     pnl = trade.get("pnl_pct", 0)
     if isinstance(pnl, str):
         try:
@@ -152,7 +172,7 @@ def _trade_metadata(trade: dict) -> dict:
 
     return {
         "token": str(trade.get("token", trade.get("symbol", "unknown"))),
-        "strategy": str(trade.get("strategy", "unknown")),
+        "strategy": str(trade.get("strategy", trade.get("strategy_name", "unknown"))),
         "result": "WIN" if pnl > 0 else "LOSS",
         "pnl_pct": float(pnl),
         "regime": str(trade.get("regime", trade.get("regime_at_entry", "unknown"))),
