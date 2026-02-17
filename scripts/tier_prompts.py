@@ -456,3 +456,16 @@ if __name__ == "__main__":
         print(f"  Bear prompt length: {len(bear)} chars")
         print(f"  Bull first line: {bull.split(chr(10))[0]}")
         print(f"  Bear first line: {bear.split(chr(10))[0]}\n")
+
+
+# ─────────────────────────────────────────────────────────
+# Compatibility re-exports (architecture doc expects these here)
+# Canonical source: token_profile.py
+# ─────────────────────────────────────────────────────────
+from token_profile import (
+    lint_prompt,
+    validate_evidence,
+    REQUIRED_EVIDENCE,
+    PRE_TRADE_MUHASABA,
+    POST_TRADE_REASON_CODES,
+)

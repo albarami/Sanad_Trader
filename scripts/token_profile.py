@@ -99,31 +99,42 @@ def classify_asset(profile: TokenProfile) -> str:
     if mc > 20_000_000_000:
         return "TIER_1_MACRO"
     
-    # 3. TIER_2 — Alts/Mid-caps ($100M - $20B)
+    # 3. TIER_3_MEME — Meme detection BEFORE alt classification (first-match-wins)
+    # A $3B meme is still a meme. Category and symbol pattern take priority over MC.
+    import re
+    is_meme_category = any(cat.lower() in ("meme", "meme token", "memecoin", "community")
+                          for cat in (profile.coingecko_categories or []))
+    is_meme_pattern = bool(re.search(
+        r"(inu|pepe|doge|dog|cat|wif|bonk|meme|trump|elon|moon|rocket|cum|safe|baby|floki)",
+        profile.symbol.lower()
+    ))
+    
+    if is_meme_category or is_meme_pattern:
+        if profile.cex_listed and mc >= 100_000_000:
+            return "TIER_3_MEME_CEX"     # Established meme, CEX-listed
+        elif mc >= 10_000_000:
+            return "TIER_3_MEME_MID"     # Mid meme, may have DEX liquidity
+        else:
+            return "TIER_3_MEME_MICRO"   # Trench warfare territory
+    
+    # 4. TIER_3_MICRO — Any micro-cap DEX-only token (non-meme)
+    if mc < 50_000_000 and profile.dex_only and liq < 2_000_000:
+        return "TIER_3_MICRO"
+    
+    # 5. TIER_2 — Everything else ($50M-$20B, utility/infra/DeFi)
     if mc >= 5_000_000_000:
         return "TIER_2_ALT_LARGE"
-    elif mc >= 1_000_000_000:
+    elif mc >= 200_000_000:
         return "TIER_2_ALT_MID"
-    elif mc >= 100_000_000:
+    elif mc >= 50_000_000:
         return "TIER_2_ALT_SMALL"
     
-    # 4. TIER_3 — Memes and Microcaps (<$100M)
-    # Sub-classify by CEX listings and liquidity
-    is_meme = any(cat in ["Meme", "meme", "Community"] 
-                  for cat in profile.coingecko_categories)
+    # 6. Small non-meme with CEX listing
+    if profile.cex_listed:
+        return "TIER_2_ALT_SMALL"
     
-    if mc < 100_000_000:
-        if profile.cex_listed and len(profile.cex_names) >= 2:
-            # Listed on 2+ CEX = more legit meme
-            return "TIER_3_MEME_CEX"
-        elif mc >= 10_000_000 or liq >= 1_000_000:
-            # Mid-sized meme/micro
-            return "TIER_3_MEME_MID" if is_meme else "TIER_3_MICRO"
-        else:
-            # True microcap / new launch
-            return "TIER_3_MEME_MICRO" if is_meme else "TIER_3_MICRO"
-    
-    return "UNKNOWN"
+    # Fallback: micro-cap non-meme
+    return "TIER_3_MICRO"
 
 
 # Simplified tier mapping for strategy constraints
