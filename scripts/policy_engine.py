@@ -637,7 +637,10 @@ def gate_15_sanad_audit(config, decision_packet, state):
                 return True, f"PAPER EXPLORE: Al-Muhasbi REJECT overridden (ALLOW_LOW_TRUST_PAPER=true, judge_conf={judge_confidence}%)"
             return False, f"Al-Muhasbi verdict: REJECT (confidence {judge_confidence}%)"
 
-        if audit_verdict not in ("APPROVE", "REVISE"):
+        if audit_verdict == "REVISE":
+            return False, f"Al-Muhasbi verdict: REVISE — logged for review, not executable"
+
+        if audit_verdict != "APPROVE":
             if allow_paper_override:
                 return True, f"PAPER EXPLORE: verdict '{audit_verdict}' overridden (ALLOW_LOW_TRUST_PAPER=true)"
             return False, f"Al-Muhasbi verdict invalid or missing: '{audit_verdict}'"

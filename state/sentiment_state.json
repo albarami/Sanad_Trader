@@ -1,5 +1,5 @@
 {
-  "last_run": "2026-02-17T23:33:52.988389+00:00",
+  "last_run": "2026-02-17T23:48:53.209475+00:00",
   "scans": {
     "positions": {
       "sentiment_score": 15,
@@ -82,28 +82,26 @@
       "scanned_at": "2026-02-17T22:04:12.507933+00:00"
     },
     "BNB": {
-      "sentiment_score": 25,
+      "sentiment_score": 42,
       "trend": "falling",
-      "volume": "high",
+      "volume": "normal",
       "key_narratives": [
-        "Regulatory pressure from Iran-linked USDT controversy (Fortune report, February 13)",
-        "Anti-Binance sentiment gaining traction with calls to withdraw assets",
-        "Technical breakdown below $600 support level triggering bearish momentum",
-        "Oversold conditions narrative competing with deeper correction fears",
-        "BNB Chain network upgrades and institutional accumulation countered by founder-related legal concerns"
+        "Regulatory scrutiny from Iran transaction allegations and founder CZ collusion claims",
+        "Technical oversold conditions with RSI at 30 suggesting potential short squeeze",
+        "Support level defense at $600-$630 range as critical inflection point",
+        "Ecosystem expansion and institutional adoption as bullish fundamental support",
+        "Anti-Binance sentiment gaining traction on social media with asset withdrawal calls"
       ],
       "risk_signals": [
-        "Positive social sentiment collapsed to 1.44 (six-month low from October peak of 196)",
-        "Fear and Greed Index in Extreme Fear zone (10/100)",
-        "BNB trading below critical $600 support with $610 key support under pressure",
-        "Long-to-short ratio at 0.91 (below 1.0 indicates weakening sentiment)",
+        "Recent 17.97% weekly decline indicating bearish momentum",
+        "Founder allegations and regulatory investigations creating institutional confidence damage",
+        "BNB slipped below $600 support with long-to-short ratio at 0.91 (below 1 indicates weakening sentiment)",
         "Order execution issues reported on Binance platform",
-        "Regulatory shock from February 13 Iran-linked transaction allegations",
-        "Potential downside exposure toward $602 if support breaks"
+        "February 13 Fortune report on $1 billion Iran-linked USDT transactions creating negative sentiment shift"
       ],
       "notable_mentions": 2,
       "token": "BNB",
-      "scanned_at": "2026-02-17T23:04:14.931777+00:00"
+      "scanned_at": "2026-02-17T23:49:23.982407+00:00"
     }
   },
   "total_signals": 58

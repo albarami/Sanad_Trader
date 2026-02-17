@@ -31,7 +31,7 @@
     "position_size_pct": 0.0525,
     "position_usd": 524.65
   },
-  "trade_confidence_score": 99,
+  "trade_confidence_score": 0,
   "almuhasbi_verdict": "REJECT",
   "almuhasbi_confidence": 99,
   "dex_sim_result": null,

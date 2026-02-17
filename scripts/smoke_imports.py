@@ -125,6 +125,44 @@ check("DOGE ($25B, Meme) → TIER_1_MACRO (MC overrides meme)", test_doge_tier1)
 
 
 
+# ── Portfolio Math Invariants ──
+
+def test_portfolio_balance():
+    import json
+    from pathlib import Path
+    state = Path(__file__).resolve().parent.parent / "state"
+    portfolio = json.load(open(state / "portfolio.json"))
+    trade_history = json.load(open(state / "trade_history.json"))
+    trades = trade_history.get("trades", trade_history) if isinstance(trade_history, dict) else trade_history
+
+    starting = portfolio.get("starting_balance_usd", 10000.0)
+    current = portfolio.get("current_balance_usd", starting)
+    peak = portfolio.get("peak_balance_usd", starting)
+    drawdown = portfolio.get("current_drawdown_pct", 0)
+
+    total_pnl = sum(float(t.get("pnl_usd", t.get("net_pnl_usd", 0)) or 0) for t in trades if isinstance(t, dict))
+    expected_balance = round(starting + total_pnl, 2)
+
+    assert abs(current - expected_balance) < 0.02, f"Balance mismatch: {current} != starting({starting}) + pnl({total_pnl}) = {expected_balance}"
+    assert peak >= current, f"Peak {peak} < current {current}"
+    expected_dd = round((peak - current) / peak, 6) if peak > 0 else 0
+    assert abs(drawdown - expected_dd) < 0.001, f"Drawdown mismatch: {drawdown} != {expected_dd}"
+check("Portfolio: balance = starting + sum(pnl), peak >= current, drawdown correct", test_portfolio_balance)
+
+def test_reject_confidence_zero():
+    """If verdict == REJECT, trade_confidence_score must be 0 in latest decision packet."""
+    import json
+    from pathlib import Path
+    packet_path = Path(__file__).resolve().parent.parent / "state" / "current_decision_packet.json"
+    if not packet_path.exists():
+        return  # No packet to check
+    packet = json.load(open(packet_path))
+    verdict = packet.get("almuhasbi_verdict", "")
+    conf = packet.get("trade_confidence_score", 0)
+    if verdict == "REJECT":
+        assert conf == 0, f"REJECT with trade_confidence_score={conf} (should be 0)"
+check("Decision packet: REJECT → trade_confidence_score == 0", test_reject_confidence_zero)
+
 
 # ── Summary ──
 print(f"\n{'='*40}")

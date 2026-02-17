@@ -1785,6 +1785,40 @@ def _add_position(signal, strategy_result, order, sanad_result, bull_result=None
         print(f"[PIPELINE] Error updating positions: {e}")
 
 
+def _pre_sanad_reject(signal):
+    """
+    Deterministic pre-Sanad reject for obvious garbage.
+    Returns rejection reason string, or None if signal should proceed.
+    No LLM calls — pure field validation.
+    """
+    token = signal.get("token", "")
+    source = signal.get("source", "")
+
+    # Missing required fields
+    required = ["token", "source", "thesis"]
+    missing = [f for f in required if not signal.get(f)]
+    if missing:
+        return f"Missing required fields: {missing}"
+
+    # Paid DexScreener boosts are advertising, not signal
+    if "dexscreener boost" in source.lower():
+        return f"Paid DexScreener boost is advertising, not organic signal"
+
+    # Token age < 30 minutes with LP unlocked (from signal metadata if available)
+    onchain = signal.get("onchain_evidence", {})
+    age_minutes = signal.get("age_minutes", onchain.get("age_minutes"))
+    lp_locked = onchain.get("lp_locked", signal.get("lp_locked"))
+    if age_minutes is not None and age_minutes < 30 and lp_locked is False:
+        return f"Token age {age_minutes}min < 30min with LP unlocked"
+
+    # Zero market cap with no exchange listing
+    mc = signal.get("market_cap_usd", signal.get("market_cap"))
+    if mc is not None and mc < 1000 and not signal.get("cex_listed"):
+        return f"Market cap ${mc} < $1000 — not tradeable"
+
+    return None
+
+
 def _log_decision_short_circuit(signal, sanad_result):
     """Log a short-circuited BLOCK decision with full telemetry (no LLM calls)."""
     from datetime import datetime, timezone
@@ -1807,14 +1841,19 @@ def _log_decision_short_circuit(signal, sanad_result):
     except Exception:
         pass  # Best-effort — don't fail the log
 
+    import uuid
+    trust = sanad_result.get("trust_score", 0)
+    rejection_reason = f"Sanad BLOCK (trust={trust}, grade={sanad_result.get('grade','?')}, rugpull_flags={sanad_result.get('rugpull_flags',[])})"
+
     record = {
         "timestamp": datetime.now(timezone.utc).isoformat(),
-        "correlation_id": signal.get("correlation_id", ""),
+        "correlation_id": signal.get("correlation_id") or str(uuid.uuid4()),
         "signal": {
             "token": signal.get("token", "?"),
             "source": signal.get("source", "?"),
             "thesis": signal.get("thesis", ""),
         },
+        "stage": 2,
         "asset_tier": asset_tier,
         "regime_tag": regime_tag,
         "eligible_strategies": eligible_strategies,
@@ -1822,7 +1861,7 @@ def _log_decision_short_circuit(signal, sanad_result):
         "meme_safety_gate": "N/A",
         "lint_result": "N/A",
         "sanad": {
-            "trust_score": sanad_result.get("trust_score", 0),
+            "trust_score": trust,
             "grade": sanad_result.get("grade", "?"),
             "recommendation": "BLOCK",
             "rugpull_flags": sanad_result.get("rugpull_flags", []),
@@ -1832,6 +1871,7 @@ def _log_decision_short_circuit(signal, sanad_result):
         "judge": {"verdict": "REJECT", "confidence_score": 0, "reasoning": "Short-circuited: Sanad BLOCK before LLM debate"},
         "trade_confidence_score": 0,
         "short_circuit": True,
+        "rejection_reason": rejection_reason,
         "final_action": "REJECT",
     }
     _log_decision(record)
@@ -1881,6 +1921,16 @@ def run_pipeline(signal):
     if error:
         print(f"\nPIPELINE BLOCKED at Stage 1: {error}")
         return {"final_action": "REJECT", "stage": 1, "reason": error}
+
+    # Stage 1.5: Pre-Sanad deterministic reject (saves Sanad LLM call)
+    pre_reject = _pre_sanad_reject(signal)
+    if pre_reject:
+        print(f"\n⛔ PRE-SANAD REJECT: {pre_reject}")
+        _log_decision_short_circuit(signal, {
+            "trust_score": 0, "grade": "N/A", "recommendation": "BLOCK",
+            "rugpull_flags": ["pre_sanad_reject"],
+        })
+        return {"final_action": "REJECT", "stage": 1.5, "reason": pre_reject}
 
     # Stage 2: Sanad Verification
     sanad_result, error = stage_2_sanad_verification(signal)
