@@ -845,6 +845,42 @@ def run_router():
     daily_runs = state["daily_pipeline_runs"]
     _log(f"Daily runs: {daily_runs}/{MAX_DAILY_RUNS}")
 
+    # --- Counterfactual tracking for rejections ---
+    # Record rejected signals so we can check later what we missed
+    if pipeline_action in ("REJECT", "REVISE", "TIMEOUT", "ERROR"):
+        try:
+            cf_path = STATE_DIR / "counterfactual_rejections.json"
+            cf_data = _load_json(cf_path, {"rejections": []})
+            cf_entry = {
+                "token": selected_token,
+                "symbol": selected.get("symbol", f"{selected_token}USDT"),
+                "rejected_at": now_str,
+                "rejection_reason": pipeline_reason or pipeline_action,
+                "router_score": selected_score,
+                "source": selected.get("source", ""),
+                "signal_type": selected.get("signal_type", ""),
+                "price_at_rejection": None,  # Filled by counterfactual cron
+                "price_24h_later": None,
+                "counterfactual_pnl_pct": None,
+                "checked": False,
+            }
+            # Get current price for rejection snapshot
+            try:
+                sys.path.insert(0, str(SCRIPT_DIR))
+                from binance_client import get_price
+                price = get_price(cf_entry["symbol"])
+                if price:
+                    cf_entry["price_at_rejection"] = float(price)
+            except Exception:
+                pass
+            cf_data["rejections"].append(cf_entry)
+            # Keep last 200 rejections
+            cf_data["rejections"] = cf_data["rejections"][-200:]
+            _save_json_atomic(cf_path, cf_data)
+            _log(f"Counterfactual: recorded rejection of {selected_token} @ ${cf_entry.get('price_at_rejection', '?')}")
+        except Exception as e:
+            _log(f"Counterfactual recording failed: {e}")
+
     _save_json_atomic(ROUTER_STATE_PATH, state)
 
     # Cleanup temp file
