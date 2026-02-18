@@ -522,7 +522,20 @@ def update_portfolio(positions_data, closed_pnls):
     portfolio["peak_balance_usd"] = round(peak, 2)
     portfolio["open_position_count"] = len(open_positions)
     # Derive daily PnL from trade_history since last daily reset
-    daily_reset_at = portfolio.get("daily_reset_at", "1970-01-01T00:00:00")
+    from datetime import datetime, timezone
+    daily_reset_at = portfolio.get("daily_reset_at")
+    if not daily_reset_at:
+        daily_reset_at = datetime.now(timezone.utc).isoformat()
+        portfolio["daily_reset_at"] = daily_reset_at
+        print("  [PORTFOLIO] WARNING: daily_reset_at missing — set to now")
+    else:
+        try:
+            reset_dt = datetime.fromisoformat(daily_reset_at)
+            age_hours = (datetime.now(timezone.utc) - reset_dt).total_seconds() / 3600
+            if age_hours > 36:
+                print(f"  [PORTFOLIO] ALERT: daily_reset_at is {age_hours:.0f}h old — daily_pnl_reset cron may have failed")
+        except Exception:
+            pass
     daily_pnl_usd = sum(
         float(t.get("pnl_usd", t.get("net_pnl_usd", 0)) or 0)
         for t in trades if isinstance(t, dict)

@@ -1,5 +1,5 @@
 {
-  "last_run": "2026-02-17T23:48:53.209475+00:00",
+  "last_run": "2026-02-18T00:03:52.679335+00:00",
   "scans": {
     "positions": {
       "sentiment_score": 15,
@@ -24,42 +24,41 @@
       "trend": "falling",
       "volume": "high",
       "key_narratives": [
-        "Dominance of negative sentiment and pessimism on social media (Twitter, Reddit)",
-        "Rising FUD among retail investors",
-        "Market in extreme fear per Fear & Greed Index",
-        "Caution due to break of key support levels and declining network activity"
+        "Bitcoin in extreme fear regime - Fear & Greed Index at bear market 2022 levels",
+        "Five consecutive weeks of losses with February showing persistent negative trend",
+        "Macro headwinds dominating - rising rate expectations and liquidity concerns",
+        "Potential capitulation/local bottom being discussed by analysts",
+        "Price action below key $70,000 psychological support driving pessimism"
       ],
       "risk_signals": [
-        "85% negative sentiment vs 15% positive[1]",
-        "Extreme fear state[4]",
-        "Neutral to bearish on Twitter (47.6% bullish, 13.79% bearish, rest neutral)[3]",
-        "Price decline and six-month low with high volume[3]"
+        "85% negative sentiment vs 15% positive across aggregated sources",
+        "Extreme fear conditions persist despite recent bounce to $70k",
+        "Five-week losing streak with Q1 2026 potentially worst quarter since 2018",
+        "Year-to-date decline of 22% from $87.7k opening",
+        "Rising FUD (fear, uncertainty, doubt) among retail investors on social media",
+        "BTC trading below both 50-day and 200-day moving averages indicating sustained downside pressure"
       ],
-      "notable_mentions": 0,
+      "notable_mentions": 3,
       "token": "BTC",
-      "scanned_at": "2026-02-17T22:49:01.474060+00:00"
+      "scanned_at": "2026-02-18T00:04:03.673069+00:00"
     },
     "ETH": {
-      "sentiment_score": 38,
+      "sentiment_score": 25,
       "trend": "falling",
       "volume": "high",
       "key_narratives": [
-        "Ethereum accumulation by institutions and long-term holders despite price decline",
-        "Tokenization and institutional adoption through Robinhood Chain",
-        "Technical consolidation pattern repeating from previous cycles",
-        "Weak U.S. market sentiment driving outflows across crypto",
-        "Conflicting price targets: bullish long-term vs. near-term downside risks"
+        "Price dips below $2,000 with 20% monthly decline and bearish pressure dominating",
+        "Accumulation by whales and retail offsetting ETF outflows but sellers still in control",
+        "Potential bullish reversal if key resistances like $2,150 or $2,380 breached, but futures sentiment extremely bearish"
       ],
       "risk_signals": [
-        "ETH below $2,000 with 20% monthly decline",
-        "$85.1M in outflows in past 24 hours",
-        "Potential drop to $1,300-$1,136 if support levels break",
-        "Crypto treasury firms facing margin calls and forced selling pressure",
-        "Trading volume increase despite price decline suggests panic activity"
+        "Futures taker buy/sell ratio at 3-month low indicating defensive traders",
+        "Elevated leverage and clustered liquidations risking further downside",
+        "Failure to hold $1,900-$1,950 support could accelerate losses"
       ],
-      "notable_mentions": 3,
+      "notable_mentions": 0,
       "token": "ETH",
-      "scanned_at": "2026-02-17T23:04:01.976484+00:00"
+      "scanned_at": "2026-02-18T00:04:08.193002+00:00"
     },
     "SOL": {
       "sentiment_score": 15,
@@ -104,5 +103,5 @@
       "scanned_at": "2026-02-17T23:49:23.982407+00:00"
     }
   },
-  "total_signals": 58
+  "total_signals": 60
 }

@@ -626,7 +626,7 @@ def gate_15_sanad_audit(config, decision_packet, state):
         if confidence_score < min_confidence:
             return False, f"Confidence score too low: {confidence_score} < {min_confidence}"
 
-        audit_verdict = decision_packet.get("almuhasbi_verdict", "")
+        audit_verdict = decision_packet.get("almuhasbi_verdict", "").upper().strip()
 
         # Check ALLOW_LOW_TRUST_PAPER env var for explicit paper exploration
         allow_paper_override = os.environ.get("ALLOW_LOW_TRUST_PAPER", "false").lower() == "true"

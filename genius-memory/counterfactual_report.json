@@ -1,17 +1,32 @@
 {
-  "total_checked": 1,
+  "total_checked": 5,
   "missed_winners": 0,
   "correct_rejections": 0,
-  "neutral": 1,
+  "neutral": 5,
   "gate_accuracy_pct": 100.0,
   "avg_missed_pnl": 0.0,
   "avg_correct_rejection_loss": 0.0,
   "by_reason": {
     "null": {
+      "total": 2,
+      "missed": 0,
+      "correct": 0
+    },
+    "{\\n  \\\"result\\\": \\\"BLOCK\\\",\\n  \\\"gates_passed\\\": [\\n    1,\\n    2,\\n    3,\\n    4,\\n    5,\\n    6,\\n    7,\\n    8,\\n    9,\\n    10,\\n    11,\\n    12,\\n    13,\\n    14\\n  ],\\n  \\\"gate_failed\\\": 15,\\n  \\\"gate_failed_name\\\": \\\"Sanad + Audit\\\",\\n  \\\"gate_evidence\\\": \\\"Trust score too low: 0 < 40\\\",\\n  \\\"all_evidence\\\": {\\n    \\\"CB\\\": \\\"All circuit breakers closed\\\",\\n    \\\"1\\\": \\\"Kill switch not active\\\",\\n    \\\"2\\\": \\\"Daily PnL: -0.0006, Drawdown: 0.0006\\\",\\n    \\\"3\\\": \\\"Price age: 0s, all data fresh\\\",\\n    \\\"4\\\": \\\"Token age: 999.0h (minimum 1h)\\\",\\n    \\\"5\\\": \\\"PAPER MODE: soft rugpull flags allowed: lp_not_locked, concentrated_holders, thin_liquidity\\\",\\n    \\\"6\\\": \\\"Slippage: 8.6bps (max 300bps)\\\",\\n    \\\"7\\\": \\\"Spread gate skipped \\\\u2014 DEX trade (no order book spread)\\\",\\n    \\\"8\\\": \\\"DEX paper mode: pre-flight simulation skipped (no on-chain access)\\\",\\n    \\\"9\\\": \\\"Price change: 0.00% in 30min\\\",\\n    \\\"10\\\": \\\"DEX paper mode: health check skipped for raydium\\\",\\n    \\\"11\\\": \\\"Reconciliation clean, 220s ago\\\",\\n    \\\"12\\\": \\\"Token: 5.25%/10%, Meme: 5.25%/30%, Positions: 4/5\\\",\\n    \\\"13\\\": \\\"No cooldown active for PUMP\\\",\\n    \\\"14\\\": \\\"Budget OK: daily $0.00/$15.00, monthly $0.00/$300.00\\\",\\n    \\\"15\\\": \\\"Trust score too low: 0 < 40\\\"\\n  },\\n  \\\"timestamp\\\": \\\"2026-02-17T15:18:42.298554+00:00\\\",\\n  \\\"correlation_id\\\": \\\"UNKNOWN\\\"\\n}": {
+      "total": 1,
+      "missed": 0,
+      "correct": 0
+    },
+    "REJECT": {
+      "total": 1,
+      "missed": 0,
+      "correct": 0
+    },
+    "Pipeline exceeded 5 minute timeout": {
       "total": 1,
       "missed": 0,
       "correct": 0
     }
   },
-  "updated_at": "2026-02-17T17:55:12.217357+00:00"
+  "updated_at": "2026-02-17T23:55:11.504667+00:00"
 }
