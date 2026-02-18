@@ -1566,7 +1566,7 @@ def stage_6_policy_engine(signal, sanad_result, strategy_result, bull_result, be
 # STAGE 7: EXECUTE / LOG
 # ─────────────────────────────────────────────
 
-def stage_7_execute(signal, sanad_result, strategy_result, bull_result, bear_result, judge_result, policy_result):
+def stage_7_execute(signal, sanad_result, strategy_result, bull_result, bear_result, judge_result, policy_result, profile=None):
     """
     Execute trade (paper mode) or log rejection.
     All decisions logged to Supabase with full decision packet.
@@ -2224,7 +2224,7 @@ def run_pipeline(signal):
         return {"final_action": "REJECT", "stage": 6, "reason": error}
 
     # Stage 7: Execute / Log
-    decision_record = stage_7_execute(signal, sanad_result, strategy_result, bull_result, bear_result, judge_result, policy_result)
+    decision_record = stage_7_execute(signal, sanad_result, strategy_result, bull_result, bear_result, judge_result, policy_result, profile)
 
     print("\n" + "=" * 60)
     print(f"PIPELINE COMPLETE — Final Action: {decision_record['final_action']}")

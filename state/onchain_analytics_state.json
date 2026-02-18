@@ -1,10 +1,10 @@
 {
-  "last_run": "2026-02-18T07:56:20.283873+00:00",
+  "last_run": "2026-02-18T08:16:21.096025+00:00",
   "cooldowns": {
-    "btc_volume": "2026-02-18T06:06:23.529342+00:00",
+    "btc_volume": "2026-02-18T08:06:23.753659+00:00",
     "whale_movement": "2026-02-17T21:06:23.860546+00:00"
   },
-  "total_signals": 12,
+  "total_signals": 13,
   "last_btc_data": {
     "mempool_bytes": 1155549.5,
     "mempool_change_pct": -30.615942518476352,
@@ -19,5 +19,5 @@
     "sample_slots": 150,
     "network_demand": "LOW"
   },
-  "whale_alerts_count": 1
+  "whale_alerts_count": 0
 }
