@@ -247,15 +247,17 @@ def test_portfolio_balance():
     trades = trade_history.get("trades", trade_history) if isinstance(trade_history, dict) else trade_history
 
     starting = portfolio.get("starting_balance_usd", 10000.0)
+        # cash_balance_usd = realized only; current_balance_usd = cash + unrealized (total equity)
+    cash = portfolio.get("cash_balance_usd", portfolio.get("current_balance_usd", starting))
     current = portfolio.get("current_balance_usd", starting)
     peak = portfolio.get("peak_balance_usd", starting)
     drawdown = portfolio.get("current_drawdown_pct", 0)
 
     total_pnl = sum(float(t.get("pnl_usd", t.get("net_pnl_usd", 0)) or 0) for t in trades if isinstance(t, dict))
-    expected_balance = round(starting + total_pnl, 2)
+    expected_cash = round(starting + total_pnl, 2)
 
-    assert abs(current - expected_balance) < 0.02, f"Balance mismatch: {current} != starting({starting}) + pnl({total_pnl}) = {expected_balance}"
-    assert peak >= current, f"Peak {peak} < current {current}"
+    assert abs(cash - expected_cash) < 0.02, f"Cash balance mismatch: {cash} != starting({starting}) + pnl({total_pnl}) = {expected_cash}"
+    assert peak >= current - 0.01, f"Peak {peak} < current {current}"
     expected_dd = round((peak - current) / peak, 6) if peak > 0 else 0
     assert abs(drawdown - expected_dd) < 0.001, f"Drawdown mismatch: {drawdown} != {expected_dd}"
 check("Portfolio: balance = starting + sum(pnl), peak >= current, drawdown correct", test_portfolio_balance)

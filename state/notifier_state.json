@@ -1,5 +1,5 @@
 {
-  "sent": 88,
+  "sent": 89,
   "failed": 7,
   "history": [
     {
@@ -666,7 +666,14 @@
       "message": "\ud83d\ude80\ud83d\ude80 FIRST TRADES EXECUTED! BTC (APPROVE conf=67) + SOL (APPROVE conf=72) \u2014 both passed all 7 stages + Policy Engine. Judge paper-mode prompt working. Funnel: 57 ingested, 2 approved, 2 executed. The sy",
       "channel": "log_only",
       "at": "2026-02-18T08:42:19.546882+00:00"
+    },
+    {
+      "level": "L2",
+      "title": null,
+      "message": "\u2696\ufe0f HOURLY STATUS\n\ud83d\udcb0 Balance: $9,944.03 (unrealized: $-4.85)\n\ud83d\udcc8 Positions (2/10):\n  BTC @ $68,157.29 -> $67,393.41 (-1.1%)\n  SOL @ $85.58 -> $83.56 (-2.4%)\n\ud83d\udcca Today: 123 ingested, 3 executed, 6 rejected\n\ud83d\udd04",
+      "channel": "telegram",
+      "at": "2026-02-18T11:31:51.830600+00:00"
     }
   ],
-  "last_sent": "2026-02-18T08:42:19.546900+00:00"
+  "last_sent": "2026-02-18T11:31:51.830615+00:00"
 }

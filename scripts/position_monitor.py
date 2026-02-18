@@ -518,7 +518,22 @@ def update_portfolio(positions_data, closed_pnls):
         tok = p.get("token", "")
         token_exposure[tok] = token_exposure.get(tok, 0) + p.get("position_usd", 0) / current if current > 0 else 0
 
-    portfolio["current_balance_usd"] = round(current, 2)
+    # Calculate unrealized P&L from open positions
+    unrealized_pnl = 0.0
+    for p in open_positions:
+        entry = p.get("entry_price", 0)
+        cur_price = p.get("current_price", entry)
+        size = p.get("position_usd", 0)
+        if entry and entry > 0 and cur_price:
+            unrealized_pnl += (cur_price - entry) / entry * size
+
+    # Total equity = cash balance + unrealized P&L
+    total_equity = current + unrealized_pnl
+    peak = max(portfolio.get("peak_balance_usd", starting), total_equity)
+
+    portfolio["cash_balance_usd"] = round(current, 2)
+    portfolio["unrealized_pnl_usd"] = round(unrealized_pnl, 2)
+    portfolio["current_balance_usd"] = round(total_equity, 2)
     portfolio["peak_balance_usd"] = round(peak, 2)
     portfolio["open_position_count"] = len(open_positions)
     # Derive daily PnL from trade_history since last daily reset
@@ -543,15 +558,16 @@ def update_portfolio(positions_data, closed_pnls):
     )
     portfolio["daily_pnl_usd"] = round(daily_pnl_usd, 2)
     portfolio["daily_pnl_pct"] = round(daily_pnl_usd / starting, 6) if starting > 0 else 0
-    portfolio["current_drawdown_pct"] = round((peak - current) / peak, 6) if peak > 0 else 0
-    portfolio["meme_allocation_pct"] = round(meme_usd / current, 4) if current > 0 else 0
-    portfolio["total_exposure_pct"] = round(total_exposure_usd / current, 4) if current > 0 else 0
+    portfolio["current_drawdown_pct"] = round((peak - total_equity) / peak, 6) if peak > 0 else 0
+    portfolio["meme_allocation_pct"] = round(meme_usd / total_equity, 4) if total_equity > 0 else 0
+    portfolio["total_exposure_pct"] = round(total_exposure_usd / total_equity, 4) if total_equity > 0 else 0
     portfolio["token_exposure_pct"] = {k: round(v, 4) for k, v in token_exposure.items()}
     portfolio["updated_at"] = now_iso()
 
     save_json_atomic(STATE_DIR / "portfolio.json", portfolio)
-    print(f"  [PORTFOLIO] Balance: ${current:,.2f} | Open: {len(open_positions)} | "
-          f"Drawdown: {portfolio['current_drawdown_pct']*100:.2f}%")
+    unr_sign = "+" if unrealized_pnl >= 0 else ""
+    print(f"  [PORTFOLIO] Equity: ${total_equity:,.2f} (cash ${current:,.2f} {unr_sign}${unrealized_pnl:.2f} unrealized) | "
+          f"Open: {len(open_positions)} | Drawdown: {portfolio['current_drawdown_pct']*100:.2f}%")
 
 
 # ─────────────────────────────────────────────
@@ -719,11 +735,11 @@ def run_monitor():
     save_json_atomic(STATE_DIR / "positions.json", positions_data)
     save_trailing_stops(trailing_stops)
 
-    if closed_pnls:
-        update_portfolio(positions_data, closed_pnls)
-    else:
-        # Still update current prices in positions
-        print(f"\n[POSITION MONITOR] All positions OK. Next check in 3min.")
+    # Always update portfolio with mark-to-market (not just on closes)
+    update_portfolio(positions_data, closed_pnls)
+
+    if not closed_pnls:
+        print(f"\n[POSITION MONITOR] All positions OK. Next check in 1min.")
 
     print(f"{'='*60}\n")
 
