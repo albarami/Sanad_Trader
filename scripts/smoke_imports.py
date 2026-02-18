@@ -125,6 +125,76 @@ check("DOGE ($25B, Meme) → TIER_1_MACRO (MC overrides meme)", test_doge_tier1)
 
 
 
+# ── Corroboration Engine ──
+
+def test_corroboration_import():
+    from corroboration_engine import register_signal, get_corroboration, get_window_stats
+    assert callable(register_signal)
+    assert callable(get_corroboration)
+check("Corroboration engine imports", test_corroboration_import)
+
+def test_corroboration_logic():
+    from corroboration_engine import register_signal, get_corroboration, _normalize_provider
+    # Source independence
+    assert _normalize_provider("coingecko_trending") == "coingecko"
+    assert _normalize_provider("birdeye_meme_list") == "birdeye"
+    assert _normalize_provider("dexscreener_boost") == "dexscreener"
+    assert _normalize_provider("dexscreener_cto") == "dexscreener"  # same provider
+    assert _normalize_provider("onchain_analytics") == "onchain"
+    assert _normalize_provider("telegram_sniffer") == "telegram"
+    # Two DexScreener sub-sources = still 1 provider
+    assert _normalize_provider("dexscreener_boost") == _normalize_provider("dexscreener_cto")
+check("Corroboration: source independence mapping", test_corroboration_logic)
+
+def test_corroboration_multi_source():
+    """Test that 2 signals from different sources → MASHHUR."""
+    from corroboration_engine import register_signal, _save_window, WINDOW_PATH
+    import json, os
+    # Save current window, use empty for test
+    backup = None
+    if WINDOW_PATH.exists():
+        backup = json.load(open(WINDOW_PATH))
+    _save_window({"signals": [], "updated_at": None})
+    try:
+        r1 = register_signal({"token": "TESTCOIN", "source": "coingecko_trending"})
+        assert r1["cross_source_count"] == 1
+        assert r1["corroboration_level"] == "AHAD"
+        r2 = register_signal({"token": "TESTCOIN", "source": "birdeye_meme_list"})
+        assert r2["cross_source_count"] == 2, f"Expected 2, got {r2['cross_source_count']}"
+        assert r2["corroboration_level"] == "MASHHUR", f"Expected MASHHUR, got {r2['corroboration_level']}"
+        assert "birdeye" in r2["cross_sources"]
+        assert "coingecko" in r2["cross_sources"]
+        r3 = register_signal({"token": "TESTCOIN", "source": "onchain_analytics"})
+        assert r3["cross_source_count"] == 3
+        assert r3["corroboration_level"] == "TAWATUR"
+    finally:
+        # Restore original window
+        if backup:
+            _save_window(backup)
+        else:
+            os.remove(WINDOW_PATH) if WINDOW_PATH.exists() else None
+check("Corroboration: AHAD → MASHHUR → TAWATUR", test_corroboration_multi_source)
+
+def test_corroboration_same_provider():
+    """Two signals from same provider = still 1 source."""
+    from corroboration_engine import register_signal, _save_window, WINDOW_PATH
+    import json, os
+    backup = None
+    if WINDOW_PATH.exists():
+        backup = json.load(open(WINDOW_PATH))
+    _save_window({"signals": [], "updated_at": None})
+    try:
+        register_signal({"token": "DUPETEST", "source": "dexscreener_boost"})
+        r2 = register_signal({"token": "DUPETEST", "source": "dexscreener_cto"})
+        assert r2["cross_source_count"] == 1, f"Same provider should be 1, got {r2['cross_source_count']}"
+        assert r2["corroboration_level"] == "AHAD"
+    finally:
+        if backup:
+            _save_window(backup)
+        else:
+            os.remove(WINDOW_PATH) if WINDOW_PATH.exists() else None
+check("Corroboration: same provider = 1 source", test_corroboration_same_provider)
+
 # ── Portfolio Math Invariants ──
 
 def test_portfolio_balance():

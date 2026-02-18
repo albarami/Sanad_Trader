@@ -608,21 +608,39 @@ def run_router():
         _save_json_atomic(ROUTER_STATE_PATH, state)
         return
 
-    # --- Detect cross-source tokens (Tawatur) ---
-    cg_tokens = {s.get("token", "").upper() for s in cg_signals}
-    dex_tokens = {s.get("token", "").upper() for s in dex_signals}
-    be_tokens = {s.get("token", "").upper() for s in be_signals}
-    oc_tokens = {s.get("token", "").upper() for s in oc_signals}
-    # Cross-source = token appears in 2+ sources
-    all_source_sets = [cg_tokens, dex_tokens, be_tokens, oc_tokens]
+    # --- Register all signals in corroboration engine (rolling window) ---
+    try:
+        from corroboration_engine import register_signal, get_corroboration
+        for s in all_signals:
+            register_signal(s)
+        _log(f"Corroboration engine: registered {len(all_signals)} signals in rolling window")
+    except Exception as e:
+        _log(f"Corroboration engine registration failed: {e}")
+
+    # --- Detect cross-source tokens (via corroboration engine) ---
     cross_source_tokens: set[str] = set()
-    all_unique = cg_tokens | dex_tokens | be_tokens | oc_tokens
-    for tok in all_unique:
-        sources_count = sum(1 for s in all_source_sets if tok in s)
-        if sources_count >= 2:
-            cross_source_tokens.add(tok)
-    if cross_source_tokens:
-        _log(f"Cross-source (Tawatur) matches: {', '.join(sorted(cross_source_tokens))}")
+    cross_source_data: dict[str, dict] = {}  # token → corroboration result
+    all_unique_tokens = {s.get("token", "").upper() for s in all_signals if s.get("token")}
+    try:
+        for tok in all_unique_tokens:
+            corr = get_corroboration(tok)
+            if corr["cross_source_count"] >= 2:
+                cross_source_tokens.add(tok)
+                cross_source_data[tok] = corr
+        if cross_source_tokens:
+            for tok, corr in cross_source_data.items():
+                _log(f"Cross-source: {tok} = {corr['corroboration_level']} ({corr['cross_source_count']} sources: {', '.join(corr['cross_sources'])})")
+    except Exception as e:
+        _log(f"Corroboration lookup failed: {e}")
+        # Fallback to old method
+        cg_tokens = {s.get("token", "").upper() for s in cg_signals}
+        dex_tokens = {s.get("token", "").upper() for s in dex_signals}
+        be_tokens = {s.get("token", "").upper() for s in be_signals}
+        oc_tokens = {s.get("token", "").upper() for s in oc_signals}
+        all_source_sets = [cg_tokens, dex_tokens, be_tokens, oc_tokens]
+        for tok in (cg_tokens | dex_tokens | be_tokens | oc_tokens):
+            if sum(1 for s in all_source_sets if tok in s) >= 2:
+                cross_source_tokens.add(tok)
 
     # --- Load market regime ---
     regime_adjustment = 0
@@ -841,6 +859,19 @@ def run_router():
 
     pipeline_signal = _to_pipeline_signal(selected, cross_labels)
     pipeline_signal["router_score"] = selected_score  # Pass to pipeline for tier routing
+
+    # --- Inject corroboration data for Sanad verifier ---
+    tok_upper = selected_token.upper()
+    if tok_upper in cross_source_data:
+        corr = cross_source_data[tok_upper]
+    else:
+        try:
+            corr = get_corroboration(tok_upper)
+        except Exception:
+            corr = {"cross_source_count": 1, "cross_sources": [], "corroboration_level": "AHAD"}
+    pipeline_signal["cross_source_count"] = corr["cross_source_count"]
+    pipeline_signal["cross_sources"] = corr["cross_sources"]
+    pipeline_signal["corroboration_level"] = corr["corroboration_level"]
 
     # --- Write temp signal file ---
     tmp_dir = BASE_DIR / "tmp"

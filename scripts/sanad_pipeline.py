@@ -640,6 +640,14 @@ Source: {signal['source']}
 Thesis: {signal['thesis']}
 Timestamp: {signal.get('timestamp', 'unknown')}
 
+CROSS-SOURCE CORROBORATION (pre-verified by corroboration engine):
+- Independent sources confirming this token: {signal.get('cross_source_count', 1)}
+- Sources: {', '.join(signal.get('cross_sources', [])) or 'single source only'}
+- Corroboration level: {signal.get('corroboration_level', 'AHAD')}
+NOTE: Use this corroboration data directly in your trust score calculation.
+If cross_source_count >= 2, corroboration_level is at least MASHHUR (18 points).
+If cross_source_count >= 3, corroboration_level is TAWATUR (25 points).
+
 REAL-TIME INTELLIGENCE (from Perplexity):
 {perplexity_intel}
 

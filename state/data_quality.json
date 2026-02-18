@@ -1,6 +1,6 @@
 {
   "status": "WARN",
-  "timestamp": "2026-02-18T00:01:30.221508+00:00",
+  "timestamp": "2026-02-18T00:31:30.336950+00:00",
   "checks": [
     {
       "check": "timestamp_skew",
@@ -22,8 +22,8 @@
       "status": "WARN",
       "issues": [
         {
-          "symbol": "BONKUSDT",
-          "stale_price": 6.51e-06,
+          "symbol": "WIFUSDT",
+          "stale_price": 0.23,
           "consecutive_polls": 5,
           "severity": "WARN"
         }
@@ -31,7 +31,7 @@
     }
   ],
   "summary": {
-    "WARN": 1,
-    "OK": 3
+    "OK": 3,
+    "WARN": 1
   }
 }
