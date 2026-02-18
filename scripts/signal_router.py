@@ -3,6 +3,10 @@
 Signal Router — Sprint 3.x
 Reads CoinGecko + DexScreener + Birdeye signals, ranks them, feeds the best
 candidate into sanad_pipeline.py. Deterministic Python. No LLMs.
+
+# Ignore SIGPIPE to prevent broken pipe crashes in cron/subprocess contexts
+import signal as _signal
+_signal.signal(_signal.SIGPIPE, _signal.SIG_DFL)
 Designed to run as a cron job every 15 minutes.
 """
 
@@ -70,8 +74,18 @@ STALE_THRESHOLD_MIN = 30
 CROSS_SOURCE_BONUS = 25
 
 
+_LOG_FILE = BASE_DIR / "logs" / "signal_router.log"
+
+
 def _log(msg: str):
-    print(f"[SIGNAL ROUTER] {msg}")
+    line = f"[SIGNAL ROUTER] {msg}"
+    print(line)
+    try:
+        _LOG_FILE.parent.mkdir(parents=True, exist_ok=True)
+        with open(_LOG_FILE, "a") as f:
+            f.write(line + "\n")
+    except Exception:
+        pass
 
 
 def _now() -> datetime:

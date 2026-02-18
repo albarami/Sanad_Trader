@@ -1,8 +1,8 @@
 {
-  "total_checked": 5,
+  "total_checked": 7,
   "missed_winners": 0,
   "correct_rejections": 0,
-  "neutral": 5,
+  "neutral": 7,
   "gate_accuracy_pct": 100.0,
   "avg_missed_pnl": 0.0,
   "avg_correct_rejection_loss": 0.0,
@@ -26,7 +26,17 @@
       "total": 1,
       "missed": 0,
       "correct": 0
+    },
+    "Sanad BLOCK (trust=0)": {
+      "total": 1,
+      "missed": 0,
+      "correct": 0
+    },
+    "Sanad BLOCK (trust=55)": {
+      "total": 1,
+      "missed": 0,
+      "correct": 0
     }
   },
-  "updated_at": "2026-02-17T23:55:11.504667+00:00"
+  "updated_at": "2026-02-18T05:55:12.773899+00:00"
 }

@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+import signal as _signal
+_signal.signal(_signal.SIGPIPE, _signal.SIG_DFL)
 """
 Sanad Trader v3.0 — Intelligence Pipeline Orchestrator
 
@@ -2165,12 +2167,31 @@ def run_pipeline(signal):
         return {"final_action": "REJECT", "stage": 2, "reason": error}
 
     # SHORT-CIRCUIT: If Sanad says BLOCK, stop before burning LLM credits
-    if sanad_result.get("recommendation") == "BLOCK":
-        trust = sanad_result.get("trust_score", 0)
+    # But in paper mode, only short-circuit on rugpull flags or very low trust
+    try:
+        with open(STATE_DIR / "portfolio.json") as _scf:
+            _sc_paper = json.load(_scf).get("mode", "paper") == "paper"
+    except Exception:
+        _sc_paper = True
+
+    sc_rec = sanad_result.get("recommendation", "BLOCK")
+    sc_trust = sanad_result.get("trust_score", 0)
+    sc_rugpull = sanad_result.get("rugpull_flags", [])
+
+    if _sc_paper:
+        # Paper mode: only short-circuit on rugpull flags or trust below paper threshold
+        sc_threshold = THRESHOLDS["sanad"]["minimum_trade_score"]  # 15
+        should_short_circuit = bool(sc_rugpull) or sc_trust < sc_threshold
+    else:
+        # Live mode: short-circuit whenever Sanad says BLOCK
+        should_short_circuit = sc_rec == "BLOCK"
+
+    if should_short_circuit and sc_rec == "BLOCK":
         _funnel("short_circuited")
-        print(f"\n⛔ SHORT-CIRCUIT: Sanad BLOCK (trust={trust}/100) — skipping LLM debate")
+        reason = f"rugpull_flags={sc_rugpull}" if sc_rugpull else f"trust={sc_trust}"
+        print(f"\n⛔ SHORT-CIRCUIT: Sanad BLOCK ({reason}) — skipping LLM debate")
         _log_decision_short_circuit(signal, sanad_result)
-        return {"final_action": "REJECT", "stage": 2, "reason": f"Sanad BLOCK (trust={trust})"}
+        return {"final_action": "REJECT", "stage": 2, "reason": f"Sanad BLOCK ({reason})"}
 
     # Stage 2.5: Token Profile & Classification (v3.0)
     profile, error = stage_2_5_token_profile(signal, sanad_result)
