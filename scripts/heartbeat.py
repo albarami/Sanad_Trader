@@ -535,6 +535,23 @@ def _send_hourly_summary(portfolio, price_cache, overall):
         daily_runs = router_state.get("daily_pipeline_runs", 0)
         last_run = router_state.get("last_run", "unknown")
 
+        # Cost summary
+        cost_summary = load_state("daily_cost.json") or {}
+        total_cost = cost_summary.get("total_usd", 0)
+        by_model = cost_summary.get("by_model", {})
+        
+        # Find top model by cost
+        top_model = "N/A"
+        top_cost = 0
+        if by_model:
+            top_model, top_stats = max(by_model.items(), key=lambda x: x[1].get("cost", 0))
+            top_cost = top_stats.get("cost", 0)
+            # Simplify model name for display
+            if "/" in top_model:
+                top_model = top_model.split("/")[-1]
+        
+        cost_line = f"💰 API Cost: ${total_cost:.2f} today ({top_model}: ${top_cost:.2f})"
+
         pos_section = "\n".join(pos_lines) if pos_lines else "  None"
         unr_sign = "+" if total_unrealized >= 0 else ""
 
@@ -543,6 +560,7 @@ def _send_hourly_summary(portfolio, price_cache, overall):
 📈 Positions ({len(open_pos)}/10):
 {pos_section}
 📊 Today: {funnel.get('signals_ingested',0)} ingested, {funnel.get('executed',0)} executed, {funnel.get('judge_rejected',0)} rejected
+{cost_line}
 🔄 Router: {daily_runs} runs today, last: {last_run[-8:] if len(last_run)>8 else last_run}
 ⚙️ Status: {overall}"""
 
