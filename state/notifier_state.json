@@ -1,5 +1,5 @@
 {
-  "sent": 91,
+  "sent": 92,
   "failed": 7,
   "history": [
     {
@@ -687,7 +687,14 @@
       "message": "*Regime Change Detected*\n\n\ud83d\udcca Current: SIDEWAYS\n\n_Choppy, range-bound market_\n\n*Key Adaptations:*\n\u2022 Primary strategy: mean_reversion (50%)\n\u2022 Position size: 2.0% (max exposure: 70.0%)\n\u2022 Trust threshold: ",
       "channel": "telegram",
       "at": "2026-02-18T12:34:19.621235+00:00"
+    },
+    {
+      "level": "L2",
+      "title": null,
+      "message": "*Regime Change Detected*\n\n\ud83d\udcc9 Previous: SIDEWAYS\n\ud83d\udcca Current: BEAR_HIGH_VOL\n\n_Bear market with high volatility, risk of further drops_\n\n*Key Adaptations:*\n\u2022 Primary strategy: dip_buying (50%)\n\u2022 Position s",
+      "channel": "telegram",
+      "at": "2026-02-18T12:35:58.437513+00:00"
     }
   ],
-  "last_sent": "2026-02-18T12:34:19.621250+00:00"
+  "last_sent": "2026-02-18T12:35:58.437528+00:00"
 }

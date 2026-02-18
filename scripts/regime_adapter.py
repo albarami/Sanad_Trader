@@ -45,7 +45,7 @@ try:
 except ImportError:
     HAS_NOTIFIER = False
 
-REGIME_FILE = STATE_DIR / "regime.json"
+REGIME_FILE = BASE_DIR / "genius-memory" / "regime-data" / "latest.json"
 ACTIVE_PROFILE_FILE = STATE_DIR / "active_regime_profile.json"
 PROFILES_CONFIG = CONFIG_DIR / "regime_profiles.yaml"
 ADAPTER_STATE_FILE = STATE_DIR / "regime_adapter_state.json"
@@ -66,7 +66,7 @@ def load_current_regime() -> str:
         
         # Handle different formats
         if isinstance(data, dict):
-            regime = data.get("current_regime", data.get("regime", "SIDEWAYS"))
+            regime = data.get("regime_tag", data.get("current_regime", data.get("regime", "SIDEWAYS")))
         else:
             regime = "SIDEWAYS"
         
