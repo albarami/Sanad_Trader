@@ -731,8 +731,8 @@ Return your analysis as valid JSON with these exact keys:
     # Don't trust LLM to apply corroboration points correctly — override from engine
     engine_count = signal.get("cross_source_count", 1)
     engine_level = signal.get("corroboration_level", "AHAD")
-    engine_quality = signal.get("corroboration_quality", "STRONG")  # from engine
-    llm_level = sanad_result.get("corroboration_level", "AHAD")
+    engine_quality = signal.get("corroboration_quality", "WEAK")  # fail closed: no tag = no full boost
+    llm_level = sanad_result.get("corroboration_level", "AHAD").upper().strip()
 
     # Corroboration points: AHAD=10, MASHHUR=18, TAWATUR=25
     # WEAK quality gets partial credit: AHAD=10, MASHHUR=14, TAWATUR=18
@@ -757,6 +757,14 @@ Return your analysis as valid JSON with these exact keys:
     sanad_result["source_count"] = engine_count
     sanad_result["corroboration_level"] = engine_level
     sanad_result["cross_sources"] = signal.get("cross_sources", [])
+    sanad_result["chain_length"] = engine_count  # align with source_count
+    # Recompute grade from engine source count
+    if engine_count >= 3:
+        sanad_result["grade"] = "Tawatur"
+    elif engine_count >= 2:
+        sanad_result["grade"] = "Mashhur"
+    else:
+        sanad_result["grade"] = "Ahad"
 
     trust_score = sanad_result.get("trust_score", 0)
     grade = sanad_result.get("grade", "FAILED")

@@ -124,13 +124,17 @@ def scan_token_sentiment(token: str, api_key: str) -> dict | None:
         data = resp.json()
         content = data.get("choices", [{}])[0].get("message", {}).get("content", "")
 
-        # Clean markdown fences
+        # Clean markdown fences (```json ... ``` or ``` ... ```)
         content = content.strip()
         if content.startswith("```"):
+            # Remove opening fence line (```json, ```JSON, ```, etc.)
             content = content.split("\n", 1)[1] if "\n" in content else content[3:]
         if content.endswith("```"):
             content = content[:-3]
         content = content.strip()
+        # Also handle case where content has leading text before JSON
+        if not content.startswith("{") and "{" in content:
+            content = content[content.index("{"):]
 
         result = json.loads(content)
         result["token"] = token

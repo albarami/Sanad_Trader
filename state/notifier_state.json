@@ -1,5 +1,5 @@
 {
-  "sent": 74,
+  "sent": 76,
   "failed": 7,
   "history": [
     {
@@ -568,7 +568,21 @@
       "message": "Heartbeat ALERT: cron_health: reconciliation: last ran 76min ago (max 30min)",
       "channel": "telegram",
       "at": "2026-02-18T01:20:47.890265+00:00"
+    },
+    {
+      "level": "L2",
+      "title": "Heartbeat Alert",
+      "message": "Heartbeat ALERT: cron_health: reconciliation: last ran 86min ago (max 30min)",
+      "channel": "telegram",
+      "at": "2026-02-18T01:30:51.398788+00:00"
+    },
+    {
+      "level": "L2",
+      "title": "Heartbeat Alert",
+      "message": "Heartbeat ALERT: cron_health: reconciliation: last ran 96min ago (max 30min)",
+      "channel": "telegram",
+      "at": "2026-02-18T01:40:48.331396+00:00"
     }
   ],
-  "last_sent": "2026-02-18T01:20:47.890277+00:00"
+  "last_sent": "2026-02-18T01:40:48.331411+00:00"
 }

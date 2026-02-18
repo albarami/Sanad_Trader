@@ -28,7 +28,7 @@
       "status": "ALERT",
       "detail": "1 cron issues",
       "alerts": [
-        "reconciliation: last ran 76min ago (max 30min)"
+        "reconciliation: last ran 96min ago (max 30min)"
       ]
     },
     "ntp_sync": {
@@ -40,5 +40,5 @@
       "detail": "All closed"
     }
   },
-  "heartbeat_timestamp": "2026-02-18T01:20:46.719277+00:00"
+  "heartbeat_timestamp": "2026-02-18T01:40:47.141714+00:00"
 }
