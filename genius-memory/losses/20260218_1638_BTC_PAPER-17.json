@@ -1,0 +1,36 @@
+{
+  "trade_id": "PAPER-1771403932121",
+  "token": "BTC",
+  "timestamp": "2026-02-18T16:38:56.362950+00:00",
+  "outcome": "LOSS",
+  "metrics": {
+    "entry_price": 68157.29,
+    "exit_price": 67232.57,
+    "pnl_usd": -2.0271,
+    "pnl_pct": -0.013567,
+    "hold_duration_hours": 8.0,
+    "max_adverse_excursion": 0.013567,
+    "max_favorable_excursion": 0.0
+  },
+  "exit": {
+    "quality": "NEUTRAL",
+    "exit_reason": "TIME_EXIT",
+    "notes": []
+  },
+  "regime": {
+    "tag": "BEAR_HIGH_VOL",
+    "primary": "BEAR",
+    "volatility": "HIGH_VOL"
+  },
+  "trade_details": {
+    "source": "CoinGecko trending #3",
+    "strategy": "meme-momentum",
+    "sanad_score": 52,
+    "risk_reward_ratio": "2.9:1 (Entry $67,500 \u2192 Target $71,500 = +$4,000 / SL $65,800 = -$1,700)",
+    "bull_stop_loss": "$65,800 \u2014 below the 24h low structure ($66,621) with buffer; break here signals range breakdown not consolidation",
+    "bull_target_price": "$71,500 \u2014 retest of prior range highs if retail CoinGecko trending converts to sustained inflow over 3\u20135 days",
+    "stop_loss_pct": 0.03458602887526769,
+    "take_profit_pct": 0.1,
+    "position_usd": 139.28
+  }
+}

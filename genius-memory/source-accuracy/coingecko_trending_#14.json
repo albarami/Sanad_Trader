@@ -1,0 +1,28 @@
+{
+  "source_name": "CoinGecko trending #14",
+  "total_signals": 0,
+  "trades_executed": 1,
+  "wins": 0,
+  "losses": 1,
+  "total_pnl_usd": -5.5046,
+  "total_pnl_pct": -0.03856,
+  "avg_pnl_pct": -0.03856,
+  "win_rate": 0.0,
+  "ucb1_score": 50,
+  "grade": "C",
+  "last_signal_at": null,
+  "last_trade_at": "2026-02-18T16:41:57.829800+00:00",
+  "last_win_at": null,
+  "last_recalc_at": "2026-02-18T16:41:57.830368+00:00",
+  "created_at": "2026-02-18T16:41:57.829774+00:00",
+  "history": [
+    {
+      "timestamp": "2026-02-18T16:41:57.829795+00:00",
+      "token": "SOL",
+      "trade_id": "PAPER-1771404099121",
+      "is_win": false,
+      "pnl_usd": -5.5046,
+      "pnl_pct": -0.03856
+    }
+  ]
+}

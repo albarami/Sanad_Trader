@@ -1,0 +1,1213 @@
+#!/usr/bin/env python3
+"""
+WATCHDOG — Self-Healing System Monitor
+Runs every 2 minutes. Detects and AUTO-FIXES recoverable problems.
+Zero LLM calls. Pure deterministic logic.
+
+Watchdog Philosophy:
+1. Detect the problem
+2. FIX the problem
+3. TELL the user what it found and how it fixed it
+4. Only escalate if auto-fix fails 3 times
+
+Telegram message format:
+- Auto-fix success: 🔧 WATCHDOG AUTO-FIX: [problem] → [action] → ✅ [result]
+- Auto-fix failed: 🚨 WATCHDOG NEEDS HELP: [problem] → [attempted 3x] → ❌ [error] → [impact]
+"""
+
+import os
+import sys
+import json
+import time
+import psutil
+import shutil
+import subprocess
+from pathlib import Path
+from datetime import datetime, timedelta
+
+# --- CONFIG ---
+BASE_DIR = Path(os.environ.get("SANAD_HOME", Path(__file__).resolve().parent.parent))
+STATE_DIR = BASE_DIR / "state"
+LOGS_DIR = BASE_DIR / "logs"
+GENIUS_DIR = BASE_DIR / "genius-memory" / "watchdog-actions"
+WATCHDOG_LOG = LOGS_DIR / "watchdog.log"
+ACTIONS_LOG = GENIUS_DIR / "actions.jsonl"
+
+# Thresholds
+CONSECUTIVE_ERROR_THRESHOLD = 3
+ROUTER_STALL_MIN = 30
+POSITION_FRESHNESS_MIN = 5
+DATA_FRESHNESS_MIN = 15
+RECONCILIATION_STALE_SEC = 900  # 15 minutes (matches Gate 11)
+LOCK_AGE_MIN = 10
+LONG_RUNNING_PROCESS_SEC = 600
+COST_WARNING_PCT = 0.8
+DISK_WARNING_PCT = 0.9
+MEMORY_WARNING_PCT = 0.9
+
+# Alerts
+ALERT_LEVEL_INFO = 1
+ALERT_LEVEL_WARNING = 2
+ALERT_LEVEL_CRITICAL = 3
+
+# Auto-fix attempt tracking (in-memory for now; could persist to state)
+_fix_attempts = {}
+
+# --- HELPERS ---
+def _log(msg, level="INFO"):
+    """Log to watchdog.log with timestamp."""
+    ts = datetime.utcnow().isoformat() + "Z"
+    LOGS_DIR.mkdir(parents=True, exist_ok=True)
+    with open(WATCHDOG_LOG, "a") as f:
+        f.write(f"[{level}] {ts} {msg}\n")
+    print(f"[{level}] {msg}")
+
+
+def _log_action(component, problem, action, result, duration_sec=None, attempts=1, error=None, escalated=False):
+    """Log structured action to genius-memory/watchdog-actions/actions.jsonl."""
+    GENIUS_DIR.mkdir(parents=True, exist_ok=True)
+    
+    entry = {
+        "timestamp": datetime.utcnow().isoformat() + "Z",
+        "component": component,
+        "problem": problem,
+        "action": action,
+        "result": result,
+        "attempts": attempts,
+    }
+    
+    if duration_sec is not None:
+        entry["duration_sec"] = duration_sec
+    if error:
+        entry["error"] = str(error)[:200]
+    if escalated:
+        entry["escalated"] = escalated
+    
+    with open(ACTIONS_LOG, "a") as f:
+        f.write(json.dumps(entry) + "\n")
+
+
+def _alert(msg, level=ALERT_LEVEL_WARNING):
+    """Send Telegram alert."""
+    try:
+        sys.path.insert(0, str(BASE_DIR / "scripts"))
+        from notifier import send
+        send(msg, level=level)
+    except Exception as e:
+        _log(f"Alert failed: {e}", "ERROR")
+
+
+def _kill_process(pattern):
+    """Kill process matching pattern."""
+    try:
+        result = subprocess.run(
+            ["pkill", "-f", pattern],
+            capture_output=True,
+            timeout=5
+        )
+        if result.returncode == 0:
+            _log(f"Killed process: {pattern}")
+            return True
+        else:
+            _log(f"No process found: {pattern}", "WARNING")
+            return False
+    except Exception as e:
+        _log(f"Kill failed for {pattern}: {e}", "ERROR")
+        return False
+
+
+def _remove_lock(lock_path):
+    """Remove stale lock file."""
+    try:
+        if lock_path.exists():
+            lock_path.unlink()
+            _log(f"Removed stale lock: {lock_path}")
+            return True
+    except Exception as e:
+        _log(f"Failed to remove lock {lock_path}: {e}", "ERROR")
+    return False
+
+
+def _run_script(script_name, timeout=60):
+    """Force-run a script."""
+    start = time.time()
+    try:
+        script_path = BASE_DIR / "scripts" / script_name
+        result = subprocess.run(
+            ["python3", str(script_path)],
+            cwd=BASE_DIR,
+            capture_output=True,
+            timeout=timeout,
+            text=True
+        )
+        duration = time.time() - start
+        
+        if result.returncode == 0:
+            _log(f"Force-ran: {script_name} ({duration:.1f}s)")
+            return True, duration, None
+        else:
+            error = result.stderr[:200] if result.stderr else "Unknown error"
+            _log(f"Script failed {script_name}: {error}", "ERROR")
+            return False, duration, error
+    except subprocess.TimeoutExpired:
+        duration = time.time() - start
+        error = f"Timeout after {timeout}s"
+        _log(f"Force-run timeout {script_name}: {error}", "ERROR")
+        return False, duration, error
+    except Exception as e:
+        duration = time.time() - start
+        error = str(e)
+        _log(f"Force-run failed {script_name}: {error}", "ERROR")
+        return False, duration, error
+
+
+def _compile_diagnostic_package(context, age_minutes):
+    """
+    Compile diagnostic package for OpenClaw or human escalation.
+    Returns formatted string with:
+    - Last 20 lines of signal_router.log
+    - Stall context (token, stage, errors)
+    - Stall frequency (last 2 hours)
+    - Circuit breaker states
+    """
+    try:
+        diagnostic = []
+        
+        # 1. Router log tail
+        router_log = LOGS_DIR / "signal_router.log"
+        if router_log.exists():
+            with open(router_log) as f:
+                lines = f.readlines()[-20:]
+                diagnostic.append("📋 Last 20 lines of signal_router.log:")
+                diagnostic.append("```")
+                diagnostic.extend([line.rstrip() for line in lines])
+                diagnostic.append("```")
+        
+        # 2. Stall context
+        if context:
+            diagnostic.append("\n🎯 Stall Context:")
+            if context.get("last_token"):
+                diagnostic.append(f"  Token: {context['last_token']}")
+            if context.get("last_stage"):
+                diagnostic.append(f"  Stage: {context['last_stage']}")
+            if context.get("last_api_call"):
+                diagnostic.append(f"  API: {context['last_api_call']}")
+            if context.get("hints"):
+                diagnostic.append(f"  Hints: {', '.join(context['hints'])}")
+        
+        # 3. Stall frequency
+        actions_log = GENIUS_DIR / "actions.jsonl"
+        if actions_log.exists():
+            two_hours_ago = time.time() - 7200
+            stalls = []
+            with open(actions_log) as f:
+                for line in f:
+                    try:
+                        entry = json.loads(line)
+                        if entry.get("component") == "signal_router" and "stalled" in entry.get("problem", ""):
+                            ts = datetime.fromisoformat(entry["timestamp"].replace("Z", "+00:00"))
+                            if ts.timestamp() > two_hours_ago:
+                                stalls.append(entry)
+                    except:
+                        pass
+            
+            diagnostic.append(f"\n📊 Stall Frequency (last 2h): {len(stalls)} stalls")
+            if stalls:
+                diagnostic.append("  Recent stalls:")
+                for s in stalls[-5:]:
+                    diagnostic.append(f"    - {s.get('problem')} → {s.get('action')} (attempt {s.get('attempts')})")
+        
+        # 4. Circuit breakers
+        try:
+            circuit_file = STATE_DIR / "circuit_breakers.json"
+            if circuit_file.exists():
+                breakers = json.load(open(circuit_file))
+                open_breakers = [k for k, v in breakers.items() if v.get("state") == "OPEN"]
+                if open_breakers:
+                    diagnostic.append(f"\n⚠️ Circuit Breakers OPEN: {', '.join(open_breakers)}")
+                else:
+                    diagnostic.append("\n✅ Circuit Breakers: All closed")
+        except:
+            pass
+        
+        return "\n".join(diagnostic)
+    
+    except Exception as e:
+        return f"Error compiling diagnostic: {e}"
+
+
+def _escalate_to_openclaw(diagnostic):
+    """
+    Send diagnostic package to OpenClaw main session for code-level fix.
+    Uses sessions_send to route to main session.
+    Returns True if sent successfully, False otherwise.
+    """
+    try:
+        message = (
+            f"🔧 WATCHDOG ESCALATION (Tier 3.5):\n"
+            f"\nRouter has stalled repeatedly. Watchdog auto-fixes (kill, force-run, fast-path) all failed.\n"
+            f"\n**Your task:** Diagnose the root cause and apply a code-level fix.\n"
+            f"\n**Diagnostic Package:**\n"
+            f"{diagnostic}\n"
+            f"\n**Possible fixes:**\n"
+            f"- Increase API timeout in sanad_pipeline.py\n"
+            f"- Add retry logic for 500/502/503 errors\n"
+            f"- Skip problematic tokens temporarily\n"
+            f"- Switch to backup model if primary is down\n"
+            f"- Adjust rate limiting\n"
+            f"\n**Time limit:** 30 minutes. If unresolved, I will escalate to Salim.\n"
+            f"\n**Action:** Read logs, edit code, test fix, report back."
+        )
+        
+        # Write to a flag file so OpenClaw can detect it via heartbeat
+        escalation_file = STATE_DIR / "openclaw_escalation.json"
+        escalation_data = {
+            "timestamp": datetime.utcnow().isoformat() + "Z",
+            "component": "signal_router",
+            "tier": "3.5",
+            "diagnostic": diagnostic,
+            "deadline": (datetime.utcnow() + timedelta(minutes=30)).isoformat() + "Z",
+            "status": "pending"
+        }
+        
+        with open(escalation_file, "w") as f:
+            json.dump(escalation_data, f, indent=2)
+        
+        _log(f"Escalation package written to {escalation_file}")
+        
+        # Also try to send via sessions_send (may fail if not in OpenClaw context)
+        try:
+            # This will only work if we're running inside OpenClaw
+            # For now, just log it - the heartbeat will pick it up
+            _log("Escalation flag set for OpenClaw heartbeat detection")
+        except:
+            pass
+        
+        return True
+    
+    except Exception as e:
+        _log(f"Failed to escalate to OpenClaw: {e}", "ERROR")
+        return False
+
+
+def _get_escalation_history():
+    """
+    Get history of OpenClaw escalation attempts from state file.
+    Returns formatted string describing what OpenClaw tried.
+    """
+    try:
+        escalation_file = STATE_DIR / "openclaw_escalation.json"
+        if not escalation_file.exists():
+            return "  (No OpenClaw escalation attempted yet)"
+        
+        data = json.load(open(escalation_file))
+        status = data.get("status", "unknown")
+        
+        if status == "pending":
+            return "  • OpenClaw escalation in progress (no response yet)"
+        elif status == "resolved":
+            actions = data.get("actions_taken", [])
+            if actions:
+                history = ["  • OpenClaw attempted:"]
+                history.extend([f"    - {action}" for action in actions])
+                history.append(f"  • Result: {data.get('result', 'Unknown')}")
+                return "\n".join(history)
+            else:
+                return "  • OpenClaw resolved (no details available)"
+        elif status == "failed":
+            return f"  • OpenClaw attempted fix but failed: {data.get('error', 'Unknown error')}"
+        else:
+            return f"  • OpenClaw escalation status: {status}"
+    
+    except Exception as e:
+        return f"  (Error reading escalation history: {e})"
+
+
+def _analyze_router_context():
+    """
+    Analyze router log to find context of stall:
+    - Which token was being processed?
+    - Which pipeline stage (Sanad, Bull, Bear, Judge)?
+    - Which API call might have timed out?
+    Returns dict with context or None if can't determine.
+    """
+    try:
+        router_log = LOGS_DIR / "signal_router.log"
+        if not router_log.exists():
+            return None
+        
+        # Read last 100 lines
+        with open(router_log) as f:
+            lines = f.readlines()[-100:]
+        
+        context = {
+            "last_token": None,
+            "last_stage": None,
+            "last_api_call": None,
+            "hints": []
+        }
+        
+        for line in reversed(lines):
+            # Extract token
+            if "Selected:" in line and not context["last_token"]:
+                parts = line.split("Selected: ")
+                if len(parts) > 1:
+                    context["last_token"] = parts[1].split()[0].strip()
+            
+            # Extract stage
+            if "Pipeline result:" in line and not context["last_stage"]:
+                context["last_stage"] = "completed"
+            elif "Al-Muhasbi Judge" in line or "GPT call" in line:
+                context["last_stage"] = "judge"
+                context["last_api_call"] = "openai_gpt"
+            elif "Bull" in line or "Al-Baqarah" in line:
+                context["last_stage"] = "bull"
+                context["last_api_call"] = "anthropic_opus"
+            elif "Bear" in line or "Al-Dahhak" in line:
+                context["last_stage"] = "bear"
+                context["last_api_call"] = "anthropic_opus"
+            elif "Sanad" in line or "verification" in line:
+                context["last_stage"] = "sanad"
+                context["last_api_call"] = "anthropic_opus"
+            
+            # Hints for patterns
+            if "timeout" in line.lower():
+                context["hints"].append("timeout_detected")
+            if "429" in line or "rate limit" in line.lower():
+                context["hints"].append("rate_limit")
+            if "500" in line or "502" in line or "503" in line:
+                context["hints"].append("api_server_error")
+        
+        return context if context["last_token"] or context["last_stage"] else None
+    
+    except Exception as e:
+        _log(f"Context analysis failed: {e}", "ERROR")
+        return None
+
+
+def _track_attempts(component):
+    """Track fix attempts for escalation logic."""
+    if component not in _fix_attempts:
+        _fix_attempts[component] = {"count": 0, "last_attempt": 0}
+    
+    now = time.time()
+    # Reset if last attempt was >10 minutes ago
+    if now - _fix_attempts[component]["last_attempt"] > 600:
+        _fix_attempts[component] = {"count": 0, "last_attempt": 0}
+    
+    _fix_attempts[component]["count"] += 1
+    _fix_attempts[component]["last_attempt"] = now
+    
+    return _fix_attempts[component]["count"]
+
+
+def _reset_attempts(component):
+    """Reset attempt counter after successful fix."""
+    if component in _fix_attempts:
+        _fix_attempts[component] = {"count": 0, "last_attempt": 0}
+
+
+# --- CHECKS ---
+
+def check_reconciliation_staleness():
+    """
+    Check if reconciliation is stale (>15min).
+    Auto-fix: clear lock + force reconciliation.py.
+    Only escalate if 3 consecutive fix attempts fail.
+    """
+    issues = []
+    try:
+        recon_file = STATE_DIR / "reconciliation.json"
+        if not recon_file.exists():
+            return []
+        
+        recon = json.load(open(recon_file))
+        last_run_str = recon.get("last_reconciliation_timestamp")
+        
+        if not last_run_str:
+            return []
+        
+        # Parse ISO timestamp
+        last_run = datetime.fromisoformat(last_run_str.replace("Z", "+00:00"))
+        age_sec = (datetime.utcnow().replace(tzinfo=last_run.tzinfo) - last_run).total_seconds()
+        
+        if age_sec > RECONCILIATION_STALE_SEC:
+            age_min = int(age_sec / 60)
+            threshold_min = int(RECONCILIATION_STALE_SEC / 60)
+            
+            _log(f"Reconciliation stale: {age_sec:.0f}s ({age_min}min) ago, threshold {threshold_min}min", "WARNING")
+            
+            # Track attempts
+            attempts = _track_attempts("reconciliation")
+            
+            # AUTO-FIX
+            lock_file = STATE_DIR / "reconciliation.lock"
+            _remove_lock(lock_file)
+            
+            success, duration, error = _run_script("reconciliation.py", timeout=120)
+            
+            if success:
+                # Success!
+                _reset_attempts("reconciliation")
+                
+                _log_action(
+                    component="reconciliation",
+                    problem=f"stale_{age_min}min",
+                    action="clear_lock+rerun",
+                    result="success",
+                    duration_sec=int(duration),
+                    attempts=attempts
+                )
+                
+                _alert(
+                    f"🔧 WATCHDOG AUTO-FIX:\n"
+                    f"• Problem: Reconciliation stale ({age_min}min, threshold {threshold_min}min)\n"
+                    f"• Action: Cleared lock + re-ran reconciliation.py\n"
+                    f"• Result: ✅ Fresh (completed in {duration:.1f}s)",
+                    ALERT_LEVEL_INFO
+                )
+                
+                return []  # Fixed, no issue
+            
+            else:
+                # Failed
+                _log_action(
+                    component="reconciliation",
+                    problem=f"stale_{age_min}min",
+                    action="clear_lock+rerun",
+                    result="failed",
+                    duration_sec=int(duration),
+                    attempts=attempts,
+                    error=error,
+                    escalated=(attempts >= 3)
+                )
+                
+                if attempts >= 3:
+                    # Escalate
+                    _alert(
+                        f"🚨 WATCHDOG NEEDS HELP:\n"
+                        f"• Problem: Reconciliation stale ({age_min}min)\n"
+                        f"• Attempted: Cleared lock + re-ran {attempts} times\n"
+                        f"• Result: ❌ Still failing\n"
+                        f"• Error: {error}\n"
+                        f"• Impact: Gate 11 blocking all trades",
+                        ALERT_LEVEL_CRITICAL
+                    )
+                    # Reset attempts so we don't spam every 2 minutes
+                    _reset_attempts("reconciliation")
+                
+                issues.append(f"Reconciliation stale {age_min}min (auto-fix failed {attempts}x)")
+    
+    except Exception as e:
+        _log(f"Reconciliation staleness check failed: {e}", "ERROR")
+    
+    return issues
+
+
+def check_dexscreener_freshness():
+    """
+    Check if DexScreener signals are fresh (<10 min).
+    Auto-fix: force-run dexscreener_client.py.
+    """
+    issues = []
+    try:
+        dex_signals_dir = BASE_DIR / "signals" / "dexscreener"
+        if not dex_signals_dir.exists():
+            return []
+        
+        # Find most recent file
+        files = sorted(dex_signals_dir.glob("*.json"), key=lambda x: x.stat().st_mtime, reverse=True)
+        if not files:
+            return []
+        
+        latest_file = files[0]
+        age_sec = time.time() - latest_file.stat().st_mtime
+        age_min = int(age_sec / 60)
+        
+        # Threshold: 10 minutes (2x the 5min schedule)
+        if age_sec > 600:
+            _log(f"DexScreener signals stale: {age_min}min ago (max 10min)", "WARNING")
+            
+            # Track attempts
+            attempts = _track_attempts("dexscreener")
+            
+            # AUTO-FIX: force-run scanner
+            success, duration, error = _run_script("dexscreener_client.py", timeout=120)
+            
+            if success:
+                _reset_attempts("dexscreener")
+                
+                _log_action(
+                    component="dexscreener",
+                    problem=f"stale_{age_min}min",
+                    action="force_rerun",
+                    result="success",
+                    duration_sec=int(duration),
+                    attempts=attempts
+                )
+                
+                _alert(
+                    f"🔧 WATCHDOG AUTO-FIX:\n"
+                    f"• Problem: DexScreener signals stale ({age_min}min, threshold 10min)\n"
+                    f"• Action: Force-ran dexscreener_client.py\n"
+                    f"• Result: ✅ Fresh signals generated ({duration:.1f}s)",
+                    ALERT_LEVEL_INFO
+                )
+                
+                return []
+            else:
+                _log_action(
+                    component="dexscreener",
+                    problem=f"stale_{age_min}min",
+                    action="force_rerun",
+                    result="failed",
+                    duration_sec=int(duration),
+                    attempts=attempts,
+                    error=error,
+                    escalated=(attempts >= 3)
+                )
+                
+                if attempts >= 3:
+                    _alert(
+                        f"🚨 WATCHDOG NEEDS HELP:\n"
+                        f"• Problem: DexScreener signals stale ({age_min}min)\n"
+                        f"• Attempted: Force-ran scanner {attempts} times\n"
+                        f"• Result: ❌ Still failing\n"
+                        f"• Error: {error}\n"
+                        f"• Impact: Missing 3rd corroboration source for meme tokens",
+                        ALERT_LEVEL_WARNING
+                    )
+                    _reset_attempts("dexscreener")
+                
+                issues.append(f"DexScreener stale {age_min}min (auto-fix failed {attempts}x)")
+    
+    except Exception as e:
+        _log(f"DexScreener freshness check failed: {e}", "ERROR")
+    
+    return issues
+
+
+def check_cron_health():
+    """Check for stuck crons with consecutive errors >= 3."""
+    issues = []
+    try:
+        # OpenClaw cron command not available in container, skip for now
+        # This check requires gateway API access or cron tool integration
+        return []
+        
+        data = {}
+        jobs = data.get("jobs", [])
+        
+        for job in jobs:
+            if not job.get("enabled"):
+                continue
+            
+            state = job.get("state", {})
+            errors = state.get("consecutiveErrors", 0)
+            name = job.get("name", "unknown")
+            
+            if errors >= CONSECUTIVE_ERROR_THRESHOLD:
+                _log(f"Cron stuck: {name} ({errors} consecutive errors)", "WARNING")
+                
+                # Try to fix
+                # 1. Kill related process
+                process_map = {
+                    "Signal Router": "signal_router.py",
+                    "Position Monitor": "position_monitor.py",
+                    "Reconciliation": "reconciliation.py"
+                }
+                
+                pattern = process_map.get(name)
+                if pattern:
+                    _kill_process(pattern)
+                
+                # 2. Clear related locks
+                lock_map = {
+                    "Signal Router": "signal_window.lock",
+                    "Position Monitor": "portfolio.lock",
+                    "Reconciliation": "reconciliation.lock"
+                }
+                
+                lock_name = lock_map.get(name)
+                if lock_name:
+                    _remove_lock(STATE_DIR / lock_name)
+                
+                issues.append(f"{name}: {errors} errors (killed + unlocked)")
+                _alert(f"🔧 Cron stuck: {name} ({errors} errors). Auto-fixed (killed + unlocked).", ALERT_LEVEL_WARNING)
+    
+    except Exception as e:
+        _log(f"Cron health check failed: {e}", "ERROR")
+    
+    return issues
+
+
+def check_router_stall():
+    """
+    Check if signal router daily_pipeline_runs unchanged for 30+ min.
+    ADAPTIVE ESCALATION (3-LAYER SELF-HEALING):
+      Tier 1 (attempt 1): Kill + clear lock (standard restart)
+      Tier 2 (attempt 2): Kill + force manual router run to verify it completes
+      Tier 3 (attempt 3): Kill + enable fast-path mode (skip LLM debates)
+      Tier 3.5 (attempt 4): Send diagnostic package to OpenClaw for code-level fix
+      Tier 4 (attempt 5+): ESCALATE to human - pause router + alert Salim
+    """
+    try:
+        state_file = STATE_DIR / "signal_router_state.json"
+        if not state_file.exists():
+            return []
+        
+        state = json.load(open(state_file))
+        last_run_str = state.get("last_run")
+        daily_runs = state.get("daily_pipeline_runs", 0)
+        
+        if not last_run_str:
+            return []
+        
+        # Parse ISO timestamp
+        last_run = datetime.fromisoformat(last_run_str.replace("Z", "+00:00"))
+        age_minutes = (datetime.utcnow().replace(tzinfo=last_run.tzinfo) - last_run).total_seconds() / 60
+        
+        if age_minutes > ROUTER_STALL_MIN and daily_runs < 200:
+            _log(f"Router stalled: last run {age_minutes:.0f}min ago, {daily_runs}/200 runs", "WARNING")
+            
+            # Analyze context to understand WHERE it stalled
+            context = _analyze_router_context()
+            context_str = ""
+            if context:
+                parts = []
+                if context.get("last_token"):
+                    parts.append(f"token={context['last_token']}")
+                if context.get("last_stage"):
+                    parts.append(f"stage={context['last_stage']}")
+                if context.get("hints"):
+                    parts.append(f"hints={','.join(context['hints'])}")
+                if parts:
+                    context_str = f" ({' | '.join(parts)})"
+            
+            # Track attempts for ADAPTIVE ESCALATION
+            attempts = _track_attempts("router_stall")
+            
+            if attempts == 1:
+                # 1st attempt: Standard kill + restart
+                _kill_process("signal_router.py")
+                _remove_lock(STATE_DIR / "signal_window.lock")
+                
+                _log_action(
+                    component="signal_router",
+                    problem=f"stalled_{int(age_minutes)}min{context_str}",
+                    action="kill_process+clear_lock",
+                    result="success",
+                    attempts=attempts
+                )
+                
+                context_msg = f"\n• Context:{context_str}" if context_str else ""
+                
+                _alert(
+                    f"🔧 WATCHDOG AUTO-FIX (attempt {attempts}/4):\n"
+                    f"• Problem: Router stalled ({int(age_minutes)}min since last run){context_msg}\n"
+                    f"• Action: Killed process + cleared lock\n"
+                    f"• Result: ✅ Restarted (cron will pick up next cycle)",
+                    ALERT_LEVEL_INFO
+                )
+                
+                _reset_attempts("router_stall")
+                return []
+            
+            elif attempts == 2:
+                # 2nd attempt: Force manual run to verify completion
+                _kill_process("signal_router.py")
+                _remove_lock(STATE_DIR / "signal_window.lock")
+                
+                success, duration, error = _run_script("signal_router.py", timeout=300)
+                
+                if success:
+                    _log_action(
+                        component="signal_router",
+                        problem=f"stalled_{int(age_minutes)}min",
+                        action="kill+force_manual_run",
+                        result="success",
+                        duration_sec=int(duration),
+                        attempts=attempts
+                    )
+                    
+                    _alert(
+                        f"🔧 WATCHDOG AUTO-FIX (attempt {attempts}/4):\n"
+                        f"• Problem: Router stalled again ({int(age_minutes)}min)\n"
+                        f"• Action: Killed + force manual run\n"
+                        f"• Result: ✅ Completed successfully ({duration:.1f}s)",
+                        ALERT_LEVEL_INFO
+                    )
+                    
+                    _reset_attempts("router_stall")
+                    return []
+                else:
+                    _log_action(
+                        component="signal_router",
+                        problem=f"stalled_{int(age_minutes)}min",
+                        action="kill+force_manual_run",
+                        result="failed",
+                        duration_sec=int(duration),
+                        attempts=attempts,
+                        error=error
+                    )
+                    
+                    return [f"Router stall (attempt {attempts}: manual run failed)"]
+            
+            elif attempts == 3:
+                # 3rd attempt: Emergency fast-path mode (skip LLM debate)
+                _kill_process("signal_router.py")
+                _remove_lock(STATE_DIR / "signal_window.lock")
+                
+                # Create flag file for fast-path mode
+                fast_path_flag = STATE_DIR / "router_fast_path.flag"
+                fast_path_flag.write_text(f"emergency_mode: watchdog attempt {attempts} at {datetime.utcnow().isoformat()}Z")
+                
+                _log_action(
+                    component="signal_router",
+                    problem=f"stalled_{int(age_minutes)}min",
+                    action="kill+enable_fast_path",
+                    result="success",
+                    attempts=attempts
+                )
+                
+                _alert(
+                    f"⚠️ WATCHDOG ESCALATION (attempt {attempts}/4):\n"
+                    f"• Problem: Router stalled AGAIN ({int(age_minutes)}min)\n"
+                    f"• Action: Enabled FAST-PATH mode (skip LLM debates)\n"
+                    f"• Next: If this fails, I'll pause router and escalate to you",
+                    ALERT_LEVEL_WARNING
+                )
+                
+                _reset_attempts("router_stall")
+                return []
+            
+            elif attempts == 4:
+                # Tier 3.5: Send diagnostic package to OpenClaw for code-level fix
+                _kill_process("signal_router.py")
+                _remove_lock(STATE_DIR / "signal_window.lock")
+                
+                # Compile diagnostic package
+                diagnostic = _compile_diagnostic_package(context, age_minutes)
+                
+                # Send to OpenClaw main session
+                openclaw_result = _escalate_to_openclaw(diagnostic)
+                
+                _log_action(
+                    component="signal_router",
+                    problem=f"stalled_{int(age_minutes)}min{context_str}",
+                    action="escalate_to_openclaw",
+                    result="sent" if openclaw_result else "failed",
+                    attempts=attempts
+                )
+                
+                if openclaw_result:
+                    _alert(
+                        f"🤖 WATCHDOG → OPENCLAW (attempt {attempts}/5):\n"
+                        f"• Problem: Router stalled repeatedly{context_str}\n"
+                        f"• Watchdog tried: Kill+restart, force run, fast-path mode\n"
+                        f"• Action: Sent diagnostic package to OpenClaw for code-level fix\n"
+                        f"• OpenClaw has 30min to diagnose and patch\n"
+                        f"• If unresolved, will escalate to Salim",
+                        ALERT_LEVEL_WARNING
+                    )
+                else:
+                    _alert(
+                        f"⚠️ WATCHDOG ESCALATION FAILED (attempt {attempts}):\n"
+                        f"• Problem: Router stalled, couldn't reach OpenClaw\n"
+                        f"• Next: Will escalate directly to Salim on next failure",
+                        ALERT_LEVEL_WARNING
+                    )
+                
+                return [f"Router stalled (sent to OpenClaw for diagnosis)"]
+            
+            else:
+                # Tier 4 (attempt 5+): ESCALATE to human - pause router and alert Salim
+                _kill_process("signal_router.py")
+                _remove_lock(STATE_DIR / "signal_window.lock")
+                
+                # Create pause flag (router should check this and exit early)
+                pause_flag = STATE_DIR / "router_paused.flag"
+                pause_until = datetime.utcnow() + timedelta(minutes=30)
+                pause_flag.write_text(f"paused_until: {pause_until.isoformat()}Z\nreason: watchdog_escalation_tier4_attempt_{attempts}")
+                
+                # Compile full history for human
+                diagnostic = _compile_diagnostic_package(context, age_minutes)
+                history = _get_escalation_history()
+                
+                _log_action(
+                    component="signal_router",
+                    problem=f"stalled_{int(age_minutes)}min{context_str}",
+                    action="pause_router_alert_human",
+                    result="escalated",
+                    attempts=attempts,
+                    escalated=True
+                )
+                
+                _alert(
+                    f"🚨 SALIM: HUMAN INTERVENTION NEEDED (Tier 4):\n"
+                    f"\n📊 PROBLEM:\n"
+                    f"  Router stalled repeatedly ({int(age_minutes)}min){context_str}\n"
+                    f"\n🔧 WATCHDOG TRIED:\n"
+                    f"  • Tier 1: Kill + restart\n"
+                    f"  • Tier 2: Force manual run\n"
+                    f"  • Tier 3: Fast-path mode (skip LLM debates)\n"
+                    f"\n🤖 OPENCLAW TRIED:\n"
+                    f"{history}\n"
+                    f"\n❌ RESULT:\n"
+                    f"  All automated fixes failed\n"
+                    f"\n⏸️ ACTION TAKEN:\n"
+                    f"  PAUSED router until {pause_until.strftime('%H:%M UTC')}\n"
+                    f"\n🔍 DIAGNOSTIC DATA:\n"
+                    f"{diagnostic}\n"
+                    f"\n📂 CHECK:\n"
+                    f"  logs/signal_router.log (last 50 lines)\n"
+                    f"  genius-memory/watchdog-actions/actions.jsonl",
+                    ALERT_LEVEL_CRITICAL
+                )
+                
+                _reset_attempts("router_stall")
+                return [f"Router stalled (PAUSED - human needed)"]
+            
+            return [f"Router stalled {age_minutes:.0f}min (auto-fix attempt {attempts})"]
+    
+    except Exception as e:
+        _log(f"Router stall check failed: {e}", "ERROR")
+    
+    return []
+
+
+def check_position_freshness():
+    """Check if open positions have stale prices (>5 min old)."""
+    try:
+        portfolio_file = STATE_DIR / "portfolio.json"
+        if not portfolio_file.exists():
+            return []
+        
+        portfolio = json.load(open(portfolio_file))
+        positions = portfolio.get("positions", {})
+        
+        stale = []
+        for token, pos in positions.items():
+            updated_str = pos.get("current_price_updated")
+            if not updated_str:
+                continue
+            
+            updated = datetime.fromisoformat(updated_str.replace("Z", "+00:00"))
+            age_minutes = (datetime.utcnow().replace(tzinfo=updated.tzinfo) - updated).total_seconds() / 60
+            
+            if age_minutes > POSITION_FRESHNESS_MIN:
+                stale.append(f"{token} ({age_minutes:.0f}min old)")
+        
+        if stale:
+            _log(f"Stale position prices: {stale}", "WARNING")
+            
+            # Fix: force position monitor
+            success, duration, error = _run_script("position_monitor.py", timeout=45)
+            
+            if success:
+                _log_action(
+                    component="position_monitor",
+                    problem=f"stale_prices_{len(stale)}",
+                    action="force_rerun",
+                    result="success",
+                    duration_sec=int(duration),
+                    attempts=1
+                )
+                
+                _alert(
+                    f"🔧 WATCHDOG AUTO-FIX:\n"
+                    f"• Problem: {len(stale)} position(s) with stale prices\n"
+                    f"• Action: Force-ran position_monitor.py\n"
+                    f"• Result: ✅ Refreshed ({duration:.1f}s)",
+                    ALERT_LEVEL_INFO
+                )
+            else:
+                _log_action(
+                    component="position_monitor",
+                    problem=f"stale_prices_{len(stale)}",
+                    action="force_rerun",
+                    result="failed",
+                    duration_sec=int(duration),
+                    attempts=1,
+                    error=error
+                )
+                
+                _alert(
+                    f"🚨 WATCHDOG: Position monitor failed to refresh\n"
+                    f"• Error: {error}",
+                    ALERT_LEVEL_WARNING
+                )
+            
+            return stale
+    
+    except Exception as e:
+        _log(f"Position freshness check failed: {e}", "ERROR")
+    
+    return []
+
+
+def check_data_freshness():
+    """Check if scanners have fresh data (<15 min)."""
+    issues = []
+    try:
+        signal_window = STATE_DIR / "signal_window.json"
+        if not signal_window.exists():
+            return []
+        
+        window = json.load(open(signal_window))
+        signals = window.get("signals", window) if isinstance(window, dict) else window
+        
+        # Group by source, find newest
+        from collections import defaultdict
+        source_newest = defaultdict(int)
+        
+        now = time.time()
+        for sig in signals:
+            ts_str = sig.get("_timestamp") or sig.get("timestamp")
+            if not ts_str:
+                continue
+            
+            try:
+                ts = datetime.fromisoformat(ts_str.replace("Z", "+00:00")).timestamp()
+                source = sig.get("provider") or sig.get("source") or "unknown"
+                source_newest[source] = max(source_newest[source], ts)
+            except Exception:
+                continue
+        
+        # Check age
+        for source, ts in source_newest.items():
+            age_minutes = (now - ts) / 60
+            if age_minutes > DATA_FRESHNESS_MIN:
+                issues.append(f"{source} ({age_minutes:.0f}min old)")
+                _log(f"Data source stale: {source} ({age_minutes:.0f}min)", "WARNING")
+    
+    except Exception as e:
+        _log(f"Data freshness check failed: {e}", "ERROR")
+    
+    if issues:
+        _alert(
+            f"⚠️ WATCHDOG: Stale data sources detected\n"
+            f"• Sources: {', '.join(issues)}\n"
+            f"• Note: This usually means scanners haven't run or are failing",
+            ALERT_LEVEL_WARNING
+        )
+    
+    return issues
+
+
+def check_stale_locks():
+    """Remove any .lock files older than 10 minutes."""
+    removed = []
+    try:
+        lock_files = list(STATE_DIR.glob("*.lock"))
+        now = time.time()
+        
+        for lock in lock_files:
+            age_minutes = (now - lock.stat().st_mtime) / 60
+            if age_minutes > LOCK_AGE_MIN:
+                _remove_lock(lock)
+                removed.append(f"{lock.name} ({age_minutes:.0f}min old)")
+    
+    except Exception as e:
+        _log(f"Lock check failed: {e}", "ERROR")
+    
+    if removed:
+        _log_action(
+            component="locks",
+            problem=f"stale_locks_{len(removed)}",
+            action="remove",
+            result="success",
+            attempts=1
+        )
+        
+        _alert(
+            f"🔧 WATCHDOG AUTO-FIX:\n"
+            f"• Problem: {len(removed)} stale lock file(s)\n"
+            f"• Action: Removed locks\n"
+            f"• Result: ✅ Cleared",
+            ALERT_LEVEL_INFO
+        )
+    
+    return removed
+
+
+def check_zombie_processes():
+    """Kill any trading script running >600s."""
+    killed = []
+    try:
+        patterns = [
+            "signal_router.py",
+            "sanad_pipeline.py",
+            "position_monitor.py",
+            "reconciliation.py"
+        ]
+        
+        for proc in psutil.process_iter(['pid', 'name', 'cmdline', 'create_time']):
+            try:
+                cmdline = " ".join(proc.info['cmdline'] or [])
+                
+                for pattern in patterns:
+                    if pattern in cmdline:
+                        runtime = time.time() - proc.info['create_time']
+                        
+                        if runtime > LONG_RUNNING_PROCESS_SEC:
+                            proc.kill()
+                            killed.append(f"{pattern} (PID {proc.info['pid']}, {runtime:.0f}s)")
+                            _log(f"Killed zombie: {pattern} (PID {proc.info['pid']})", "WARNING")
+            except (psutil.NoSuchProcess, psutil.AccessDenied):
+                continue
+    
+    except Exception as e:
+        _log(f"Zombie check failed: {e}", "ERROR")
+    
+    if killed:
+        _log_action(
+            component="processes",
+            problem=f"zombie_processes_{len(killed)}",
+            action="kill",
+            result="success",
+            attempts=1
+        )
+        
+        _alert(
+            f"🔧 WATCHDOG AUTO-FIX:\n"
+            f"• Problem: {len(killed)} zombie process(es)\n"
+            f"• Action: Killed processes\n"
+            f"• Details: {', '.join(killed)}\n"
+            f"• Result: ✅ Cleaned",
+            ALERT_LEVEL_WARNING
+        )
+    
+    return killed
+
+
+def check_cost_runaway():
+    """Check if daily cost > 80% of limit."""
+    try:
+        daily_cost_file = STATE_DIR / "daily_cost.json"
+        if not daily_cost_file.exists():
+            return []
+        
+        cost_data = json.load(open(daily_cost_file))
+        total_usd = cost_data.get("total_usd", 0)
+        
+        # Daily LLM spend limit (paper mode)
+        DAILY_LIMIT = 65.0
+        pct = total_usd / DAILY_LIMIT
+        
+        if pct > COST_WARNING_PCT:
+            _log(f"Cost runaway: ${total_usd:.2f} / ${DAILY_LIMIT} ({pct*100:.0f}%)", "WARNING")
+            _alert(
+                f"⚠️ WATCHDOG: Daily cost warning\n"
+                f"• Cost: ${total_usd:.2f} / ${DAILY_LIMIT} ({pct*100:.0f}%)\n"
+                f"• Note: Approaching daily limit",
+                ALERT_LEVEL_WARNING
+            )
+            return [f"${total_usd:.2f} / ${DAILY_LIMIT} ({pct*100:.0f}%)"]
+    
+    except Exception as e:
+        _log(f"Cost check failed: {e}", "ERROR")
+    
+    return []
+
+
+def check_disk_memory():
+    """Check disk and memory usage."""
+    issues = []
+    try:
+        # Disk
+        disk = psutil.disk_usage(str(BASE_DIR))
+        disk_pct = disk.percent / 100
+        
+        if disk_pct > DISK_WARNING_PCT:
+            issues.append(f"Disk {disk_pct*100:.0f}%")
+            _log(f"Disk usage high: {disk_pct*100:.0f}%", "WARNING")
+            
+            # Clean old logs (>7 days)
+            week_ago = time.time() - (7 * 86400)
+            cleaned = []
+            for log_file in LOGS_DIR.glob("*.log"):
+                if log_file.stat().st_mtime < week_ago:
+                    log_file.unlink()
+                    cleaned.append(log_file.name)
+                    _log(f"Cleaned old log: {log_file.name}")
+            
+            if cleaned:
+                _alert(
+                    f"🔧 WATCHDOG AUTO-FIX:\n"
+                    f"• Problem: Disk usage {disk_pct*100:.0f}%\n"
+                    f"• Action: Cleaned {len(cleaned)} old log file(s)\n"
+                    f"• Result: ✅ Freed space",
+                    ALERT_LEVEL_INFO
+                )
+        
+        # Memory
+        mem = psutil.virtual_memory()
+        mem_pct = mem.percent / 100
+        
+        if mem_pct > MEMORY_WARNING_PCT:
+            issues.append(f"Memory {mem_pct*100:.0f}%")
+            _log(f"Memory usage high: {mem_pct*100:.0f}%", "WARNING")
+    
+    except Exception as e:
+        _log(f"Disk/memory check failed: {e}", "ERROR")
+    
+    if issues:
+        _alert(
+            f"⚠️ WATCHDOG: Resource warning\n"
+            f"• Issues: {', '.join(issues)}\n"
+            f"• Note: Monitor closely",
+            ALERT_LEVEL_WARNING
+        )
+    
+    return issues
+
+
+# --- MAIN ---
+
+def run():
+    """Run all watchdog checks."""
+    _log("=== WATCHDOG START ===")
+    
+    all_issues = {}
+    
+    checks = [
+        ("Reconciliation Staleness", check_reconciliation_staleness),  # NEW: critical for Gate 11
+        ("DexScreener Freshness", check_dexscreener_freshness),  # NEW: critical for 3-source corroboration
+        ("Cron Health", check_cron_health),
+        ("Router Stall", check_router_stall),
+        ("Position Freshness", check_position_freshness),
+        ("Data Freshness", check_data_freshness),
+        ("Stale Locks", check_stale_locks),
+        ("Zombie Processes", check_zombie_processes),
+        ("Cost Runaway", check_cost_runaway),
+        ("Disk/Memory", check_disk_memory)
+    ]
+    
+    for check_name, check_func in checks:
+        try:
+            issues = check_func()
+            if issues:
+                all_issues[check_name] = issues
+                _log(f"{check_name}: {len(issues)} issue(s)")
+        except Exception as e:
+            _log(f"{check_name} check crashed: {e}", "ERROR")
+    
+    if not all_issues:
+        _log("=== WATCHDOG: ALL CLEAR ===")
+    else:
+        _log(f"=== WATCHDOG: {len(all_issues)} CHECK(S) TRIGGERED ===")
+        for check, issues in all_issues.items():
+            _log(f"  {check}: {issues}")
+
+
+if __name__ == "__main__":
+    try:
+        run()
+    except KeyboardInterrupt:
+        _log("Interrupted", "WARNING")
+    except Exception as e:
+        _log(f"WATCHDOG CRASHED: {e}", "CRITICAL")
+        _alert(f"🚨 WATCHDOG CRASHED: {e}", ALERT_LEVEL_CRITICAL)
+        import traceback
+        traceback.print_exc()

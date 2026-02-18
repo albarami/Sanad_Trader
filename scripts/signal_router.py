@@ -88,6 +88,34 @@ def _log(msg: str):
         pass
 
 
+def _load_skip_list():
+    """Load skip_tokens.json - tokens temporarily blocked due to issues."""
+    skip_file = STATE_DIR / "skip_tokens.json"
+    if not skip_file.exists():
+        return []
+    try:
+        data = json.loads(skip_file.read_text())
+        skip_list = data.get("skip_list", [])
+        
+        # Filter expired entries
+        now = datetime.now(timezone.utc)
+        active = []
+        for entry in skip_list:
+            expires_str = entry.get("expires_at")
+            if expires_str:
+                try:
+                    expires = datetime.fromisoformat(expires_str.replace("Z", "+00:00"))
+                    if now < expires:
+                        active.append(entry)
+                except:
+                    pass
+        
+        return active
+    except Exception as e:
+        _log(f"Skip list load error: {e}")
+        return []
+
+
 def _now() -> datetime:
     return datetime.now(timezone.utc)
 
@@ -693,6 +721,10 @@ def run_router():
     else:
         _log("Market regime: UNKNOWN (no fear/greed data)")
 
+    # --- Load skip list (toxic tokens) ---
+    skip_list = _load_skip_list()
+    skip_tokens = {entry["token"].upper(): entry["reason"] for entry in skip_list}
+    
     # --- Filter ---
     filtered_reasons: list[str] = []
     candidates: list[tuple[dict, float]] = []  # (signal, score)
@@ -703,6 +735,9 @@ def run_router():
 
         if token in open_tokens:
             filtered_reasons.append(f"{token} (already open)")
+            continue
+        if token in skip_tokens:
+            filtered_reasons.append(f"{token} (skip list: {skip_tokens[token][:50]})")
             continue
         if token in cooldowns:
             filtered_reasons.append(f"{token} (cooldown {cooldowns[token]:.0f}min remaining)")
@@ -924,6 +959,36 @@ def run_router():
         pipeline_signal["corroboration_level"] = corr["corroboration_level"]
         pipeline_signal["corroboration_quality"] = corr.get("corroboration_quality", "STRONG")
 
+        # --- Active Solscan enrichment (on-chain verification) ---
+        if pipeline_signal.get("contract_address") or pipeline_signal.get("address") or pipeline_signal.get("token_address"):
+            try:
+                from solscan_client import enrich_signal_with_solscan
+                pipeline_signal = enrich_signal_with_solscan(pipeline_signal)
+                _log(f"Solscan enrichment applied: holders={pipeline_signal.get('solscan_holder_count', 'N/A')}, verified={pipeline_signal.get('solscan_verified', False)}")
+                
+                # Re-calculate corroboration with Solscan as 5th source
+                if pipeline_signal.get("solscan_holder_count", 0) > 0:
+                    # Add solscan to cross_sources if enrichment succeeded
+                    cross_sources_list = list(corr["cross_sources"])
+                    if "solscan" not in cross_sources_list:
+                        cross_sources_list.append("solscan")
+                        cross_source_count = len(cross_sources_list)
+                        
+                        # Update corroboration level
+                        if cross_source_count >= 4:
+                            pipeline_signal["corroboration_level"] = "TAWATUR_QAWIY"
+                        elif cross_source_count == 3:
+                            pipeline_signal["corroboration_level"] = "TAWATUR"
+                        elif cross_source_count == 2:
+                            pipeline_signal["corroboration_level"] = "MASHHUR"
+                        
+                        pipeline_signal["cross_source_count"] = cross_source_count
+                        pipeline_signal["cross_sources"] = cross_sources_list
+                        _log(f"Corroboration upgraded with Solscan: {pipeline_signal['corroboration_level']} ({cross_source_count} sources)")
+                        
+            except Exception as e:
+                _log(f"Solscan enrichment failed: {e}")
+
         # --- Write temp signal file ---
         tmp_dir = BASE_DIR / "tmp"
         tmp_dir.mkdir(parents=True, exist_ok=True)
@@ -931,13 +996,17 @@ def run_router():
         signal_file.write_text(json.dumps(pipeline_signal, indent=2))
 
         # --- Call pipeline ---
+        _log(f"Calling pipeline with 5min timeout...")
+        pipeline_start = time.time()
         try:
             result = subprocess.run(
                 ["python3", str(PIPELINE_SCRIPT), str(signal_file)],
                 capture_output=True,
                 text=True,
-                timeout=300,
+                timeout=300,  # 5 minutes hard limit
             )
+            pipeline_duration = time.time() - pipeline_start
+            _log(f"Pipeline completed in {pipeline_duration:.1f}s")
             stdout = result.stdout.strip()
             stderr = result.stderr.strip()
 
@@ -1073,8 +1142,20 @@ def run_router():
 # Entry point
 # ---------------------------------------------------------------------------
 if __name__ == "__main__":
+    import signal
+    
+    def timeout_handler(signum, frame):
+        _log("GLOBAL TIMEOUT: Router exceeded 10 minute hard limit - forcing exit")
+        sys.exit(124)  # Exit code 124 = timeout
+    
+    # Set global 10-minute timeout (dead man's switch)
+    signal.signal(signal.SIGALRM, timeout_handler)
+    signal.alarm(600)  # 10 minutes total for entire router run
+    
     try:
         run_router()
+        signal.alarm(0)  # Cancel alarm if completed successfully
     except Exception as e:
+        signal.alarm(0)  # Cancel alarm on error
         _log(f"FATAL: {e}")
         sys.exit(1)

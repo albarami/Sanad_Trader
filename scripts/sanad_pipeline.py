@@ -56,6 +56,7 @@ except Exception:
     pass
 
 import yaml
+import requests  # Better timeout handling than urllib
 import binance_client
 try:
     import notifier
@@ -102,9 +103,7 @@ OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 
 def call_claude(system_prompt, user_message, model="claude-haiku-4-5-20251001", max_tokens=2000, stage="unknown", token_symbol=""):
     """
-    Call Anthropic Claude API directly.
-    Primary for: Sanad Verifier, Bull, Bear (Opus 4.6), Execution (Haiku).
-    Fallback: OpenRouter Claude.
+    Call Claude via direct Anthropic API.
     
     Args:
         system_prompt: System prompt string
@@ -117,6 +116,8 @@ def call_claude(system_prompt, user_message, model="claude-haiku-4-5-20251001", 
     Returns:
         Response text string, or None on failure
     """
+    
+    # Direct Anthropic
     url = "https://api.anthropic.com/v1/messages"
     headers = {
         "Content-Type": "application/json",
@@ -131,26 +132,42 @@ def call_claude(system_prompt, user_message, model="claude-haiku-4-5-20251001", 
     })
 
     try:
-        req = urllib.request.Request(url, data=body.encode("utf-8"), headers=headers, method="POST")
-        with urllib.request.urlopen(req, timeout=90) as resp:
-            result = json.loads(resp.read().decode("utf-8"))
-            if result.get("content") and len(result["content"]) > 0:
-                text = result["content"][0].get("text", "")
-                if text:
-                    print(f"    [Claude direct OK — {model}]")
-                    
-                    # Log cost
-                    usage = result.get("usage", {})
-                    input_tokens = usage.get("input_tokens", 0)
-                    output_tokens = usage.get("output_tokens", 0)
-                    try:
-                        from cost_tracker import log_api_call
-                        log_api_call(model, input_tokens, output_tokens, stage, token_symbol)
-                    except Exception as e:
-                        print(f"    [Cost tracking failed: {e}]")
-                    
-                    return text
+        # Use requests with proper timeout (connect + read)
+        response = requests.post(
+            url,
+            headers=headers,
+            json={
+                "model": model,
+                "max_tokens": max_tokens,
+                "system": system_prompt,
+                "messages": [{"role": "user", "content": user_message}],
+            },
+            timeout=(10, 60)  # (connect_timeout, read_timeout)
+        )
+        response.raise_for_status()
+        result = response.json()
+        
+        if result.get("content") and len(result["content"]) > 0:
+            text = result["content"][0].get("text", "")
+            if text:
+                print(f"    [Claude direct OK — {model}]")
+                
+                # Log cost
+                usage = result.get("usage", {})
+                input_tokens = usage.get("input_tokens", 0)
+                output_tokens = usage.get("output_tokens", 0)
+                try:
+                    from cost_tracker import log_api_call
+                    log_api_call(model, input_tokens, output_tokens, stage, token_symbol)
+                except Exception as e:
+                    print(f"    [Cost tracking failed: {e}]")
+                
+                return text
         return None
+    except (requests.exceptions.Timeout, requests.exceptions.ConnectionError) as e:
+        print(f"    [Claude direct TIMEOUT/CONNECTION: {e}]")
+        print(f"    [Falling back to OpenRouter Claude...]")
+        return _fallback_openrouter(system_prompt, user_message, f"anthropic/{model}", max_tokens, stage, token_symbol)
     except Exception as e:
         print(f"    [Claude direct FAILED: {e}]")
         print(f"    [Falling back to OpenRouter Claude...]")
@@ -193,27 +210,44 @@ def call_openai(system_prompt, user_message, model="gpt-5.2", max_tokens=2000, s
     })
 
     try:
-        req = urllib.request.Request(url, data=body.encode("utf-8"), headers=headers, method="POST")
-        with urllib.request.urlopen(req, timeout=90) as resp:
-            result = json.loads(resp.read().decode("utf-8"))
-            choices = result.get("choices", [])
-            if choices:
-                text = choices[0].get("message", {}).get("content", "")
-                if text:
-                    print(f"    [OpenAI direct OK — {model}]")
-                    
-                    # Log cost
-                    usage = result.get("usage", {})
-                    input_tokens = usage.get("prompt_tokens", 0)
-                    output_tokens = usage.get("completion_tokens", 0)
-                    try:
-                        from cost_tracker import log_api_call
-                        log_api_call(model, input_tokens, output_tokens, stage, token_symbol)
-                    except Exception as e:
-                        print(f"    [Cost tracking failed: {e}]")
-                    
-                    return text
+        # Use requests with proper timeout (connect + read)
+        response = requests.post(
+            url,
+            headers=headers,
+            json={
+                "model": model,
+                "max_completion_tokens": max_tokens,
+                "messages": [
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_message},
+                ],
+            },
+            timeout=(10, 60)  # (connect_timeout, read_timeout)
+        )
+        response.raise_for_status()
+        result = response.json()
+        choices = result.get("choices", [])
+        if choices:
+            text = choices[0].get("message", {}).get("content", "")
+            if text:
+                print(f"    [OpenAI direct OK — {model}]")
+                
+                # Log cost
+                usage = result.get("usage", {})
+                input_tokens = usage.get("prompt_tokens", 0)
+                output_tokens = usage.get("completion_tokens", 0)
+                try:
+                    from cost_tracker import log_api_call
+                    log_api_call(model, input_tokens, output_tokens, stage, token_symbol)
+                except Exception as e:
+                    print(f"    [Cost tracking failed: {e}]")
+                
+                return text
         return None
+    except (requests.exceptions.Timeout, requests.exceptions.ConnectionError) as e:
+        print(f"    [OpenAI direct TIMEOUT/CONNECTION: {e}]")
+        print(f"    [Falling back to OpenRouter GPT...]")
+        return _fallback_openrouter(system_prompt, user_message, f"openai/{model}", max_tokens, stage, token_symbol)
     except Exception as e:
         print(f"    [OpenAI direct FAILED: {e}]")
         print(f"    [Falling back to OpenRouter GPT...]")
@@ -260,24 +294,47 @@ def call_perplexity(query, model="sonar-pro", stage="unknown", token_symbol=""):
     })
 
     try:
-        req = urllib.request.Request(url, data=body.encode("utf-8"), headers=headers, method="POST")
-        with urllib.request.urlopen(req, timeout=60) as resp:
-            result = json.loads(resp.read().decode("utf-8"))
-            choices = result.get("choices", [])
-            if choices:
-                text = choices[0].get("message", {}).get("content", "")
-                if text:
-                    print(f"    [Perplexity direct OK — {model}]")
-                    
-                    # Log cost (flat rate, no token counting)
-                    try:
-                        from cost_tracker import log_api_call
-                        log_api_call(f"perplexity/{model}", 0, 0, stage, token_symbol)
-                    except Exception as e:
-                        print(f"    [Cost tracking failed: {e}]")
-                    
-                    return text
+        # Use requests with proper timeout (connect + read)
+        response = requests.post(
+            url,
+            headers=headers,
+            json={
+                "model": model,
+                "messages": [
+                    {"role": "system", "content": "You are a real-time crypto intelligence agent. Return factual, sourced information only. Include source URLs when possible."},
+                    {"role": "user", "content": query},
+                ],
+            },
+            timeout=(10, 30)  # (connect_timeout, read_timeout) - faster for search
+        )
+        response.raise_for_status()
+        result = response.json()
+        choices = result.get("choices", [])
+        if choices:
+            text = choices[0].get("message", {}).get("content", "")
+            if text:
+                print(f"    [Perplexity direct OK — {model}]")
+                
+                # Log cost (flat rate, no token counting)
+                try:
+                    from cost_tracker import log_api_call
+                    log_api_call(f"perplexity/{model}", 0, 0, stage, token_symbol)
+                except Exception as e:
+                    print(f"    [Cost tracking failed: {e}]")
+                
+                return text
         return None
+    except (requests.exceptions.Timeout, requests.exceptions.ConnectionError) as e:
+        print(f"    [Perplexity direct TIMEOUT/CONNECTION: {e}]")
+        print(f"    [Falling back to OpenRouter Perplexity...]")
+        return _fallback_openrouter(
+            "You are a real-time crypto intelligence agent. Return factual, sourced information only.",
+            query,
+            f"perplexity/{model}",
+            1500,
+            stage,
+            token_symbol,
+        )
     except Exception as e:
         print(f"    [Perplexity direct FAILED: {e}]")
         print(f"    [Falling back to OpenRouter Perplexity...]")
@@ -315,29 +372,46 @@ def _fallback_openrouter(system_prompt, user_message, model, max_tokens=2000, st
     })
 
     try:
-        req = urllib.request.Request(url, data=body.encode("utf-8"), headers=headers, method="POST")
-        with urllib.request.urlopen(req, timeout=90) as resp:
-            result = json.loads(resp.read().decode("utf-8"))
-            choices = result.get("choices", [])
-            if choices:
-                text = choices[0].get("message", {}).get("content", "")
-                if text:
-                    print(f"    [OpenRouter fallback OK — {model}]")
-                    
-                    # Log cost (best-effort token counting from OpenRouter)
-                    usage = result.get("usage", {})
-                    input_tokens = usage.get("prompt_tokens", 0)
-                    output_tokens = usage.get("completion_tokens", 0)
-                    try:
-                        from cost_tracker import log_api_call
-                        log_api_call(model, input_tokens, output_tokens, stage, token_symbol)
-                    except Exception as e:
-                        print(f"    [Cost tracking failed: {e}]")
-                    
-                    return text
+        # Use requests with proper timeout (connect + read)
+        response = requests.post(
+            url,
+            headers=headers,
+            json={
+                "model": model,
+                "max_tokens": max_tokens,
+                "messages": [
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_message},
+                ],
+            },
+            timeout=(10, 90)  # (connect_timeout, read_timeout)
+        )
+        response.raise_for_status()
+        result = response.json()
+        choices = result.get("choices", [])
+        if choices:
+            text = choices[0].get("message", {}).get("content", "")
+            if text:
+                print(f"    [OpenRouter fallback OK — {model}]")
+                
+                # Log cost (best-effort token counting from OpenRouter)
+                usage = result.get("usage", {})
+                input_tokens = usage.get("prompt_tokens", 0)
+                output_tokens = usage.get("completion_tokens", 0)
+                try:
+                    from cost_tracker import log_api_call
+                    log_api_call(model, input_tokens, output_tokens, stage, token_symbol)
+                except Exception as e:
+                    print(f"    [Cost tracking failed: {e}]")
+                
+                return text
+        return None
+    except (requests.exceptions.Timeout, requests.exceptions.ConnectionError) as e:
+        print(f"    [OpenRouter fallback TIMEOUT/CONNECTION: {e}]")
         return None
     except Exception as e:
         print(f"    [OpenRouter fallback FAILED: {e}]")
+        return None
         return None
 
 
@@ -645,6 +719,21 @@ def stage_2_sanad_verification(signal):
     print(f"STAGE 2: SANAD VERIFICATION (Takhrij)")
     print(f"{'='*60}")
 
+    # Step 0a: Load learned source grades (UCB1 feedback)
+    source_grades_file = STATE_DIR / "source_grades.json"
+    source_grades = {}
+    if source_grades_file.exists():
+        try:
+            source_grades = json.load(open(source_grades_file))
+        except:
+            pass
+    
+    signal_source = signal.get("source", "unknown").lower()
+    learned_grade = source_grades.get(signal_source, None)
+    
+    if learned_grade:
+        print(f"  📊 UCB1 Source Grade: {signal_source} = {learned_grade} (learned from past trades)")
+
     # Step 0: Enrich with on-chain data for Solana tokens
     signal = enrich_signal_with_onchain_data(signal)
 
@@ -712,12 +801,25 @@ Binance 24h data:
 
     # Step 3: Run Sanad Verifier (Claude Opus)
     print("  [2b] Running Sanad Verification (Claude Opus)...")
+    
+    # Add learned source grade to prompt
+    source_grade_context = ""
+    if learned_grade:
+        grade_points = {"A": 15, "B": 10, "C": 5, "D": 0}
+        points = grade_points.get(learned_grade, 5)
+        source_grade_context = f"""
+SOURCE PERFORMANCE (learned from past trades):
+- This source has been graded {learned_grade} based on historical win rate
+- Source trust bonus: +{points} points
+- Use this grade as a starting point for source_ucb1_score in your calculation
+"""
+    
     verification_prompt = f"""SIGNAL TO VERIFY:
 Token: {signal['token']}
 Source: {signal['source']}
 Thesis: {signal['thesis']}
 Timestamp: {signal.get('timestamp', 'unknown')}
-
+{source_grade_context}
 CROSS-SOURCE CORROBORATION (pre-verified by corroboration engine):
 - Independent sources confirming this token: {signal.get('cross_source_count', 1)}
 - Sources: {', '.join(signal.get('cross_sources', [])) or 'single source only'}
@@ -725,6 +827,7 @@ CROSS-SOURCE CORROBORATION (pre-verified by corroboration engine):
 NOTE: Use this corroboration data directly in your trust score calculation.
 If cross_source_count >= 2, corroboration_level is at least MASHHUR (18 points).
 If cross_source_count >= 3, corroboration_level is TAWATUR (25 points).
+If cross_source_count >= 4, corroboration_level is TAWATUR_QAWIY (30 points — maximum trust).
 
 REAL-TIME INTELLIGENCE (from Perplexity):
 {perplexity_intel}
@@ -745,7 +848,7 @@ Return your analysis as valid JSON with these exact keys:
   "chain_length": <number of independent confirmations>,
   "chain_integrity": "<CONNECTED|BROKEN|PARTIAL>",
   "content_consistency": "<CONSISTENT|CONTRADICTIONS_FOUND|UNVERIFIABLE>",
-  "corroboration_level": "<TAWATUR|MASHHUR|AHAD_SAHIH|AHAD_DAIF>",
+  "corroboration_level": "<TAWATUR_QAWIY|TAWATUR|MASHHUR|AHAD_SAHIH|AHAD_DAIF>",
   "recency_decay_points": <0 to -15>,
   "rugpull_flags": ["<flag1>", "<flag2>"] or [],
   "sybil_risk": "<LOW|MEDIUM|HIGH>",
@@ -814,10 +917,10 @@ Return your analysis as valid JSON with these exact keys:
     engine_quality = signal.get("corroboration_quality", "WEAK")  # fail closed: no tag = no full boost
     llm_level = sanad_result.get("corroboration_level", "AHAD").upper().strip()
 
-    # Corroboration points: AHAD=10, MASHHUR=18, TAWATUR=25
-    # WEAK quality gets partial credit: AHAD=10, MASHHUR=14, TAWATUR=18
-    CORR_POINTS_STRONG = {"AHAD": 10, "AHAD_SAHIH": 10, "AHAD_DAIF": 0, "MASHHUR": 18, "TAWATUR": 25}
-    CORR_POINTS_WEAK = {"AHAD": 10, "AHAD_SAHIH": 10, "AHAD_DAIF": 0, "MASHHUR": 14, "TAWATUR": 18}
+    # Corroboration points: AHAD=10, MASHHUR=18, TAWATUR=25, TAWATUR_QAWIY=30
+    # WEAK quality gets partial credit: AHAD=10, MASHHUR=14, TAWATUR=18, TAWATUR_QAWIY=22
+    CORR_POINTS_STRONG = {"AHAD": 10, "AHAD_SAHIH": 10, "AHAD_DAIF": 0, "MASHHUR": 18, "TAWATUR": 25, "TAWATUR_QAWIY": 30}
+    CORR_POINTS_WEAK = {"AHAD": 10, "AHAD_SAHIH": 10, "AHAD_DAIF": 0, "MASHHUR": 14, "TAWATUR": 18, "TAWATUR_QAWIY": 22}
     points_table = CORR_POINTS_WEAK if engine_quality == "WEAK" else CORR_POINTS_STRONG
     llm_points = CORR_POINTS_STRONG.get(llm_level, 10)  # LLM always scored on STRONG scale
     engine_points = points_table.get(engine_level, 10)
@@ -1214,7 +1317,7 @@ Return valid JSON with these exact keys:
     bull_response = call_claude(
         system_prompt=tier_bull_system,  # v3.0: tier-specific prompt
         user_message=bull_message,
-        model="claude-sonnet-4-6",
+        model="claude-opus-4-6",
         max_tokens=3000,
         stage="bull_debate",
         token_symbol=signal.get("token", ""),
@@ -1294,7 +1397,7 @@ Apply your Muḥāsibī pre-reasoning discipline (Khawāṭir → Murāqaba → 
     bear_response = call_claude(
         system_prompt=tier_bear_system,  # v3.0: tier-specific prompt
         user_message=bear_message,
-        model="claude-sonnet-4-6",
+        model="claude-opus-4-6",
         max_tokens=5000,
         stage="bear_debate",
         token_symbol=signal.get("token", ""),
@@ -1455,7 +1558,7 @@ A paper loss of $50 that teaches the system a pattern is worth more than a paper
     judge_response = call_openai(
         system_prompt=judge_system,
         user_message=judge_message,
-        model="gpt-5.2",
+        model="gpt-5.2-pro",
         max_tokens=8000,
         stage="judge",
         token_symbol=signal.get("token", ""),
@@ -2051,8 +2154,8 @@ def _check_fast_track(signal):
 
     # Build deterministic trust score from corroboration
     quality = signal.get("corroboration_quality", "WEAK")
-    CORR_STRONG = {"AHAD": 10, "MASHHUR": 18, "TAWATUR": 25}
-    CORR_WEAK = {"AHAD": 10, "MASHHUR": 14, "TAWATUR": 18}
+    CORR_STRONG = {"AHAD": 10, "MASHHUR": 18, "TAWATUR": 25, "TAWATUR_QAWIY": 30}
+    CORR_WEAK = {"AHAD": 10, "MASHHUR": 14, "TAWATUR": 18, "TAWATUR_QAWIY": 22}
     corr_level = signal.get("corroboration_level", "AHAD")
     corr_pts = (CORR_WEAK if quality == "WEAK" else CORR_STRONG).get(corr_level, 10)
     # Base trust: 60 for Tier 1/2 + corroboration bonus

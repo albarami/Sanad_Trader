@@ -138,6 +138,34 @@
       "source": "CoinGecko trending #12",
       "strategy": "cex-listing-play",
       "regime_at_entry": "BEAR_HIGH_VOL"
+    },
+    {
+      "token": "BTC",
+      "symbol": "BTCUSDT",
+      "timestamp": "2026-02-18T16:38:54.413309+00:00",
+      "side": "SELL",
+      "reason": "TIME_EXIT",
+      "entry_price": 68157.29,
+      "exit_price": 67232.57,
+      "pnl_pct": -0.013567440841617774,
+      "pnl_usd": -2.0270637846697834,
+      "source": "CoinGecko trending #3",
+      "strategy": "meme-momentum",
+      "regime_at_entry": "BEAR_HIGH_VOL"
+    },
+    {
+      "token": "SOL",
+      "symbol": "SOLUSDT",
+      "timestamp": "2026-02-18T16:41:54.752208+00:00",
+      "side": "SELL",
+      "reason": "TIME_EXIT",
+      "entry_price": 85.58,
+      "exit_price": 82.28,
+      "pnl_pct": -0.03856041131105395,
+      "pnl_usd": -5.5046033933161915,
+      "source": "CoinGecko trending #14",
+      "strategy": "meme-momentum",
+      "regime_at_entry": "BEAR_HIGH_VOL"
     }
   ]
 }

@@ -1,20 +1,20 @@
 {
   "token": {
-    "symbol": "PIPPIN",
-    "deployment_timestamp": "2026-01-07T21:02:25.883225+00:00"
+    "symbol": "WAR",
+    "deployment_timestamp": "2026-01-08T07:53:31.880177+00:00"
   },
-  "symbol": "PIPPINUSDT",
+  "symbol": "WARUSDT",
   "venue": "DEX",
   "exchange": "raydium",
-  "strategy_name": "sentiment-divergence",
+  "strategy_name": "whale-following",
   "data_timestamps": {
-    "price_timestamp": "2026-02-18T12:02:25.883283+00:00",
-    "onchain_timestamp": "2026-02-18T12:02:25.883287+00:00"
+    "price_timestamp": "2026-02-18T22:53:31.880255+00:00",
+    "onchain_timestamp": "2026-02-18T22:53:31.880257+00:00"
   },
   "current_price": null,
   "sanad_verification": {
-    "sanad_trust_score": 40,
-    "grade": "Ahad",
+    "sanad_trust_score": 50,
+    "grade": "Mashhur",
     "recommendation": "CAUTION",
     "rugpull_flags": []
   },
@@ -26,11 +26,11 @@
   },
   "trade_intent": {
     "position_size_pct": 0.013999999999999999,
-    "position_usd": 139.22
+    "position_usd": 139.18
   },
-  "trade_confidence_score": 55,
+  "trade_confidence_score": 52,
   "almuhasbi_verdict": "APPROVE",
-  "almuhasbi_confidence": 55,
+  "almuhasbi_confidence": 52,
   "dex_sim_result": null,
   "volatility_30min_pct": 0,
   "has_verified_catalyst": false

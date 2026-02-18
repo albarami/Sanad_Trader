@@ -70,7 +70,7 @@ data_quality:
   outlier_rejection_pct: 0.15
   stale_consecutive_polls: 5
 budget:
-  daily_llm_spend_limit_usd: 15.0
+  daily_llm_spend_limit_usd: 65.0
   monthly_llm_spend_limit_usd: 300.0
   cost_per_trade_alert_usd: 2.0
   daily_pipeline_runs: 120

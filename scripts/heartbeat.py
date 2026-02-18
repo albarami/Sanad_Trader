@@ -376,6 +376,74 @@ def check_circuit_breakers():
     return {"status": "OK", "detail": "All closed"}
 
 
+def check_openclaw_escalation():
+    """
+    Check if watchdog has escalated to OpenClaw (Tier 3.5).
+    If escalation is pending and deadline passed, this is CRITICAL.
+    """
+    try:
+        escalation_file = STATE_DIR / "openclaw_escalation.json"
+        if not escalation_file.exists():
+            return {"status": "OK", "detail": "No escalations"}
+        
+        data = json.load(open(escalation_file))
+        escalation_status = data.get("status", "unknown")
+        component = data.get("component", "unknown")
+        tier = data.get("tier", "?")
+        timestamp = data.get("timestamp", "")
+        deadline = data.get("deadline", "")
+        
+        if escalation_status == "pending":
+            # Check if deadline passed
+            if deadline:
+                try:
+                    deadline_dt = datetime.fromisoformat(deadline.replace("Z", "+00:00"))
+                    now_dt = datetime.now(timezone.utc)
+                    
+                    if now_dt > deadline_dt:
+                        # Deadline passed - OpenClaw didn't resolve it
+                        return {
+                            "status": "CRITICAL",
+                            "detail": f"OpenClaw escalation (Tier {tier}) OVERDUE - {component}"
+                        }
+                    else:
+                        # Still within deadline
+                        remaining_min = int((deadline_dt - now_dt).total_seconds() / 60)
+                        return {
+                            "status": "WARNING",
+                            "detail": f"OpenClaw working on {component} (Tier {tier}, {remaining_min}min left)"
+                        }
+                except:
+                    return {
+                        "status": "WARNING",
+                        "detail": f"OpenClaw escalation (Tier {tier}) pending - {component}"
+                    }
+        
+        elif escalation_status == "resolved":
+            # Clean up resolved escalations after 1 hour
+            try:
+                ts_dt = datetime.fromisoformat(timestamp.replace("Z", "+00:00"))
+                age_hours = (datetime.now(timezone.utc) - ts_dt).total_seconds() / 3600
+                if age_hours > 1:
+                    escalation_file.unlink()
+                else:
+                    return {"status": "OK", "detail": f"OpenClaw resolved (Tier {tier})"}
+            except:
+                pass
+        
+        elif escalation_status == "failed":
+            return {
+                "status": "ALERT",
+                "detail": f"OpenClaw escalation (Tier {tier}) FAILED - {component}"
+            }
+        
+        return {"status": "OK", "detail": "No active escalations"}
+    
+    except Exception as e:
+        log(f"OpenClaw escalation check error: {e}")
+        return {"status": "OK", "detail": "Check error"}
+
+
 # ─────────────────────────────────────────────
 # SUPABASE SYNC
 # ─────────────────────────────────────────────
@@ -426,6 +494,7 @@ def run_heartbeat():
     results["cron_health"] = check_cron_health()
     results["ntp_sync"] = check_ntp_sync()
     results["circuit_breakers"] = check_circuit_breakers()
+    results["openclaw_escalation"] = check_openclaw_escalation()
 
     # Determine overall status
     statuses = [r["status"] for r in results.values()]

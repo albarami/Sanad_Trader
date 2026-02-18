@@ -31,6 +31,8 @@ SOURCE_PROVIDERS = {
     "birdeye_meme_list": "birdeye",
     "birdeye_trending": "birdeye",
     "birdeye_new_listing": "birdeye",
+    "birdeye_smart_money": "smart_money",
+    "smart_money": "smart_money",
     "dexscreener": "dexscreener",
     "dexscreener_boost": "dexscreener",
     "dexscreener_cto": "dexscreener",
@@ -43,17 +45,21 @@ SOURCE_PROVIDERS = {
     "onchain_analytics": "onchain",
     "whale_alert": "onchain",
     "glassnode": "onchain",
+    "solscan": "solscan",
+    "solscan_onchain": "solscan",
 }
 
 # Corroboration levels (maps to Sanad trust score bonus)
 # Ahad (1 source) = 10 corroboration points
 # Mashhur (2 sources) = 18 points
 # Tawatur (3+ sources) = 25 points
+# Tawatur Qawiy (4+ sources) = 30 points (maximum trust)
 CORROBORATION_LEVELS = {
     1: "AHAD",
     2: "MASHHUR",
+    3: "TAWATUR",
 }
-# 3+ = TAWATUR
+# 4+ = TAWATUR_QAWIY (strongest corroboration)
 
 
 def _load_window():
@@ -105,7 +111,9 @@ def _build_result(providers_seen: set, source_labels: list) -> dict:
     """Build corroboration result with quality assessment."""
     count = len(providers_seen)
 
-    if count >= 3:
+    if count >= 4:
+        level = "TAWATUR_QAWIY"  # 4+ sources = maximum trust
+    elif count == 3:
         level = "TAWATUR"
     elif count == 2:
         level = "MASHHUR"
@@ -114,9 +122,9 @@ def _build_result(providers_seen: set, source_labels: list) -> dict:
 
     # Quality: STRONG requires at least one non-hype evidence source
     # Hype sources = trending/boost lists (same hype everywhere ≠ real corroboration)
-    # Evidence sources = on-chain analytics, sentiment analysis, telegram sniffer
+    # Evidence sources = on-chain analytics, sentiment analysis, telegram sniffer, solscan, smart money
     HYPE_SOURCES = {"coingecko", "birdeye", "dexscreener"}
-    EVIDENCE_SOURCES = {"onchain", "sentiment", "telegram"}
+    EVIDENCE_SOURCES = {"onchain", "sentiment", "telegram", "solscan", "smart_money"}
     has_evidence = bool(providers_seen & EVIDENCE_SOURCES)
     all_hype = providers_seen and providers_seen.issubset(HYPE_SOURCES)
 
