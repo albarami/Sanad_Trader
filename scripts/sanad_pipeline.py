@@ -100,11 +100,22 @@ PERPLEXITY_API_KEY = os.getenv("PERPLEXITY_API_KEY")
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 
 
-def call_claude(system_prompt, user_message, model="claude-haiku-4-5-20251001", max_tokens=2000):
+def call_claude(system_prompt, user_message, model="claude-haiku-4-5-20251001", max_tokens=2000, stage="unknown", token_symbol=""):
     """
     Call Anthropic Claude API directly.
     Primary for: Sanad Verifier, Bull, Bear (Opus 4.6), Execution (Haiku).
     Fallback: OpenRouter Claude.
+    
+    Args:
+        system_prompt: System prompt string
+        user_message: User message string
+        model: Model name (default: claude-haiku-4-5-20251001)
+        max_tokens: Max tokens for response
+        stage: Pipeline stage for cost tracking (default: "unknown")
+        token_symbol: Trading token symbol for cost tracking (default: "")
+    
+    Returns:
+        Response text string, or None on failure
     """
     url = "https://api.anthropic.com/v1/messages"
     headers = {
@@ -127,23 +138,45 @@ def call_claude(system_prompt, user_message, model="claude-haiku-4-5-20251001", 
                 text = result["content"][0].get("text", "")
                 if text:
                     print(f"    [Claude direct OK — {model}]")
+                    
+                    # Log cost
+                    usage = result.get("usage", {})
+                    input_tokens = usage.get("input_tokens", 0)
+                    output_tokens = usage.get("output_tokens", 0)
+                    try:
+                        from cost_tracker import log_api_call
+                        log_api_call(model, input_tokens, output_tokens, stage, token_symbol)
+                    except Exception as e:
+                        print(f"    [Cost tracking failed: {e}]")
+                    
                     return text
         return None
     except Exception as e:
         print(f"    [Claude direct FAILED: {e}]")
         print(f"    [Falling back to OpenRouter Claude...]")
-        return _fallback_openrouter(system_prompt, user_message, f"anthropic/{model}", max_tokens)
+        return _fallback_openrouter(system_prompt, user_message, f"anthropic/{model}", max_tokens, stage, token_symbol)
 
 
-def call_openai(system_prompt, user_message, model="gpt-5.2", max_tokens=2000):
+def call_openai(system_prompt, user_message, model="gpt-5.2", max_tokens=2000, stage="unknown", token_symbol=""):
     """
     Call OpenAI API directly.
     Primary for: Al-Muhasbi Judge (GPT-5.2).
     Fallback: OpenRouter GPT.
+    
+    Args:
+        system_prompt: System prompt string
+        user_message: User message string
+        model: Model name (default: gpt-5.2)
+        max_tokens: Max tokens for response
+        stage: Pipeline stage for cost tracking (default: "unknown")
+        token_symbol: Trading token symbol for cost tracking (default: "")
+    
+    Returns:
+        Response text string, or None on failure
     """
     if not OPENAI_API_KEY:
         print(f"    [OpenAI key missing — falling back to OpenRouter]")
-        return _fallback_openrouter(system_prompt, user_message, f"openai/{model}", max_tokens)
+        return _fallback_openrouter(system_prompt, user_message, f"openai/{model}", max_tokens, stage, token_symbol)
 
     url = "https://api.openai.com/v1/chat/completions"
     headers = {
@@ -168,19 +201,39 @@ def call_openai(system_prompt, user_message, model="gpt-5.2", max_tokens=2000):
                 text = choices[0].get("message", {}).get("content", "")
                 if text:
                     print(f"    [OpenAI direct OK — {model}]")
+                    
+                    # Log cost
+                    usage = result.get("usage", {})
+                    input_tokens = usage.get("prompt_tokens", 0)
+                    output_tokens = usage.get("completion_tokens", 0)
+                    try:
+                        from cost_tracker import log_api_call
+                        log_api_call(model, input_tokens, output_tokens, stage, token_symbol)
+                    except Exception as e:
+                        print(f"    [Cost tracking failed: {e}]")
+                    
                     return text
         return None
     except Exception as e:
         print(f"    [OpenAI direct FAILED: {e}]")
         print(f"    [Falling back to OpenRouter GPT...]")
-        return _fallback_openrouter(system_prompt, user_message, f"openai/{model}", max_tokens)
+        return _fallback_openrouter(system_prompt, user_message, f"openai/{model}", max_tokens, stage, token_symbol)
 
 
-def call_perplexity(query, model="sonar-pro"):
+def call_perplexity(query, model="sonar-pro", stage="unknown", token_symbol=""):
     """
     Call Perplexity API directly for real-time intelligence.
     Primary for: Sanad Verifier source research.
     Fallback: OpenRouter Perplexity.
+    
+    Args:
+        query: Query string
+        model: Model name (default: sonar-pro)
+        stage: Pipeline stage for cost tracking (default: "unknown")
+        token_symbol: Trading token symbol for cost tracking (default: "")
+    
+    Returns:
+        Response text string, or None on failure
     """
     if not PERPLEXITY_API_KEY:
         print(f"    [Perplexity key missing — falling back to OpenRouter]")
@@ -189,6 +242,8 @@ def call_perplexity(query, model="sonar-pro"):
             query,
             f"perplexity/{model}",
             1500,
+            stage,
+            token_symbol,
         )
 
     url = "https://api.perplexity.ai/chat/completions"
@@ -213,6 +268,14 @@ def call_perplexity(query, model="sonar-pro"):
                 text = choices[0].get("message", {}).get("content", "")
                 if text:
                     print(f"    [Perplexity direct OK — {model}]")
+                    
+                    # Log cost (flat rate, no token counting)
+                    try:
+                        from cost_tracker import log_api_call
+                        log_api_call(f"perplexity/{model}", 0, 0, stage, token_symbol)
+                    except Exception as e:
+                        print(f"    [Cost tracking failed: {e}]")
+                    
                     return text
         return None
     except Exception as e:
@@ -223,10 +286,12 @@ def call_perplexity(query, model="sonar-pro"):
             query,
             f"perplexity/{model}",
             1500,
+            stage,
+            token_symbol,
         )
 
 
-def _fallback_openrouter(system_prompt, user_message, model, max_tokens=2000):
+def _fallback_openrouter(system_prompt, user_message, model, max_tokens=2000, stage="unknown", token_symbol=""):
     """
     Fallback: Route any model through OpenRouter.
     Used when direct API calls fail.
@@ -258,6 +323,17 @@ def _fallback_openrouter(system_prompt, user_message, model, max_tokens=2000):
                 text = choices[0].get("message", {}).get("content", "")
                 if text:
                     print(f"    [OpenRouter fallback OK — {model}]")
+                    
+                    # Log cost (best-effort token counting from OpenRouter)
+                    usage = result.get("usage", {})
+                    input_tokens = usage.get("prompt_tokens", 0)
+                    output_tokens = usage.get("completion_tokens", 0)
+                    try:
+                        from cost_tracker import log_api_call
+                        log_api_call(model, input_tokens, output_tokens, stage, token_symbol)
+                    except Exception as e:
+                        print(f"    [Cost tracking failed: {e}]")
+                    
                     return text
         return None
     except Exception as e:
@@ -614,7 +690,7 @@ def stage_2_sanad_verification(signal):
 Signal thesis: {signal['thesis']}
 Signal source: {signal['source']}"""
 
-    perplexity_intel = call_perplexity(intel_query)
+    perplexity_intel = call_perplexity(intel_query, stage="sanad_verification", token_symbol=signal.get("token", ""))
     if not perplexity_intel:
         print("  WARNING: Perplexity unavailable — proceeding with limited data")
         perplexity_intel = "Real-time data unavailable."
@@ -698,6 +774,8 @@ Return your analysis as valid JSON with these exact keys:
         user_message=verification_prompt + rag_context,
         model="claude-opus-4-6",  # Opus for verification
         max_tokens=8000,
+        stage="sanad_verification",
+        token_symbol=signal.get("token", ""),
     )
 
     if not sanad_response:
@@ -1138,6 +1216,8 @@ Return valid JSON with these exact keys:
         user_message=bull_message,
         model="claude-sonnet-4-6",
         max_tokens=3000,
+        stage="bull_debate",
+        token_symbol=signal.get("token", ""),
     )
     bull_result = _parse_json_response(bull_response) if bull_response else None
     if not bull_result:
@@ -1216,6 +1296,8 @@ Apply your Muḥāsibī pre-reasoning discipline (Khawāṭir → Murāqaba → 
         user_message=bear_message,
         model="claude-sonnet-4-6",
         max_tokens=5000,
+        stage="bear_debate",
+        token_symbol=signal.get("token", ""),
     )
     bear_result = _parse_json_response(bear_response) if bear_response else None
     if not bear_result:
@@ -1375,6 +1457,8 @@ A paper loss of $50 that teaches the system a pattern is worth more than a paper
         user_message=judge_message,
         model="gpt-5.2",
         max_tokens=8000,
+        stage="judge",
+        token_symbol=signal.get("token", ""),
     )
 
     judge_result = _parse_json_response(judge_response) if judge_response else None

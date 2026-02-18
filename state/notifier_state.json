@@ -1,14 +1,7 @@
 {
-  "sent": 92,
+  "sent": 94,
   "failed": 7,
   "history": [
-    {
-      "level": "L1",
-      "title": "Heartbeat",
-      "message": "System heartbeat OK",
-      "channel": "log_only",
-      "at": "2026-02-16T19:19:33.828837+00:00"
-    },
     {
       "level": "L2",
       "title": "Test Alert",
@@ -694,7 +687,21 @@
       "message": "*Regime Change Detected*\n\n\ud83d\udcc9 Previous: SIDEWAYS\n\ud83d\udcca Current: BEAR_HIGH_VOL\n\n_Bear market with high volatility, risk of further drops_\n\n*Key Adaptations:*\n\u2022 Primary strategy: dip_buying (50%)\n\u2022 Position s",
       "channel": "telegram",
       "at": "2026-02-18T12:35:58.437513+00:00"
+    },
+    {
+      "level": "L2",
+      "title": null,
+      "message": "*Daily Deep Research Complete*\n\n\u2705 Alpha Discovery:\n# Cryptocurrency Trading Strategies Producing Highest Returns: Momentum, Mean Reversion, and Whale Accumulation Analysis for February 2026  The crypt",
+      "channel": "telegram",
+      "at": "2026-02-18T12:39:54.850900+00:00"
+    },
+    {
+      "level": "L2",
+      "title": null,
+      "message": "\u2696\ufe0f HOURLY STATUS\n\ud83d\udcb0 Balance: $9,943.92 (unrealized: $-4.95)\n\ud83d\udcc8 Positions (2/10):\n  BTC @ $68,157.29 -> $67,588.50 (-0.8%)\n  SOL @ $85.58 -> $83.25 (-2.7%)\n\ud83d\udcca Today: 154 ingested, 3 executed, 6 rejected\n\ud83d\udd04",
+      "channel": "telegram",
+      "at": "2026-02-18T12:40:48.134987+00:00"
     }
   ],
-  "last_sent": "2026-02-18T12:35:58.437528+00:00"
+  "last_sent": "2026-02-18T12:40:48.135002+00:00"
 }

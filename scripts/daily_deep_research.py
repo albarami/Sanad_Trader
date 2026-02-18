@@ -110,6 +110,21 @@ def call_perplexity_deep_research(query: str, test_mode: bool = False) -> dict:
             choices = result.get("choices", [])
             if choices:
                 text = choices[0].get("message", {}).get("content", "")
+                
+                # Log cost tracking
+                try:
+                    from cost_tracker import log_api_call
+                    log_api_call(
+                        model="perplexity/sonar-deep-research",
+                        input_tokens=0,  # Flat rate pricing
+                        output_tokens=0,
+                        stage="deep_research",
+                        token_symbol="",
+                        extra={"query_type": query[:50] if len(query) > 50 else query}
+                    )
+                except Exception as cost_err:
+                    print(f"    [Cost tracking failed: {cost_err}]")
+                
                 return {
                     "response": text,
                     "model": "perplexity/sonar-deep-research",
