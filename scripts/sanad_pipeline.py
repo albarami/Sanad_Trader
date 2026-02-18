@@ -1275,7 +1275,7 @@ SANAD VERIFICATION:
 
 STRATEGY:
 - Name: {strategy_result.get('strategy_name', 'N/A')}
-- Position Size: ${strategy_result.get('position_usd', 'N/A')} ({strategy_result.get('position_pct', 0)*100:.1f}%)
+- Position Size: ${strategy_result.get('position_usd', 'N/A')} ({(strategy_result.get('position_pct') or 0)*100:.1f}%)
 
 BULL CASE (Al-Baqarah):
 - Conviction: {bull_result.get('conviction', 'N/A')}/100
@@ -1308,7 +1308,7 @@ TIER-SPECIFIC VETO RULES (v3.0 — ENFORCE STRICTLY):
 - Empty or missing disconfirmation analysis → downgrade confidence 15 points
 
 Current tier: {simple_tier}
-Circulating supply: {circulating_pct:.1f}% (relevant for TIER_2 FDV analysis)
+Circulating supply: {(circulating_pct or 100):.1f}% (relevant for TIER_2 FDV analysis)
 
 Execute your full 5-step Muḥāsibī discipline (Khawāṭir → Murāqaba → Mujāhada → 7-point checklist → Verdict). Return ONLY valid JSON:
 {{

@@ -1,5 +1,5 @@
 {
-  "sent": 78,
+  "sent": 82,
   "failed": 7,
   "history": [
     {
@@ -596,7 +596,35 @@
       "message": "\u26a1 15-MIN STATUS CHECK\n\n\ud83d\udd04 Router runs detected: 0\n\n\ud83d\udcca Corroboration window: 475 signals from 3 providers (birdeye, coingecko, dexscreener)\n\n\ud83d\udd0d Rejection Funnel:\n  Ingested: 5\n  Pre-Sanad reject: 0\n  Sana",
       "channel": "telegram",
       "at": "2026-02-18T06:08:34.618100+00:00"
+    },
+    {
+      "level": "L2",
+      "title": null,
+      "message": "\ud83d\udcca PHASE 1 STATUS \u2014 14:34 MYT\n\n\ud83d\udd04 Router: ACTIVE \u2014 batch of 3 running (SOL first)\nNew run just started at 06:31 UTC with SIGPIPE fix\n\n\ud83d\udcca Corroboration window: 475 signals, 3 providers (birdeye, coingecko",
+      "channel": "telegram",
+      "at": "2026-02-18T06:34:55.587886+00:00"
+    },
+    {
+      "level": "L2",
+      "title": null,
+      "message": "\ud83d\udcca 1-HOUR STATUS CHECK\n\n\ud83d\udd04 Router runs: 3\n\n\ud83d\udcca Corroboration window: 418 signals, 3 providers\n\n\ud83d\udd0d Rejection Funnel (1hr):\n  Ingested: 21\n  Pre-Sanad reject: 1\n  Sanad blocked: 0\n  Judge approved: 0\n  Judge",
+      "channel": "telegram",
+      "at": "2026-02-18T06:53:34.652147+00:00"
+    },
+    {
+      "level": "L2",
+      "title": null,
+      "message": "\u26a0\ufe0f ALERT: Pipeline passes short-circuit (ETH trust=62 CAUTION \u2705) but blocks at Stage 3 \u2014 NO strategies eligible for TIER_2 + BEAR_HIGH_VOL regime. Strategy registry needs bear market entries. This is ",
+      "channel": "telegram",
+      "at": "2026-02-18T06:54:07.696610+00:00"
+    },
+    {
+      "level": "L2",
+      "title": null,
+      "message": "\ud83d\udfe2 BREAKTHROUGH: ETH reached Stage 5 (Judge)! Trust=62, CAUTION, passed short-circuit, Bull/Bear debate completed. Strategy fell back to meme-momentum (no bear-market strategies yet). Waiting for Judge",
+      "channel": "telegram",
+      "at": "2026-02-18T07:05:57.395081+00:00"
     }
   ],
-  "last_sent": "2026-02-18T06:08:34.618118+00:00"
+  "last_sent": "2026-02-18T07:05:57.395104+00:00"
 }
