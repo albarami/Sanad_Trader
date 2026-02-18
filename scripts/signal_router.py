@@ -52,6 +52,15 @@ try:
     MAX_POSITIONS = _cfg.get("risk", {}).get("max_positions", 5)
     MAX_DAILY_RUNS = _cfg.get("budget", {}).get("daily_pipeline_runs", 50)
     COOLDOWN_HOURS = _cfg.get("policy_gates", {}).get("cooldown_minutes", 30) / 60  # now 30min default
+    # Paper mode overrides
+    try:
+        with open(Path(os.environ.get("SANAD_HOME", Path(__file__).resolve().parent.parent)) / "state" / "portfolio.json") as _pf:
+            _is_paper = json.load(_pf).get("mode", "paper") == "paper"
+    except Exception:
+        _is_paper = True
+    if _is_paper:
+        MAX_DAILY_RUNS = max(MAX_DAILY_RUNS, 200)  # Paper: 200 runs/day
+        MAX_POSITIONS = max(MAX_POSITIONS, 10)  # Paper: 10 concurrent positions
 except Exception:
     MAX_POSITIONS = 5
     MAX_DAILY_RUNS = 50
@@ -692,10 +701,10 @@ def run_router():
         score = _score_signal(s, age, is_cross) + regime_adjustment
         candidates.append((s, score))
 
-    # ── Bear market quality filter ──
-    # In BEAR_HIGH_VOL: only allow CEX-listed tokens with real volume
+    # ── Bear market quality filter (live mode only) ──
+    # In paper mode, let memes through to learn which ones get correctly rejected
     router_cfg = _cfg.get("router", {})
-    if regime_tag in ("BEAR_HIGH_VOL", "BEAR_LOW_VOL") and router_cfg.get("bear_market_cex_only", False):
+    if regime_tag in ("BEAR_HIGH_VOL", "BEAR_LOW_VOL") and router_cfg.get("bear_market_cex_only", False) and not _is_paper:
         min_vol = router_cfg.get("min_volume_24h_usd", 1_000_000)
         min_liq = router_cfg.get("min_liquidity_usd", 500_000)
         pre_filter = len(candidates)
