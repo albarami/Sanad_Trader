@@ -475,7 +475,81 @@ def run_heartbeat():
                 urgent=(overall == "CRITICAL")
             )
 
+    # ── Hourly Telegram status summary ──
+    try:
+        hb_state = load_state("heartbeat_state.json") or {}
+        last_summary = hb_state.get("last_telegram_summary_time", "")
+        now_dt = datetime.now(timezone.utc)
+        send_summary = True
+        if last_summary:
+            try:
+                last_dt = datetime.fromisoformat(last_summary)
+                if (now_dt - last_dt).total_seconds() < 3600:
+                    send_summary = False
+            except Exception:
+                pass
+
+        if send_summary:
+            _send_hourly_summary(portfolio, price_cache, overall)
+            hb_state["last_telegram_summary_time"] = now_dt.isoformat()
+            hb_state["last_heartbeat"] = now_dt.isoformat()
+            hb_state["status"] = overall
+            save_state("heartbeat_state.json", hb_state)
+    except Exception as e:
+        log(f"Hourly summary error: {e}")
+
     return results
+
+
+def _send_hourly_summary(portfolio, price_cache, overall):
+    """Send concise hourly status to Telegram."""
+    try:
+        from notifier import send as notify_send
+        from rejection_funnel import get_funnel
+
+        # Positions
+        positions_data = load_state("positions.json") or {}
+        all_pos = positions_data.get("positions", [])
+        open_pos = [p for p in all_pos if isinstance(p, dict) and p.get("status") == "OPEN"]
+
+        pos_lines = []
+        total_unrealized = 0.0
+        for p in open_pos:
+            entry = p.get("entry_price", 0)
+            current = p.get("current_price", entry)
+            size = p.get("position_usd", 0)
+            if entry and entry > 0:
+                pnl_pct = (current - entry) / entry * 100
+                pnl_usd = (current - entry) / entry * size
+                total_unrealized += pnl_usd
+                sign = "+" if pnl_pct >= 0 else ""
+                pos_lines.append(f"  {p.get('token','?')} @ ${entry:,.2f} -> ${current:,.2f} ({sign}{pnl_pct:.1f}%)")
+
+        balance = portfolio.get("current_balance_usd", 0)
+
+        # Funnel
+        funnel = get_funnel()
+
+        # Router
+        router_state = load_state("signal_router_state.json") or {}
+        daily_runs = router_state.get("daily_pipeline_runs", 0)
+        last_run = router_state.get("last_run", "unknown")
+
+        pos_section = "\n".join(pos_lines) if pos_lines else "  None"
+        unr_sign = "+" if total_unrealized >= 0 else ""
+
+        msg = f"""⚖️ HOURLY STATUS
+💰 Balance: ${balance:,.2f} (unrealized: {unr_sign}${total_unrealized:.2f})
+📈 Positions ({len(open_pos)}/10):
+{pos_section}
+📊 Today: {funnel.get('signals_ingested',0)} ingested, {funnel.get('executed',0)} executed, {funnel.get('judge_rejected',0)} rejected
+🔄 Router: {daily_runs} runs today, last: {last_run[-8:] if len(last_run)>8 else last_run}
+⚙️ Status: {overall}"""
+
+        notify_send(msg, level="L2")
+        log(f"Hourly Telegram summary sent ({len(open_pos)} open positions)")
+    except Exception as e:
+        log(f"Hourly summary send error: {e}")
 
 
 # ─────────────────────────────────────────────

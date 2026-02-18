@@ -1,36 +1,36 @@
 {
   "token": {
-    "symbol": "BTC",
-    "deployment_timestamp": "2026-01-07T17:21:08.822334+00:00"
+    "symbol": "BP",
+    "deployment_timestamp": "2026-01-07T17:56:15.623037+00:00"
   },
-  "symbol": "BTCUSDT",
+  "symbol": "BPUSDT",
   "venue": "DEX",
-  "exchange": "binance",
-  "strategy_name": "meme-momentum",
+  "exchange": "raydium",
+  "strategy_name": "whale-following",
   "data_timestamps": {
-    "price_timestamp": "2026-02-18T08:21:08.822358+00:00",
-    "onchain_timestamp": "2026-02-18T08:21:08.822361+00:00"
+    "price_timestamp": "2026-02-18T08:56:15.623064+00:00",
+    "onchain_timestamp": "2026-02-18T08:56:15.623067+00:00"
   },
-  "current_price": 68321.4,
+  "current_price": null,
   "sanad_verification": {
-    "sanad_trust_score": 62,
+    "sanad_trust_score": 55,
     "grade": "Ahad",
     "recommendation": "CAUTION",
     "rugpull_flags": []
   },
   "market_data": {
-    "estimated_slippage_bps": 0.0,
-    "spread_bps": 0.0,
-    "depth_sufficient": true,
+    "estimated_slippage_bps": 0,
+    "spread_bps": 0,
+    "depth_sufficient": false,
     "price_change_pct_window": 0
   },
   "trade_intent": {
     "position_size_pct": 0.013999999999999999,
     "position_usd": 139.28
   },
-  "trade_confidence_score": 0,
-  "almuhasbi_verdict": "REJECT",
-  "almuhasbi_confidence": 92,
+  "trade_confidence_score": 82,
+  "almuhasbi_verdict": "APPROVE",
+  "almuhasbi_confidence": 82,
   "dex_sim_result": null,
   "volatility_30min_pct": 0,
   "has_verified_catalyst": false

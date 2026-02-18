@@ -1,5 +1,5 @@
 {
-  "sent": 85,
+  "sent": 88,
   "failed": 7,
   "history": [
     {
@@ -645,7 +645,28 @@
       "message": "\ud83c\udf89 PIPELINE ALIVE! 3 new decisions (94 total). BTC reached Judge with trust=62, confidence=92 but REJECT. SOL trust=12 REJECT. OMEGAX trust=0 REJECT. First end-to-end pipeline completion! Judge still t",
       "channel": "telegram",
       "at": "2026-02-18T08:21:34.354218+00:00"
+    },
+    {
+      "level": "L2",
+      "title": "BUY BTC",
+      "message": "BUY BTC/USDT\n\nEntry: 68,157.2900\nSize: 139 (0.00 units)\n\nStrategy: meme-momentum\nSanad Score: 52\nFee: 0.14\n\nAll 15 policy gates passed",
+      "channel": "telegram",
+      "at": "2026-02-18T08:38:52.672956+00:00"
+    },
+    {
+      "level": "L2",
+      "title": "BUY SOL",
+      "message": "BUY SOL/USDT\n\nEntry: 85.5800\nSize: 139 (1.63 units)\n\nStrategy: meme-momentum\nSanad Score: 52\nFee: 0.14\n\nAll 15 policy gates passed",
+      "channel": "telegram",
+      "at": "2026-02-18T08:41:39.707342+00:00"
+    },
+    {
+      "level": "L1",
+      "title": null,
+      "message": "\ud83d\ude80\ud83d\ude80 FIRST TRADES EXECUTED! BTC (APPROVE conf=67) + SOL (APPROVE conf=72) \u2014 both passed all 7 stages + Policy Engine. Judge paper-mode prompt working. Funnel: 57 ingested, 2 approved, 2 executed. The sy",
+      "channel": "log_only",
+      "at": "2026-02-18T08:42:19.546882+00:00"
     }
   ],
-  "last_sent": "2026-02-18T08:21:34.354231+00:00"
+  "last_sent": "2026-02-18T08:42:19.546900+00:00"
 }

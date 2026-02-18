@@ -1,23 +1,29 @@
 {
-  "last_run": "2026-02-18T08:17:20+00:00",
+  "last_run": "2026-02-18T10:21:51+00:00",
   "processed_hashes": [
     "a4be34387e63",
-    "159c3d2cbeb9",
-    "b76fa69ede3e",
+    "47493f191762",
     "311401b7f686",
+    "ded67427aea9",
+    "9d96f0db3473",
     "006667d31ed5",
+    "c6d30547b060",
+    "b76fa69ede3e",
+    "2f4d4fe3c314",
     "8e8d98e3d872",
-    "9d96f0db3473"
+    "159c3d2cbeb9",
+    "d216f7866938",
+    "92de648d139b"
   ],
-  "daily_pipeline_runs": 13,
+  "daily_pipeline_runs": 31,
   "daily_reset_date": "2026-02-18",
-  "signals_scanned": 36,
-  "signals_filtered": 8,
+  "signals_scanned": 37,
+  "signals_filtered": 15,
   "signal_selected": {
-    "token": "OMEGAX",
-    "score": 70,
-    "source": "birdeye_meme_radar",
-    "signal_type": "TRENDING"
+    "token": "NICE",
+    "score": 55,
+    "source": "dexscreener_boost",
+    "signal_type": "BOOSTED_TOKEN"
   },
   "pipeline_result": "REJECT",
   "pipeline_reason": "Paid DexScreener boost is advertising, not organic signal",

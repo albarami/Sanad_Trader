@@ -207,6 +207,11 @@ def run():
         # Store scan result
         scans[token] = result
 
+        # Skip tokens where sentiment data is unavailable
+        if score is None:
+            _log(f"  SKIP: {token} — no sentiment data available")
+            continue
+
         # Detect sentiment shift from previous scan
         prev_score = state.get("scans", {}).get(token, {}).get("sentiment_score", 50)
         shift = score - prev_score
