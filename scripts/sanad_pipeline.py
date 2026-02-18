@@ -800,6 +800,7 @@ Return your analysis as valid JSON with these exact keys:
 
     # HARD RULE: score < threshold → BLOCK (redundant safety net)
     if trust_score < min_score:
+        _funnel("sanad_blocked")
         print(f"  BLOCKED: Trust score {trust_score} < {min_score} minimum")
         sanad_result["recommendation"] = "BLOCK"
 
@@ -1381,7 +1382,15 @@ A paper loss of $50 that teaches the system a pattern is worth more than a paper
 
     verdict = judge_result.get("verdict", "REJECT")
     confidence = judge_result.get("confidence_score", 0)
-    
+
+    # Track judge verdict in funnel
+    if verdict == "APPROVE":
+        _funnel("judge_approved")
+    elif verdict == "REVISE":
+        _funnel("judge_revised")
+    else:
+        _funnel("judge_rejected")
+
     # v3.0: Apply tier-specific veto rules (hard overrides)
     veto_triggered = False
     veto_reason = None
@@ -1566,6 +1575,10 @@ def stage_7_execute(signal, sanad_result, strategy_result, bull_result, bear_res
 
     correlation_id = signal.get("correlation_id", "unknown")
     final_action = "EXECUTE" if policy_result["result"] == "PASS" else "REJECT"
+    if final_action == "EXECUTE":
+        _funnel("executed")
+    elif policy_result["result"] != "PASS":
+        _funnel("policy_blocked", policy_result.get("gate_failed", "unknown"))
     rejection_reason = policy_result.get("output", "") if final_action == "REJECT" else None
 
     # Build full decision record (v3.0: include token profile)
@@ -1975,6 +1988,9 @@ def _check_fast_track(signal):
     }, strategy_result, {"conviction": 60, "thesis": "Fast-track"}, {"conviction": 40, "attack_points": []}, judge_result, policy_result)
 
     decision_record["fast_track"] = True
+    if decision_record.get("final_action") == "EXECUTE":
+        _funnel("fast_tracked")
+        _funnel("executed")
     print(f"\n⚡ FAST-TRACK COMPLETE — {decision_record.get('final_action', 'UNKNOWN')}")
     return decision_record
 
@@ -2100,12 +2116,22 @@ def _sync_to_supabase(record):
 # MAIN PIPELINE ORCHESTRATOR
 # ─────────────────────────────────────────────
 
+def _funnel(field, gate_name=None):
+    """Increment rejection funnel counter (best-effort)."""
+    try:
+        from rejection_funnel import increment
+        increment(field, gate_name)
+    except Exception:
+        pass
+
+
 def run_pipeline(signal):
     """
     Run the complete 7-stage pipeline on a signal.
     Fail-closed at every stage.
     Returns the full decision record.
     """
+    _funnel("signals_ingested")
     print("\n" + "=" * 60)
     print("SANAD TRADER v3.0 — INTELLIGENCE PIPELINE")
     print("=" * 60)
@@ -2124,6 +2150,7 @@ def run_pipeline(signal):
     # Stage 1.5b: Pre-Sanad deterministic reject (saves Sanad LLM call)
     pre_reject = _pre_sanad_reject(signal)
     if pre_reject:
+        _funnel("pre_sanad_rejected")
         print(f"\n⛔ PRE-SANAD REJECT: {pre_reject}")
         _log_decision_short_circuit(signal, {
             "trust_score": 0, "grade": "N/A", "recommendation": "BLOCK",
@@ -2140,6 +2167,7 @@ def run_pipeline(signal):
     # SHORT-CIRCUIT: If Sanad says BLOCK, stop before burning LLM credits
     if sanad_result.get("recommendation") == "BLOCK":
         trust = sanad_result.get("trust_score", 0)
+        _funnel("short_circuited")
         print(f"\n⛔ SHORT-CIRCUIT: Sanad BLOCK (trust={trust}/100) — skipping LLM debate")
         _log_decision_short_circuit(signal, sanad_result)
         return {"final_action": "REJECT", "stage": 2, "reason": f"Sanad BLOCK (trust={trust})"}
