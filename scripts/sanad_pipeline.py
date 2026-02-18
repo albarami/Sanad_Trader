@@ -875,7 +875,7 @@ Return your analysis as valid JSON with these exact keys:
     sanad_response = call_claude(
         system_prompt=SANAD_PROMPT,
         user_message=verification_prompt + rag_context,
-        model="claude-opus-4-6",  # Opus for verification
+        model="claude-haiku-4-5-20251001",  # Haiku for paper trading (30x cheaper than Opus)
         max_tokens=8000,
         stage="sanad_verification",
         token_symbol=signal.get("token", ""),
@@ -1317,7 +1317,7 @@ Return valid JSON with these exact keys:
     bull_response = call_claude(
         system_prompt=tier_bull_system,  # v3.0: tier-specific prompt
         user_message=bull_message,
-        model="claude-opus-4-6",
+        model="claude-haiku-4-5-20251001",  # Haiku for paper trading (30x cheaper than Opus)
         max_tokens=3000,
         stage="bull_debate",
         token_symbol=signal.get("token", ""),
@@ -1397,7 +1397,7 @@ Apply your Muḥāsibī pre-reasoning discipline (Khawāṭir → Murāqaba → 
     bear_response = call_claude(
         system_prompt=tier_bear_system,  # v3.0: tier-specific prompt
         user_message=bear_message,
-        model="claude-opus-4-6",
+        model="claude-haiku-4-5-20251001",  # Haiku for paper trading (30x cheaper than Opus)
         max_tokens=5000,
         stage="bear_debate",
         token_symbol=signal.get("token", ""),
