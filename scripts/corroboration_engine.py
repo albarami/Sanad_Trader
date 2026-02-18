@@ -63,8 +63,9 @@ def _load_window():
 
 
 def _save_window(window):
+    """Atomic write: temp file + os.replace to prevent corruption on concurrent access."""
     STATE_DIR.mkdir(parents=True, exist_ok=True)
-    tmp = WINDOW_PATH.with_suffix(".tmp")
+    tmp = WINDOW_PATH.with_suffix(f".tmp.{os.getpid()}")
     with open(tmp, "w") as f:
         json.dump(window, f, indent=2, default=str)
     os.replace(tmp, WINDOW_PATH)
@@ -98,6 +99,38 @@ def _prune_window(window: dict, now: datetime) -> dict:
     return window
 
 
+def _build_result(providers_seen: set, source_labels: list) -> dict:
+    """Build corroboration result with quality assessment."""
+    count = len(providers_seen)
+
+    if count >= 3:
+        level = "TAWATUR"
+    elif count == 2:
+        level = "MASHHUR"
+    else:
+        level = "AHAD"
+
+    # Quality: STRONG requires at least one non-hype evidence source
+    # Hype sources = trending/boost lists (same hype everywhere ≠ real corroboration)
+    # Evidence sources = on-chain analytics, sentiment analysis, telegram sniffer
+    HYPE_SOURCES = {"coingecko", "birdeye", "dexscreener"}
+    EVIDENCE_SOURCES = {"onchain", "sentiment", "telegram"}
+    has_evidence = bool(providers_seen & EVIDENCE_SOURCES)
+    all_hype = providers_seen and providers_seen.issubset(HYPE_SOURCES)
+
+    if count >= 2 and all_hype and not has_evidence:
+        quality = "WEAK"  # Same hype appearing everywhere — no independent evidence
+    else:
+        quality = "STRONG"
+
+    return {
+        "cross_source_count": count,
+        "cross_sources": sorted(source_labels),
+        "corroboration_level": level,
+        "corroboration_quality": quality,
+    }
+
+
 def register_signal(signal: dict) -> dict:
     """
     Register a new signal in the rolling window and return corroboration data.
@@ -129,6 +162,7 @@ def register_signal(signal: dict) -> dict:
         "provider": provider,
         "source": source,
         "address": address,
+        "chain": signal.get("chain", ""),
         "timestamp": now.isoformat(),
     }
     window["signals"].append(entry)
@@ -136,16 +170,25 @@ def register_signal(signal: dict) -> dict:
     _save_window(window)
 
     # Find all independent providers for this token in the window
+    # Primary key: (chain, address) when available; fallback: symbol
+    chain = signal.get("chain", "")
     providers_seen = set()
     source_labels = []
     for s in window["signals"]:
         match = False
-        # Match by token symbol
-        if _normalize_token(s.get("token", "")) == token:
-            match = True
-        # Also match by contract address if both have it
-        if not match and address and s.get("address") and s["address"] == address:
-            match = True
+        # Primary match: contract address (same chain)
+        s_addr = s.get("address", "")
+        s_chain = s.get("chain", "")
+        if address and s_addr and address == s_addr:
+            if not chain or not s_chain or chain == s_chain:
+                match = True
+        # Fallback: symbol match (only if neither has an address, or addresses match)
+        if not match and _normalize_token(s.get("token", "")) == token:
+            # Avoid false match: if both have addresses but they differ, skip
+            if address and s_addr and address != s_addr:
+                match = False
+            else:
+                match = True
 
         if match:
             p = s["provider"]
@@ -153,23 +196,10 @@ def register_signal(signal: dict) -> dict:
                 providers_seen.add(p)
                 source_labels.append(p)
 
-    count = len(providers_seen)
-
-    if count >= 3:
-        level = "TAWATUR"
-    elif count == 2:
-        level = "MASHHUR"
-    else:
-        level = "AHAD"
-
-    return {
-        "cross_source_count": count,
-        "cross_sources": sorted(source_labels),
-        "corroboration_level": level,
-    }
+    return _build_result(providers_seen, source_labels)
 
 
-def get_corroboration(token: str, address: str = "") -> dict:
+def get_corroboration(token: str, address: str = "", chain: str = "") -> dict:
     """
     Check corroboration for a token WITHOUT registering a new signal.
     Used for read-only queries.
@@ -183,28 +213,24 @@ def get_corroboration(token: str, address: str = "") -> dict:
     source_labels = []
 
     for s in window["signals"]:
-        match = _normalize_token(s.get("token", "")) == token_norm
-        if not match and address and s.get("address") and s["address"] == address:
-            match = True
+        match = False
+        s_addr = s.get("address", "")
+        s_chain = s.get("chain", "")
+        if address and s_addr and address == s_addr:
+            if not chain or not s_chain or chain == s_chain:
+                match = True
+        if not match and _normalize_token(s.get("token", "")) == token_norm:
+            if address and s_addr and address != s_addr:
+                match = False
+            else:
+                match = True
         if match:
             p = s["provider"]
             if p not in providers_seen:
                 providers_seen.add(p)
                 source_labels.append(p)
 
-    count = len(providers_seen)
-    if count >= 3:
-        level = "TAWATUR"
-    elif count == 2:
-        level = "MASHHUR"
-    else:
-        level = "AHAD"
-
-    return {
-        "cross_source_count": count,
-        "cross_sources": sorted(source_labels),
-        "corroboration_level": level,
-    }
+    return _build_result(providers_seen, source_labels)
 
 
 def get_window_stats() -> dict:

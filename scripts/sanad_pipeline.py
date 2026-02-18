@@ -727,15 +727,43 @@ Return your analysis as valid JSON with these exact keys:
     sanad_result["perplexity_intel"] = perplexity_intel[:500]
     sanad_result["price_context"] = price_context
 
+    # DETERMINISTIC CORROBORATION OVERRIDE
+    # Don't trust LLM to apply corroboration points correctly — override from engine
+    engine_count = signal.get("cross_source_count", 1)
+    engine_level = signal.get("corroboration_level", "AHAD")
+    engine_quality = signal.get("corroboration_quality", "STRONG")  # from engine
+    llm_level = sanad_result.get("corroboration_level", "AHAD")
+
+    # Corroboration points: AHAD=10, MASHHUR=18, TAWATUR=25
+    CORR_POINTS = {"AHAD": 10, "AHAD_SAHIH": 10, "AHAD_DAIF": 10, "MASHHUR": 18, "TAWATUR": 25}
+    llm_points = CORR_POINTS.get(llm_level, 10)
+    engine_points = CORR_POINTS.get(engine_level, 10)
+
+    # Only apply boost if engine says higher AND quality is not WEAK
+    corr_delta = 0
+    if engine_quality != "WEAK" and engine_points > llm_points:
+        corr_delta = engine_points - llm_points
+        sanad_result["trust_score"] = min(100, sanad_result.get("trust_score", 0) + corr_delta)
+        sanad_result["corroboration_override"] = {
+            "llm_level": llm_level, "engine_level": engine_level,
+            "delta": corr_delta, "quality": engine_quality,
+        }
+        print(f"  ⚡ Corroboration override: {llm_level}→{engine_level} (+{corr_delta} trust points)")
+
+    # Overwrite corroboration fields from engine (code > LLM)
+    sanad_result["source_count"] = engine_count
+    sanad_result["corroboration_level"] = engine_level
+    sanad_result["cross_sources"] = signal.get("cross_sources", [])
+
     trust_score = sanad_result.get("trust_score", 0)
     grade = sanad_result.get("grade", "FAILED")
     recommendation = sanad_result.get("recommendation", "BLOCK")
 
-    print(f"  Trust Score: {trust_score}/100")
+    print(f"  Trust Score: {trust_score}/100{f' (includes +{corr_delta} corroboration)' if corr_delta else ''}")
     print(f"  Grade: {grade}")
     print(f"  Source Grade: {sanad_result.get('source_grade', 'N/A')}")
     print(f"  Chain Integrity: {sanad_result.get('chain_integrity', 'N/A')}")
-    print(f"  Corroboration: {sanad_result.get('corroboration_level', 'N/A')}")
+    print(f"  Corroboration: {engine_level} ({engine_count} sources){' [WEAK — hype-only]' if engine_quality == 'WEAK' else ''}")
     print(f"  Recency Decay: {sanad_result.get('recency_decay_points', 'N/A')}")
     print(f"  Sybil Risk: {sanad_result.get('sybil_risk', 'N/A')}")
     print(f"  Rugpull Flags: {sanad_result.get('rugpull_flags', [])}")
@@ -1508,6 +1536,14 @@ def stage_7_execute(signal, sanad_result, strategy_result, bull_result, bear_res
             "trust_score": sanad_result.get("trust_score", 0),
             "grade": sanad_result.get("grade", "FAILED"),
             "recommendation": sanad_result.get("recommendation", "BLOCK"),
+            "rugpull_flags": sanad_result.get("rugpull_flags", []),
+        },
+        "corroboration": {
+            "cross_source_count": signal.get("cross_source_count", 1),
+            "cross_sources": signal.get("cross_sources", []),
+            "corroboration_level": signal.get("corroboration_level", "AHAD"),
+            "corroboration_quality": signal.get("corroboration_quality", "STRONG"),
+            "corroboration_override": sanad_result.get("corroboration_override"),
         },
         "strategy": strategy_result,
         "bull": {

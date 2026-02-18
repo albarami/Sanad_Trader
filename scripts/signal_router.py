@@ -872,6 +872,7 @@ def run_router():
     pipeline_signal["cross_source_count"] = corr["cross_source_count"]
     pipeline_signal["cross_sources"] = corr["cross_sources"]
     pipeline_signal["corroboration_level"] = corr["corroboration_level"]
+    pipeline_signal["corroboration_quality"] = corr.get("corroboration_quality", "STRONG")
 
     # --- Write temp signal file ---
     tmp_dir = BASE_DIR / "tmp"

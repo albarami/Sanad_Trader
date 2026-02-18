@@ -1,6 +1,6 @@
 {
   "source_name": "coingecko_trending",
-  "total_signals": 20,
+  "total_signals": 22,
   "trades_executed": 4,
   "wins": 2,
   "losses": 2,
@@ -10,7 +10,7 @@
   "win_rate": 0.5,
   "ucb1_score": 50,
   "grade": "C",
-  "last_signal_at": "2026-02-17T22:01:33.147391+00:00",
+  "last_signal_at": "2026-02-18T00:37:44.122450+00:00",
   "last_trade_at": "2026-02-17T19:17:58.248905+00:00",
   "last_win_at": "2026-02-17T19:17:58.248880+00:00",
   "last_recalc_at": "2026-02-17T19:17:58.249722+00:00",

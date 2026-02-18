@@ -1,50 +1,50 @@
 {
   "status": "OK",
-  "timestamp": "2026-02-18T00:31:30.334393+00:00",
+  "timestamp": "2026-02-18T00:37:41.879135+00:00",
   "checked": 10,
   "warnings": 0,
   "blocked": false,
   "deviations": [
     {
       "token": "BTC",
-      "binance": 67535.99,
-      "coingecko": 67476,
-      "deviation_pct": 0.089,
+      "binance": 67577.79,
+      "coingecko": 67563,
+      "deviation_pct": 0.022,
       "status": "OK"
     },
     {
       "token": "ETH",
-      "binance": 1992.62,
-      "coingecko": 1991.04,
-      "deviation_pct": 0.079,
+      "binance": 1993.77,
+      "coingecko": 1993.74,
+      "deviation_pct": 0.002,
       "status": "OK"
     },
     {
       "token": "SOL",
-      "binance": 85.3,
-      "coingecko": 85.15,
-      "deviation_pct": 0.176,
+      "binance": 85.36,
+      "coingecko": 85.3,
+      "deviation_pct": 0.07,
       "status": "OK"
     },
     {
       "token": "BNB",
-      "binance": 618.28,
-      "coingecko": 617.58,
-      "deviation_pct": 0.113,
+      "binance": 618.8,
+      "coingecko": 618.66,
+      "deviation_pct": 0.023,
       "status": "OK"
     },
     {
       "token": "DOGE",
-      "binance": 0.10103,
-      "coingecko": 0.100924,
-      "deviation_pct": 0.105,
+      "binance": 0.10114,
+      "coingecko": 0.101067,
+      "deviation_pct": 0.072,
       "status": "OK"
     },
     {
       "token": "PEPE",
       "binance": 4.4e-06,
-      "coingecko": 4.39e-06,
-      "deviation_pct": 0.227,
+      "coingecko": 4.4e-06,
+      "deviation_pct": 0.0,
       "status": "OK"
     },
     {
@@ -57,22 +57,22 @@
     {
       "token": "WIF",
       "binance": 0.23,
-      "coingecko": 0.229669,
-      "deviation_pct": 0.144,
+      "coingecko": 0.229859,
+      "deviation_pct": 0.061,
       "status": "OK"
     },
     {
       "token": "BONK",
-      "binance": 6.51e-06,
+      "binance": 6.52e-06,
       "coingecko": 6.51e-06,
-      "deviation_pct": 0.0,
+      "deviation_pct": 0.153,
       "status": "OK"
     },
     {
       "token": "FLOKI",
-      "binance": 3.19e-05,
-      "coingecko": 3.188e-05,
-      "deviation_pct": 0.063,
+      "binance": 3.188e-05,
+      "coingecko": 3.187e-05,
+      "deviation_pct": 0.031,
       "status": "OK"
     }
   ]

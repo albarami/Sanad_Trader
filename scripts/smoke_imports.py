@@ -195,6 +195,47 @@ def test_corroboration_same_provider():
             os.remove(WINDOW_PATH) if WINDOW_PATH.exists() else None
 check("Corroboration: same provider = 1 source", test_corroboration_same_provider)
 
+def test_corroboration_quality_weak():
+    """Hype-only sources (CoinGecko + Birdeye + DexScreener) = WEAK quality."""
+    from corroboration_engine import register_signal, _save_window, WINDOW_PATH
+    import json, os
+    backup = None
+    if WINDOW_PATH.exists():
+        backup = json.load(open(WINDOW_PATH))
+    _save_window({"signals": [], "updated_at": None})
+    try:
+        register_signal({"token": "HYPETOKEN", "source": "coingecko_trending"})
+        register_signal({"token": "HYPETOKEN", "source": "birdeye_trending"})
+        r3 = register_signal({"token": "HYPETOKEN", "source": "dexscreener_boost"})
+        assert r3["corroboration_level"] == "TAWATUR"
+        assert r3["corroboration_quality"] == "WEAK", f"3 hype sources should be WEAK, got {r3['corroboration_quality']}"
+    finally:
+        if backup:
+            _save_window(backup)
+        else:
+            os.remove(WINDOW_PATH) if WINDOW_PATH.exists() else None
+check("Corroboration: hype-only sources = WEAK quality", test_corroboration_quality_weak)
+
+def test_corroboration_quality_strong():
+    """Hype + evidence source = STRONG quality."""
+    from corroboration_engine import register_signal, _save_window, WINDOW_PATH
+    import json, os
+    backup = None
+    if WINDOW_PATH.exists():
+        backup = json.load(open(WINDOW_PATH))
+    _save_window({"signals": [], "updated_at": None})
+    try:
+        register_signal({"token": "REALTOKEN", "source": "coingecko_trending"})
+        r2 = register_signal({"token": "REALTOKEN", "source": "onchain_analytics"})
+        assert r2["corroboration_level"] == "MASHHUR"
+        assert r2["corroboration_quality"] == "STRONG", f"Hype + onchain should be STRONG, got {r2['corroboration_quality']}"
+    finally:
+        if backup:
+            _save_window(backup)
+        else:
+            os.remove(WINDOW_PATH) if WINDOW_PATH.exists() else None
+check("Corroboration: hype + evidence = STRONG quality", test_corroboration_quality_strong)
+
 # ── Portfolio Math Invariants ──
 
 def test_portfolio_balance():
