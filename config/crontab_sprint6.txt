@@ -4,6 +4,9 @@
 # === Every 3 minutes ===
 */3 * * * * cd /data/.openclaw/workspace/trading && python3 scripts/price_snapshot.py >> logs/price_snapshot.log 2>&1
 
+# === Every 5 minutes ===
+*/5 * * * * cd /data/.openclaw/workspace/trading && python3 scripts/signal_router.py >> logs/signal_router.log 2>&1
+
 # === Every 10 minutes ===
 */10 * * * * cd /data/.openclaw/workspace/trading && python3 scripts/heartbeat.py >> logs/heartbeat.log 2>&1
 
