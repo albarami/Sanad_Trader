@@ -1,6 +1,6 @@
 {
   "source_name": "dexscreener_cto",
-  "total_signals": 13,
+  "total_signals": 14,
   "trades_executed": 0,
   "wins": 0,
   "losses": 0,
@@ -10,7 +10,7 @@
   "win_rate": 0.0,
   "ucb1_score": 50,
   "grade": "C",
-  "last_signal_at": "2026-02-18T01:26:47.258229+00:00",
+  "last_signal_at": "2026-02-18T05:46:37.319688+00:00",
   "last_trade_at": null,
   "last_win_at": null,
   "last_recalc_at": null,

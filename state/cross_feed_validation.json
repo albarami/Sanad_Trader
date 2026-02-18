@@ -1,43 +1,43 @@
 {
   "status": "OK",
-  "timestamp": "2026-02-18T05:41:30.289419+00:00",
+  "timestamp": "2026-02-18T05:47:02.500293+00:00",
   "checked": 10,
   "warnings": 0,
   "blocked": false,
   "deviations": [
     {
       "token": "BTC",
-      "binance": 67660.51,
-      "coingecko": 67680,
-      "deviation_pct": 0.029,
+      "binance": 67661.99,
+      "coingecko": 67588,
+      "deviation_pct": 0.109,
       "status": "OK"
     },
     {
       "token": "ETH",
-      "binance": 1999.3,
-      "coingecko": 1998.16,
-      "deviation_pct": 0.057,
+      "binance": 1998.93,
+      "coingecko": 1996.99,
+      "deviation_pct": 0.097,
       "status": "OK"
     },
     {
       "token": "SOL",
       "binance": 84.83,
-      "coingecko": 84.83,
-      "deviation_pct": 0.0,
+      "coingecko": 84.8,
+      "deviation_pct": 0.035,
       "status": "OK"
     },
     {
       "token": "BNB",
-      "binance": 616.51,
-      "coingecko": 616.51,
-      "deviation_pct": 0.0,
+      "binance": 616.49,
+      "coingecko": 616.09,
+      "deviation_pct": 0.065,
       "status": "OK"
     },
     {
       "token": "DOGE",
-      "binance": 0.10089,
-      "coingecko": 0.1008,
-      "deviation_pct": 0.089,
+      "binance": 0.10105,
+      "coingecko": 0.100893,
+      "deviation_pct": 0.155,
       "status": "OK"
     },
     {
@@ -49,7 +49,7 @@
     },
     {
       "token": "SHIB",
-      "binance": 6.49e-06,
+      "binance": 6.51e-06,
       "coingecko": 6.5e-06,
       "deviation_pct": 0.154,
       "status": "OK"
@@ -57,15 +57,15 @@
     {
       "token": "WIF",
       "binance": 0.23,
-      "coingecko": 0.229598,
-      "deviation_pct": 0.175,
+      "coingecko": 0.229678,
+      "deviation_pct": 0.14,
       "status": "OK"
     },
     {
       "token": "BONK",
-      "binance": 6.5e-06,
+      "binance": 6.52e-06,
       "coingecko": 6.51e-06,
-      "deviation_pct": 0.154,
+      "deviation_pct": 0.153,
       "status": "OK"
     },
     {

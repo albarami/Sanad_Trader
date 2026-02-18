@@ -1873,6 +1873,102 @@ def _add_position(signal, strategy_result, order, sanad_result, bull_result=None
         print(f"[PIPELINE] Error updating positions: {e}")
 
 
+def _check_fast_track(signal):
+    """Paper mode fast-track for high-confidence corroborated signals. TODO: implement."""
+    return None
+
+
+def _check_fast_track(signal):
+    """
+    Paper-mode fast-track for high-confidence corroborated Tier 1/2 signals.
+    Skips Sanad LLM, Bull/Bear debate, and Judge — saves ~$0.30 and ~4 min.
+    Returns decision record if fast-tracked, None otherwise.
+    """
+    # Only in paper mode
+    try:
+        with open(STATE_DIR / "portfolio.json") as f:
+            portfolio = json.load(f)
+        if portfolio.get("mode") != "paper":
+            return None
+    except Exception:
+        return None
+
+    # All conditions must be true
+    cross_count = signal.get("cross_source_count", 1)
+    router_score = signal.get("router_score", 0)
+    volume = signal.get("volume_24h", 0) or 0
+
+    # Classify token
+    try:
+        from token_profile import TokenProfile, classify_asset
+        profile_data = dict(signal)
+        if 'symbol' not in profile_data and 'token' in profile_data:
+            profile_data['symbol'] = profile_data['token']
+        profile = TokenProfile.from_dict(profile_data)
+        tier = classify_asset(profile)
+    except Exception:
+        return None
+
+    # Fast-track conditions
+    if tier not in ("TIER_1_MACRO", "TIER_2_ALT_LARGE", "TIER_2_ALT_MID"):
+        return None
+    if cross_count < 2:
+        return None
+    if volume < 1_000_000:
+        return None
+    if router_score < 60:
+        return None
+
+    # Check no rugpull flags
+    onchain = signal.get("onchain_evidence", {})
+    if onchain.get("rugpull_scan", {}).get("verdict") in ("RUG", "BLACKLISTED"):
+        return None
+
+    print(f"\n⚡ FAST-TRACK: {signal.get('token')} — {tier}, {cross_count} sources, vol ${volume:,.0f}, score {router_score}")
+
+    # Build deterministic trust score from corroboration
+    quality = signal.get("corroboration_quality", "WEAK")
+    CORR_STRONG = {"AHAD": 10, "MASHHUR": 18, "TAWATUR": 25}
+    CORR_WEAK = {"AHAD": 10, "MASHHUR": 14, "TAWATUR": 18}
+    corr_level = signal.get("corroboration_level", "AHAD")
+    corr_pts = (CORR_WEAK if quality == "WEAK" else CORR_STRONG).get(corr_level, 10)
+    # Base trust: 60 for Tier 1/2 + corroboration bonus
+    trust_score = min(100, 60 + corr_pts)
+
+    # Strategy match (still deterministic)
+    strategy_result, error = stage_3_strategy_match(signal, {
+        "trust_score": trust_score, "grade": "Mashhur" if cross_count >= 2 else "Ahad",
+        "recommendation": "PROCEED", "rugpull_flags": [],
+    }, profile)
+    if error:
+        print(f"  Fast-track blocked at strategy match: {error}")
+        return None
+
+    # Policy engine (still runs all 15 gates)
+    judge_result = {"verdict": "APPROVE", "confidence_score": 75, "reasoning": "Paper fast-track: Tier 1/2 corroborated signal"}
+    policy_result = stage_6_policy_engine(signal, {
+        "trust_score": trust_score, "recommendation": "PROCEED",
+        "rugpull_flags": [], "grade": "Mashhur",
+    }, strategy_result, {"conviction": 60, "thesis": "Fast-track"}, {"conviction": 40, "attack_points": []}, judge_result)
+
+    if isinstance(policy_result, tuple):
+        policy_result = policy_result[0] if policy_result[0] else {"result": "FAIL", "output": str(policy_result[1])}
+
+    if policy_result.get("result") != "PASS":
+        print(f"  Fast-track blocked by policy engine: {policy_result.get('output', 'unknown gate')}")
+        return None
+
+    # Execute
+    decision_record = stage_7_execute(signal, {
+        "trust_score": trust_score, "recommendation": "PROCEED",
+        "rugpull_flags": [], "grade": "Mashhur",
+    }, strategy_result, {"conviction": 60, "thesis": "Fast-track"}, {"conviction": 40, "attack_points": []}, judge_result, policy_result)
+
+    decision_record["fast_track"] = True
+    print(f"\n⚡ FAST-TRACK COMPLETE — {decision_record.get('final_action', 'UNKNOWN')}")
+    return decision_record
+
+
 def _pre_sanad_reject(signal):
     """
     Deterministic pre-Sanad reject for obvious garbage.
@@ -2010,7 +2106,12 @@ def run_pipeline(signal):
         print(f"\nPIPELINE BLOCKED at Stage 1: {error}")
         return {"final_action": "REJECT", "stage": 1, "reason": error}
 
-    # Stage 1.5: Pre-Sanad deterministic reject (saves Sanad LLM call)
+    # Stage 1.5a: Paper mode fast-track for high-confidence corroborated signals
+    fast_track_result = _check_fast_track(signal)
+    if fast_track_result:
+        return fast_track_result
+
+    # Stage 1.5b: Pre-Sanad deterministic reject (saves Sanad LLM call)
     pre_reject = _pre_sanad_reject(signal)
     if pre_reject:
         print(f"\n⛔ PRE-SANAD REJECT: {pre_reject}")
