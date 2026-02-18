@@ -1,0 +1,140 @@
+# Regime Profiles Configuration
+# Each profile defines how the trading system adapts to different market conditions
+
+EXTREME_FEAR:
+  description: "Panic selling, oversold conditions, potential bounce"
+  strategy_weights:
+    momentum: 0.2          # Low momentum in panic
+    mean_reversion: 0.5    # High mean reversion opportunity
+    breakout: 0.1          # Few breakouts in panic
+    dip_buying: 0.2        # Opportunity for dip buying
+  source_trust_modifiers:
+    coingecko: 1.0         # No change
+    birdeye: 0.8           # Hype sources less reliable in panic
+    dexscreener: 0.8
+    onchain: 1.2           # Onchain more reliable
+    telegram: 0.7          # Social hype unreliable
+  position_sizing:
+    base_position_pct: 1.5      # Smaller positions (normally 2.0%)
+    max_position_pct: 4.0       # Lower max (normally 5.0%)
+    max_total_exposure: 60.0    # Lower total (normally 80%)
+  pipeline_behavior:
+    sanad_trust_threshold: 0.75       # Higher trust required (normally 0.7)
+    muhasbi_min_confidence: 75        # Higher confidence needed (normally 70)
+    enable_aggressive_stops: true
+    stop_loss_multiplier: 0.8         # Tighter stops (normally 1.0)
+
+BEAR_HIGH_VOL:
+  description: "Bear market with high volatility, risk of further drops"
+  strategy_weights:
+    momentum: 0.1
+    mean_reversion: 0.3
+    breakout: 0.1
+    dip_buying: 0.5        # Wait for extreme dips
+  source_trust_modifiers:
+    coingecko: 0.9
+    birdeye: 0.7
+    dexscreener: 0.7
+    onchain: 1.1
+    telegram: 0.6
+  position_sizing:
+    base_position_pct: 1.5
+    max_position_pct: 3.5
+    max_total_exposure: 50.0
+  pipeline_behavior:
+    sanad_trust_threshold: 0.75
+    muhasbi_min_confidence: 75
+    enable_aggressive_stops: true
+    stop_loss_multiplier: 0.9
+
+BEAR_LOW_VOL:
+  description: "Bear market, low volatility, grinding down slowly"
+  strategy_weights:
+    momentum: 0.15
+    mean_reversion: 0.35
+    breakout: 0.15
+    dip_buying: 0.35
+  source_trust_modifiers:
+    coingecko: 0.95
+    birdeye: 0.8
+    dexscreener: 0.8
+    onchain: 1.05
+    telegram: 0.7
+  position_sizing:
+    base_position_pct: 1.8
+    max_position_pct: 4.0
+    max_total_exposure: 60.0
+  pipeline_behavior:
+    sanad_trust_threshold: 0.72
+    muhasbi_min_confidence: 72
+    enable_aggressive_stops: false
+    stop_loss_multiplier: 1.0
+
+BULL_TREND:
+  description: "Strong bull trend, momentum dominant"
+  strategy_weights:
+    momentum: 0.6          # High momentum in bull
+    mean_reversion: 0.1    # Low mean reversion
+    breakout: 0.2          # Moderate breakouts
+    dip_buying: 0.1
+  source_trust_modifiers:
+    coingecko: 1.1         # Hype sources more reliable in bull
+    birdeye: 1.1
+    dexscreener: 1.1
+    onchain: 1.0
+    telegram: 1.0
+  position_sizing:
+    base_position_pct: 2.5      # Larger positions
+    max_position_pct: 6.0
+    max_total_exposure: 85.0    # Higher exposure
+  pipeline_behavior:
+    sanad_trust_threshold: 0.65       # Lower threshold (more aggressive)
+    muhasbi_min_confidence: 65
+    enable_aggressive_stops: false
+    stop_loss_multiplier: 1.2         # Wider stops (let winners run)
+
+BULL_HIGH_VOL:
+  description: "Bull market with high volatility, euphoria phase"
+  strategy_weights:
+    momentum: 0.5
+    mean_reversion: 0.15
+    breakout: 0.25
+    dip_buying: 0.1
+  source_trust_modifiers:
+    coingecko: 1.05
+    birdeye: 1.0
+    dexscreener: 1.0
+    onchain: 1.0
+    telegram: 0.9          # Be cautious of hype in euphoria
+  position_sizing:
+    base_position_pct: 2.0
+    max_position_pct: 5.0
+    max_total_exposure: 75.0
+  pipeline_behavior:
+    sanad_trust_threshold: 0.68
+    muhasbi_min_confidence: 68
+    enable_aggressive_stops: false
+    stop_loss_multiplier: 1.1
+
+SIDEWAYS:
+  description: "Choppy, range-bound market"
+  strategy_weights:
+    momentum: 0.2
+    mean_reversion: 0.5    # Mean reversion works best in chop
+    breakout: 0.2
+    dip_buying: 0.1
+  source_trust_modifiers:
+    coingecko: 1.0
+    birdeye: 0.9
+    dexscreener: 0.9
+    onchain: 1.05
+    telegram: 0.8
+  position_sizing:
+    base_position_pct: 2.0
+    max_position_pct: 4.5
+    max_total_exposure: 70.0
+  pipeline_behavior:
+    sanad_trust_threshold: 0.7
+    muhasbi_min_confidence: 70
+    enable_aggressive_stops: false
+    stop_loss_multiplier: 1.0
