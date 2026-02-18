@@ -8,6 +8,7 @@ with cross-source corroboration data BEFORE Sanad verification.
 This is the #1 mechanism for pushing signals from Ahad (single-source, ~60 trust)
 to Mashhur/Tawatur (multi-source, 70+ trust) without lowering any thresholds.
 """
+import fcntl
 import json
 import os
 from datetime import datetime, timezone, timedelta
@@ -16,6 +17,7 @@ from pathlib import Path
 BASE_DIR = Path(os.environ.get("SANAD_HOME", Path(__file__).resolve().parent.parent))
 STATE_DIR = BASE_DIR / "state"
 WINDOW_PATH = STATE_DIR / "signal_window.json"
+LOCK_PATH = STATE_DIR / "signal_window.lock"
 
 # Rolling window: signals older than this are pruned
 WINDOW_MINUTES = 60
@@ -134,6 +136,7 @@ def _build_result(providers_seen: set, source_labels: list) -> dict:
 def register_signal(signal: dict) -> dict:
     """
     Register a new signal in the rolling window and return corroboration data.
+    File-locked to prevent lost updates from concurrent router runs.
 
     Args:
         signal: dict with at least 'token' and 'source' keys
@@ -144,6 +147,16 @@ def register_signal(signal: dict) -> dict:
             cross_sources: list[str] (provider names)
             corroboration_level: str (AHAD/MASHHUR/TAWATUR)
     """
+    STATE_DIR.mkdir(parents=True, exist_ok=True)
+    with open(LOCK_PATH, "w") as lockfile:
+        fcntl.flock(lockfile, fcntl.LOCK_EX)
+        try:
+            return _register_signal_locked(signal)
+        finally:
+            fcntl.flock(lockfile, fcntl.LOCK_UN)
+
+
+def _register_signal_locked(signal: dict) -> dict:
     now = datetime.now(timezone.utc)
     window = _load_window()
     window = _prune_window(window, now)
@@ -202,8 +215,18 @@ def register_signal(signal: dict) -> dict:
 def get_corroboration(token: str, address: str = "", chain: str = "") -> dict:
     """
     Check corroboration for a token WITHOUT registering a new signal.
-    Used for read-only queries.
+    File-locked for consistency with concurrent register_signal calls.
     """
+    STATE_DIR.mkdir(parents=True, exist_ok=True)
+    with open(LOCK_PATH, "w") as lockfile:
+        fcntl.flock(lockfile, fcntl.LOCK_SH)  # Shared lock for reads
+        try:
+            return _get_corroboration_locked(token, address, chain)
+        finally:
+            fcntl.flock(lockfile, fcntl.LOCK_UN)
+
+
+def _get_corroboration_locked(token: str, address: str = "", chain: str = "") -> dict:
     now = datetime.now(timezone.utc)
     window = _load_window()
     window = _prune_window(window, now)

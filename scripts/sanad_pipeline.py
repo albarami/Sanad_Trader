@@ -735,20 +735,23 @@ Return your analysis as valid JSON with these exact keys:
     llm_level = sanad_result.get("corroboration_level", "AHAD")
 
     # Corroboration points: AHAD=10, MASHHUR=18, TAWATUR=25
-    CORR_POINTS = {"AHAD": 10, "AHAD_SAHIH": 10, "AHAD_DAIF": 10, "MASHHUR": 18, "TAWATUR": 25}
-    llm_points = CORR_POINTS.get(llm_level, 10)
-    engine_points = CORR_POINTS.get(engine_level, 10)
+    # WEAK quality gets partial credit: AHAD=10, MASHHUR=14, TAWATUR=18
+    CORR_POINTS_STRONG = {"AHAD": 10, "AHAD_SAHIH": 10, "AHAD_DAIF": 0, "MASHHUR": 18, "TAWATUR": 25}
+    CORR_POINTS_WEAK = {"AHAD": 10, "AHAD_SAHIH": 10, "AHAD_DAIF": 0, "MASHHUR": 14, "TAWATUR": 18}
+    points_table = CORR_POINTS_WEAK if engine_quality == "WEAK" else CORR_POINTS_STRONG
+    llm_points = CORR_POINTS_STRONG.get(llm_level, 10)  # LLM always scored on STRONG scale
+    engine_points = points_table.get(engine_level, 10)
 
-    # Only apply boost if engine says higher AND quality is not WEAK
-    corr_delta = 0
-    if engine_quality != "WEAK" and engine_points > llm_points:
-        corr_delta = engine_points - llm_points
-        sanad_result["trust_score"] = min(100, sanad_result.get("trust_score", 0) + corr_delta)
+    # Signed delta — corrects BOTH directions (boost or subtract)
+    corr_delta = engine_points - llm_points
+    if corr_delta != 0:
+        sanad_result["trust_score"] = max(0, min(100, sanad_result.get("trust_score", 0) + corr_delta))
         sanad_result["corroboration_override"] = {
             "llm_level": llm_level, "engine_level": engine_level,
             "delta": corr_delta, "quality": engine_quality,
         }
-        print(f"  ⚡ Corroboration override: {llm_level}→{engine_level} (+{corr_delta} trust points)")
+        direction = f"+{corr_delta}" if corr_delta > 0 else str(corr_delta)
+        print(f"  ⚡ Corroboration override: {llm_level}→{engine_level} ({direction} trust points){' [WEAK partial]' if engine_quality == 'WEAK' else ''}")
 
     # Overwrite corroboration fields from engine (code > LLM)
     sanad_result["source_count"] = engine_count
@@ -757,34 +760,40 @@ Return your analysis as valid JSON with these exact keys:
 
     trust_score = sanad_result.get("trust_score", 0)
     grade = sanad_result.get("grade", "FAILED")
-    recommendation = sanad_result.get("recommendation", "BLOCK")
+    min_score = THRESHOLDS["sanad"]["minimum_trade_score"]
 
-    print(f"  Trust Score: {trust_score}/100{f' (includes +{corr_delta} corroboration)' if corr_delta else ''}")
+    # DETERMINISTIC RECOMMENDATION — derived from final trust_score
+    # Hard blocks override everything
+    rugpull_flags = sanad_result.get("rugpull_flags", [])
+    sybil_risk = sanad_result.get("sybil_risk", "LOW")
+    if rugpull_flags:
+        recommendation = "BLOCK"
+    elif sybil_risk == "HIGH":
+        recommendation = "BLOCK"
+    elif trust_score >= 80:
+        recommendation = "PROCEED"
+    elif trust_score >= min_score:
+        recommendation = "CAUTION"
+    else:
+        recommendation = "BLOCK"
+    sanad_result["recommendation"] = recommendation
+
+    print(f"  Trust Score: {trust_score}/100{f' (corr delta: {corr_delta:+d})' if corr_delta else ''}")
     print(f"  Grade: {grade}")
     print(f"  Source Grade: {sanad_result.get('source_grade', 'N/A')}")
     print(f"  Chain Integrity: {sanad_result.get('chain_integrity', 'N/A')}")
-    print(f"  Corroboration: {engine_level} ({engine_count} sources){' [WEAK — hype-only]' if engine_quality == 'WEAK' else ''}")
+    print(f"  Corroboration: {engine_level} ({engine_count} sources){' [WEAK — partial credit]' if engine_quality == 'WEAK' else ''}")
     print(f"  Recency Decay: {sanad_result.get('recency_decay_points', 'N/A')}")
-    print(f"  Sybil Risk: {sanad_result.get('sybil_risk', 'N/A')}")
-    print(f"  Rugpull Flags: {sanad_result.get('rugpull_flags', [])}")
+    print(f"  Sybil Risk: {sybil_risk}")
+    print(f"  Rugpull Flags: {rugpull_flags}")
     print(f"  Recommendation: {recommendation}")
     print(f"  Source Count: {sanad_result.get('source_count', 'N/A')}")
     print(f"  Reasoning: {sanad_result.get('reasoning', 'N/A')[:200]}")
 
-    # HARD RULE: score < threshold → BLOCK
-    min_score = THRESHOLDS["sanad"]["minimum_trade_score"]
-    # Paper mode: allow through with CAUTION if score > 0 and rugcheck passed
-    try:
-        with open(STATE_DIR / "portfolio.json") as _pf:
-            portfolio = json.load(_pf)
-    except Exception:
-        portfolio = {"mode": "paper"}
-    is_paper = portfolio.get("mode", "paper") == "paper"
-    rugcheck_ok = signal.get("onchain_evidence", {}).get("rugpull_scan", {}).get("verdict") not in ("RUG", "BLACKLISTED")
+    # HARD RULE: score < threshold → BLOCK (redundant safety net)
     if trust_score < min_score:
         print(f"  BLOCKED: Trust score {trust_score} < {min_score} minimum")
         sanad_result["recommendation"] = "BLOCK"
-        # No paper mode override — BLOCK means BLOCK regardless of mode
 
     return sanad_result, None
 

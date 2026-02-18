@@ -1,70 +1,61 @@
 {
-  "last_run": "2026-02-18T00:33:56.819513+00:00",
+  "last_run": "2026-02-18T01:18:54.043427+00:00",
   "scans": {
     "positions": {
-      "sentiment_score": 18,
-      "trend": "falling",
+      "sentiment_score": 45,
+      "trend": "stable",
       "volume": "normal",
       "key_narratives": [
-        "Memecoin capitulation and sector abandonment",
-        "Inflation cooling driving Fed rate cut speculation",
-        "Fear and uncertainty dominance (FUD prevalence)",
-        "Potential market bottom formation signals",
-        "Whale accumulation contrasting with retail bearishness"
+        "Inflation cooling narrative reigniting Fed rate cut hopes",
+        "Memecoin capitulation and nostalgia - contrarian opportunity signal",
+        "Whale accumulation activity",
+        "Relief rally potential amid weak conviction"
       ],
       "risk_signals": [
-        "Bullish/bearish comment ratio below 1 (0.89)",
-        "85% negative sentiment vs 15% positive",
-        "Rising FUD among retail investors",
-        "Break of key support levels indicated",
-        "Decline in network activity",
-        "Persistent disbelief despite price pumps",
-        "Risk-off global sentiment environment"
+        "Bullish/Bearish comment ratio below 1 (0.89) indicating persistent fearful sentiment",
+        "Risk-off global sentiment pressuring altcoins",
+        "Retail buying persistence suggests max pain bottom may not be reached",
+        "Weak conviction in relief rally despite technical signals"
       ],
-      "notable_mentions": 7,
+      "notable_mentions": 0,
       "token": "positions",
-      "scanned_at": "2026-02-18T00:34:00.227091+00:00"
+      "scanned_at": "2026-02-18T01:18:57.860859+00:00"
     },
     "BTC": {
       "sentiment_score": 15,
       "trend": "falling",
       "volume": "high",
       "key_narratives": [
-        "Bitcoin in extreme fear regime - Fear & Greed Index at bear market 2022 levels",
-        "Five consecutive weeks of losses with February showing persistent negative trend",
-        "Macro headwinds dominating - rising rate expectations and liquidity concerns",
-        "Potential capitulation/local bottom being discussed by analysts",
-        "Price action below key $70,000 psychological support driving pessimism"
+        "Dominance of negative sentiment and FUD among retail investors on social media",
+        "Pessimism due to price declines, support level breaks, and declining network activity",
+        "Extreme fear indicated by Crypto Fear & Greed Index"
       ],
       "risk_signals": [
-        "85% negative sentiment vs 15% positive across aggregated sources",
-        "Extreme fear conditions persist despite recent bounce to $70k",
-        "Five-week losing streak with Q1 2026 potentially worst quarter since 2018",
-        "Year-to-date decline of 22% from $87.7k opening",
-        "Rising FUD (fear, uncertainty, doubt) among retail investors on social media",
-        "BTC trading below both 50-day and 200-day moving averages indicating sustained downside pressure"
+        "Rising FUD levels on Twitter, Reddit, and forums",
+        "Five-week losing streak and potential fifth consecutive monthly decline",
+        "Capitulation-like conditions but lingering unease"
       ],
-      "notable_mentions": 3,
+      "notable_mentions": 0,
       "token": "BTC",
-      "scanned_at": "2026-02-18T00:04:03.673069+00:00"
+      "scanned_at": "2026-02-18T00:48:55.489767+00:00"
     },
     "ETH": {
       "sentiment_score": 25,
-      "trend": "falling",
-      "volume": "high",
+      "trend": "stable",
+      "volume": "normal",
       "key_narratives": [
-        "Price dips below $2,000 with 20% monthly decline and bearish pressure dominating",
-        "Accumulation by whales and retail offsetting ETF outflows but sellers still in control",
-        "Potential bullish reversal if key resistances like $2,150 or $2,380 breached, but futures sentiment extremely bearish"
+        "Overwhelmingly negative social media sentiment and 'mini-winter' de-risking",
+        "Mixed signals with positive institutional accumulation and long-term bullish forecasts",
+        "Bearish price struggles below $2K, ETF outflows, and derivatives open interest shed"
       ],
       "risk_signals": [
-        "Futures taker buy/sell ratio at 3-month low indicating defensive traders",
-        "Elevated leverage and clustered liquidations risking further downside",
-        "Failure to hold $1,900-$1,950 support could accelerate losses"
+        "Extreme negative retail positioning",
+        "Echoes of 2018/2022 crypto winter sentiment",
+        "Short-term volatility and downside risks from ETF outflows"
       ],
-      "notable_mentions": 0,
+      "notable_mentions": 2,
       "token": "ETH",
-      "scanned_at": "2026-02-18T00:04:08.193002+00:00"
+      "scanned_at": "2026-02-18T00:48:59.182972+00:00"
     },
     "SOL": {
       "sentiment_score": 45,
@@ -94,19 +85,21 @@
       "trend": "falling",
       "volume": "low",
       "key_narratives": [
-        "Mixed sentiment with bearish price pressure and regulatory overhang",
-        "Oversold conditions signaling potential recovery",
-        "Anti-Binance sentiment and calls to withdraw assets"
+        "Oversold conditions and potential recovery to $750-$1050 despite bearish momentum",
+        "Regulatory scrutiny and founder allegations creating overhang",
+        "Price bracing at $600-$630 support in downtrend",
+        "Anti-Binance sentiment with calls to withdraw assets"
       ],
       "risk_signals": [
-        "Regulatory scrutiny including Iran-linked USDT allegations and CZ collusion claims",
-        "Bearish momentum with BNB slipping below $600",
-        "Sharp drop in social volume"
+        "Regulatory pressure from Iran-linked USDT allegations and CZ collusion claims",
+        "Bearish momentum with long-to-short ratio below 1",
+        "Recent price slips below $600 and double-digit losses",
+        "Order execution issues on Binance reported"
       ],
       "notable_mentions": 0,
       "token": "BNB",
-      "scanned_at": "2026-02-18T00:34:10.582136+00:00"
+      "scanned_at": "2026-02-18T01:19:08.395158+00:00"
     }
   },
-  "total_signals": 61
+  "total_signals": 62
 }
