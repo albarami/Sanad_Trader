@@ -1,17 +1,17 @@
 {
   "token": {
-    "symbol": "ETH",
-    "deployment_timestamp": "2026-01-07T17:17:51.167766+00:00"
+    "symbol": "BTC",
+    "deployment_timestamp": "2026-01-07T17:21:08.822334+00:00"
   },
-  "symbol": "ETHUSDT",
+  "symbol": "BTCUSDT",
   "venue": "DEX",
   "exchange": "binance",
   "strategy_name": "meme-momentum",
   "data_timestamps": {
-    "price_timestamp": "2026-02-18T08:17:51.167835+00:00",
-    "onchain_timestamp": "2026-02-18T08:17:51.167839+00:00"
+    "price_timestamp": "2026-02-18T08:21:08.822358+00:00",
+    "onchain_timestamp": "2026-02-18T08:21:08.822361+00:00"
   },
-  "current_price": 2027.0,
+  "current_price": 68321.4,
   "sanad_verification": {
     "sanad_trust_score": 62,
     "grade": "Ahad",
@@ -30,7 +30,7 @@
   },
   "trade_confidence_score": 0,
   "almuhasbi_verdict": "REJECT",
-  "almuhasbi_confidence": 86,
+  "almuhasbi_confidence": 92,
   "dex_sim_result": null,
   "volatility_30min_pct": 0,
   "has_verified_catalyst": false

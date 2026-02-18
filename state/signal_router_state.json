@@ -1,24 +1,25 @@
 {
-  "last_run": "2026-02-18T07:14:04+00:00",
+  "last_run": "2026-02-18T08:17:20+00:00",
   "processed_hashes": [
-    "311401b7f686",
     "a4be34387e63",
-    "b76fa69ede3e",
-    "8e8d98e3d872",
     "159c3d2cbeb9",
-    "006667d31ed5"
+    "b76fa69ede3e",
+    "311401b7f686",
+    "006667d31ed5",
+    "8e8d98e3d872",
+    "9d96f0db3473"
   ],
-  "daily_pipeline_runs": 10,
+  "daily_pipeline_runs": 13,
   "daily_reset_date": "2026-02-18",
-  "signals_scanned": 32,
-  "signals_filtered": 5,
+  "signals_scanned": 36,
+  "signals_filtered": 8,
   "signal_selected": {
-    "token": "ETH",
-    "score": 100,
-    "source": "coingecko_trending",
-    "signal_type": "TRENDING_GAINER"
+    "token": "OMEGAX",
+    "score": 70,
+    "source": "birdeye_meme_radar",
+    "signal_type": "TRENDING"
   },
   "pipeline_result": "REJECT",
-  "pipeline_reason": "",
+  "pipeline_reason": "Paid DexScreener boost is advertising, not organic signal",
   "data_quality_block": false
 }

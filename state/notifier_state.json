@@ -1,5 +1,5 @@
 {
-  "sent": 83,
+  "sent": 85,
   "failed": 7,
   "history": [
     {
@@ -631,7 +631,21 @@
       "message": "\ud83d\udd27 FIX: Found crash at Stage 5 Judge \u2014 position_pct was None causing TypeError. Every signal that passed debate was crashing before Judge could render verdict. Fixed + committed (c3a13b1). Next router ",
       "channel": "telegram",
       "at": "2026-02-18T07:23:09.426252+00:00"
+    },
+    {
+      "level": "L1",
+      "title": "Signal Rejected",
+      "message": "\ud83d\udd34 *Signal Rejected*\n\nToken: BTC\nReason: {\n  \"result\": \"BLOCK\",\n  \"gates_passed\": [\n    1,\n    2,\n    3,\n    4,\n    5,\n    6,\n    7,\n    8,\n    9,\n    10,\n    11,\n    12,\n    13,\n    14\n  ],\n  \"gate_fa",
+      "channel": "log_only",
+      "at": "2026-02-18T08:21:08.890557+00:00"
+    },
+    {
+      "level": "L2",
+      "title": null,
+      "message": "\ud83c\udf89 PIPELINE ALIVE! 3 new decisions (94 total). BTC reached Judge with trust=62, confidence=92 but REJECT. SOL trust=12 REJECT. OMEGAX trust=0 REJECT. First end-to-end pipeline completion! Judge still t",
+      "channel": "telegram",
+      "at": "2026-02-18T08:21:34.354218+00:00"
     }
   ],
-  "last_sent": "2026-02-18T07:23:09.426271+00:00"
+  "last_sent": "2026-02-18T08:21:34.354231+00:00"
 }

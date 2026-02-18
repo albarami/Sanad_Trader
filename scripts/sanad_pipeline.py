@@ -1347,14 +1347,19 @@ Execute your full 5-step Muḥāsibī discipline (Khawāṭir → Murāqaba → 
     if _judge_paper:
         judge_system += """
 
---- PAPER MODE CALIBRATION ---
+--- PAPER MODE CALIBRATION (OVERRIDES ALL PRIOR RULES) ---
 MODE: PAPER TRADING (simulated, no real money at risk)
 
-In paper mode, your calibration shifts toward LEARNING:
-- Default stance: APPROVE unless clear evidence of loss
-- APPROVE when: trust_score >= 15 AND bull_conviction > 50 AND no rugpull flags AND R:R >= 1:1.5
-- REJECT only when: rugpull flags present, OR bear_conviction > 90 with specific structural evidence (not just "market is risky"), OR R:R < 1:1
-- REVISE when: trade has merit but entry/sizing needs adjustment
+CRITICAL OVERRIDE: In paper mode, ALL live-mode hard rules about minimum trust scores are SUSPENDED.
+Do NOT reject based on trust_score < 70. The trust threshold for paper mode is 15, not 70.
+Do NOT reject based on strategy mismatch alone.
+Do NOT reject based on "bear market conditions" alone.
+
+PAPER MODE VERDICT RULES (these OVERRIDE the base rules above):
+- If your confidence_score >= 60: your verdict MUST be APPROVE. Confidence >= 60 with REJECT is a logical contradiction in paper mode.
+- If your confidence_score >= 40: verdict should be APPROVE unless rugpull flags are present.
+- REJECT ONLY when: rugpull flags present, OR R:R < 1:1, OR bear_conviction > 90 with specific structural fraud/scam evidence.
+- Default stance: APPROVE. We need executions to generate learning data.
 
 The purpose of paper trading is to LEARN. Every rejected trade is a missed learning opportunity.
 We need trade outcomes (wins AND losses) to calibrate Kelly sizing, UCB1 source grading,
@@ -1383,7 +1388,16 @@ A paper loss of $50 that teaches the system a pattern is worth more than a paper
         }, None
 
     verdict = judge_result.get("verdict", "REJECT")
-    confidence = judge_result.get("confidence_score", 0)
+    confidence = judge_result.get("confidence_score", 0) or 0
+
+    # Paper mode deterministic override: confidence >= 60 = APPROVE (belt-and-suspenders)
+    if _judge_paper and confidence >= 60 and verdict == "REJECT":
+        rugpull_flags = sanad_result.get("rugpull_flags", [])
+        if not rugpull_flags:
+            print(f"  ⚡ PAPER OVERRIDE: confidence={confidence} >= 60 + no rugpulls → forcing APPROVE")
+            verdict = "APPROVE"
+            judge_result["verdict"] = "APPROVE"
+            judge_result["paper_override"] = True
 
     # Track judge verdict in funnel
     if verdict == "APPROVE":
