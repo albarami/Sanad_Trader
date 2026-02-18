@@ -1254,7 +1254,7 @@ def stage_5_judge(signal, sanad_result, strategy_result, bull_result, bear_resul
     
     # Get tier for veto rules (v3.0)
     simple_tier = TIER_MAP.get(profile.asset_tier, "TIER_3") if profile else "TIER_3"
-    circulating_pct = profile.circulating_pct if profile else 100
+    circulating_pct = (profile.circulating_pct if profile else 100) or 100
 
     judge_message = f"""TRADE PROPOSAL FOR REVIEW:
 

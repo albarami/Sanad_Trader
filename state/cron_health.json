@@ -4,11 +4,11 @@
     "status": "ok"
   },
   "reconciliation": {
-    "last_run": "2026-02-18T07:31:02+00:00",
+    "last_run": "2026-02-18T07:51:00+00:00",
     "status": "ok"
   },
   "price_snapshot": {
-    "last_run": "2026-02-18T07:39:57+00:00",
+    "last_run": "2026-02-18T07:54:57+00:00",
     "status": "ok"
   },
   "signal_router": {
