@@ -2100,18 +2100,61 @@ def _pre_sanad_reject(signal):
     Deterministic pre-Sanad reject for obvious garbage.
     Returns rejection reason string, or None if signal should proceed.
     No LLM calls — pure field validation.
+    
+    v3.1 Additions:
+    - RugCheck score filter
+    - Rejection cooldown tracker
+    - DexScreener boost-only filter
     """
     token = signal.get("token", "")
     source = signal.get("source", "")
 
+    # ── NEW FILTER 1: RugCheck score < 30 for non-premium tiers ──
+    rugcheck_score = signal.get("rugcheck_score", signal.get("onchain_evidence", {}).get("rugcheck_score"))
+    if rugcheck_score is not None and rugcheck_score < 30:
+        # Classify token to check if it's TIER_1 or TIER_2
+        try:
+            from token_profile import TokenProfile, classify_asset
+            profile_data = dict(signal)
+            if 'symbol' not in profile_data:
+                profile_data['symbol'] = token
+            profile = TokenProfile.from_dict(profile_data)
+            tier = classify_asset(profile)
+            
+            # Reject if NOT TIER_1 or TIER_2
+            if not tier.startswith("TIER_1") and not tier.startswith("TIER_2"):
+                return f"RugCheck score {rugcheck_score} too low (< 30)"
+        except Exception:
+            # If classification fails, apply filter conservatively
+            return f"RugCheck score {rugcheck_score} too low (< 30)"
+    
+    # ── NEW FILTER 2: Rejection cooldown (30 minutes) ──
+    cooldown_reason = _check_rejection_cooldown(token)
+    if cooldown_reason:
+        return cooldown_reason
+    
+    # ── NEW FILTER 3: DexScreener boost-only (no corroboration) ──
+    cross_count = signal.get("cross_source_count", 1)
+    if "dexscreener" in source.lower() and "boost" in source.lower():
+        # Check if there's corroboration from other sources
+        cross_sources = signal.get("cross_sources", [])
+        
+        # If only 1 source OR all sources are dexscreener variants
+        has_non_dex = any(src != "dexscreener" for src in cross_sources)
+        
+        if cross_count == 1 or not has_non_dex:
+            return "DexScreener boost-only (advertising)"
+    
+    # ── EXISTING FILTERS ──
+    
     # Missing required fields
     required = ["token", "source", "thesis"]
     missing = [f for f in required if not signal.get(f)]
     if missing:
         return f"Missing required fields: {missing}"
 
-    # Paid DexScreener boosts are advertising, not signal
-    if "dexscreener boost" in source.lower():
+    # Paid DexScreener boosts are advertising, not signal (general catch)
+    if "dexscreener boost" in source.lower() and cross_count <= 1:
         return f"Paid DexScreener boost is advertising, not organic signal"
 
     # Token age < 30 minutes with LP unlocked (from signal metadata if available)
@@ -2129,8 +2172,86 @@ def _pre_sanad_reject(signal):
     return None
 
 
-def _log_decision_short_circuit(signal, sanad_result):
-    """Log a short-circuited BLOCK decision with full telemetry (no LLM calls)."""
+def _check_rejection_cooldown(token: str) -> str:
+    """
+    Check if token was recently rejected (within 30 minutes).
+    Returns rejection reason if in cooldown, None otherwise.
+    Also updates the cooldown tracker.
+    """
+    cooldown_file = STATE_DIR / "rejection_cooldowns.json"
+    now = datetime.now(timezone.utc)
+    
+    # Load existing cooldowns
+    cooldowns = {}
+    if cooldown_file.exists():
+        try:
+            with open(cooldown_file, "r") as f:
+                cooldowns = json.load(f)
+        except Exception:
+            cooldowns = {}
+    
+    # Clean old entries (> 24 hours)
+    cutoff_24h = (now - timedelta(hours=24)).isoformat()
+    cooldowns = {
+        tok: ts for tok, ts in cooldowns.items()
+        if ts > cutoff_24h
+    }
+    
+    # Check if token is in cooldown
+    if token in cooldowns:
+        last_reject = datetime.fromisoformat(cooldowns[token].replace("Z", "+00:00"))
+        minutes_ago = (now - last_reject).total_seconds() / 60
+        
+        if minutes_ago < 30:
+            return f"Cooldown: {token} rejected {int(minutes_ago)}m ago"
+    
+    # No cooldown issue - save cleaned cooldowns
+    try:
+        with open(cooldown_file, "w") as f:
+            json.dump(cooldowns, f, indent=2)
+    except Exception:
+        pass  # Non-critical
+    
+    return None
+
+
+def _record_rejection_cooldown(token: str):
+    """
+    Record a rejection timestamp for cooldown tracking.
+    Called after a pre-sanad rejection.
+    """
+    cooldown_file = STATE_DIR / "rejection_cooldowns.json"
+    now = datetime.now(timezone.utc).isoformat()
+    
+    # Load existing cooldowns
+    cooldowns = {}
+    if cooldown_file.exists():
+        try:
+            with open(cooldown_file, "r") as f:
+                cooldowns = json.load(f)
+        except Exception:
+            cooldowns = {}
+    
+    # Update timestamp
+    cooldowns[token] = now
+    
+    # Save
+    try:
+        with open(cooldown_file, "w") as f:
+            json.dump(cooldowns, f, indent=2)
+    except Exception:
+        pass  # Non-critical
+
+
+def _log_decision_short_circuit(signal, sanad_result, stage="sanad"):
+    """
+    Log a short-circuited BLOCK decision with full telemetry (no LLM calls).
+    
+    Args:
+        signal: Signal dict
+        sanad_result: Sanad verification result (or pseudo-result for pre-sanad)
+        stage: Stage name - "pre_sanad" or "sanad" (default)
+    """
     from datetime import datetime, timezone
 
     # Run lightweight classification for telemetry (no LLM cost)
@@ -2153,7 +2274,14 @@ def _log_decision_short_circuit(signal, sanad_result):
 
     import uuid
     trust = sanad_result.get("trust_score", 0)
-    rejection_reason = f"Sanad BLOCK (trust={trust}, grade={sanad_result.get('grade','?')}, rugpull_flags={sanad_result.get('rugpull_flags',[])})"
+    
+    # Customize rejection reason based on stage
+    if stage == "pre_sanad":
+        rejection_reason = f"Pre-Sanad reject: {sanad_result.get('rugpull_flags', ['deterministic_filter'])[0]}"
+        stage_num = "pre_sanad"
+    else:
+        rejection_reason = f"Sanad BLOCK (trust={trust}, grade={sanad_result.get('grade','?')}, rugpull_flags={sanad_result.get('rugpull_flags',[])})"
+        stage_num = 2
 
     record = {
         "timestamp": datetime.now(timezone.utc).isoformat(),
@@ -2163,7 +2291,7 @@ def _log_decision_short_circuit(signal, sanad_result):
             "source": signal.get("source", "?"),
             "thesis": signal.get("thesis", ""),
         },
-        "stage": 2,
+        "stage": stage_num,
         "asset_tier": asset_tier,
         "regime_tag": regime_tag,
         "eligible_strategies": eligible_strategies,
@@ -2178,7 +2306,7 @@ def _log_decision_short_circuit(signal, sanad_result):
         },
         "bull": {"conviction": 0, "thesis": ""},
         "bear": {"conviction": 0, "attack_points": []},
-        "judge": {"verdict": "REJECT", "confidence_score": 0, "reasoning": "Short-circuited: Sanad BLOCK before LLM debate"},
+        "judge": {"verdict": "REJECT", "confidence_score": 0, "reasoning": f"Short-circuited: {stage} BLOCK before LLM debate"},
         "trade_confidence_score": 0,
         "short_circuit": True,
         "rejection_reason": rejection_reason,
@@ -2252,10 +2380,14 @@ def run_pipeline(signal):
     if pre_reject:
         _funnel("pre_sanad_rejected")
         print(f"\n⛔ PRE-SANAD REJECT: {pre_reject}")
+        
+        # Record rejection cooldown
+        _record_rejection_cooldown(signal.get("token", ""))
+        
         _log_decision_short_circuit(signal, {
             "trust_score": 0, "grade": "N/A", "recommendation": "BLOCK",
-            "rugpull_flags": ["pre_sanad_reject"],
-        })
+            "rugpull_flags": [pre_reject],
+        }, stage="pre_sanad")
         return {"final_action": "REJECT", "stage": 1.5, "reason": pre_reject}
 
     # Stage 2: Sanad Verification
