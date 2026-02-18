@@ -1,5 +1,5 @@
 {
-  "last_run": "2026-02-18T05:18:54.618842+00:00",
+  "last_run": "2026-02-18T05:33:54.203988+00:00",
   "scans": {
     "positions": {
       "sentiment_score": 15,
@@ -23,51 +23,42 @@
       "scanned_at": "2026-02-18T05:18:56.471131+00:00"
     },
     "BTC": {
-      "sentiment_score": 18,
+      "sentiment_score": 15,
       "trend": "falling",
       "volume": "high",
       "key_narratives": [
-        "Fear, uncertainty, and doubt (FUD) dominance with 85% negative sentiment ratio",
-        "Bitcoin near potential local bottom after drop to $60k range",
-        "Key $70k support level repeatedly tested amid five-week losing streak",
-        "Macro headwinds: rising rate expectations and liquidity concerns",
-        "Institutional buying interest watched as potential catalyst for recovery"
+        "FUD and pessimism dominating due to price slide and support breaks",
+        "Caution from declining network activity and macro headwinds"
       ],
       "risk_signals": [
-        "Crypto Fear & Greed Index in extreme fear territory (2022 bear market levels)",
-        "Bitcoin down 22% year-to-date, worst Q1 performance since 2018",
-        "Persistent investor anxiety despite recent $70k rebound",
-        "Break of key support levels and declining network activity reported",
-        "Five-week consecutive losing streak indicating sustained weakness"
+        "Extreme fear in Crypto Fear & Greed Index",
+        "85% negative sentiment vs 15% positive",
+        "22% Q1 drop, worst since 2018",
+        "Five straight weeks of losses"
       ],
-      "notable_mentions": 3,
+      "notable_mentions": 0,
       "token": "BTC",
-      "scanned_at": "2026-02-18T04:49:00.014642+00:00"
+      "scanned_at": "2026-02-18T05:33:56.083121+00:00"
     },
     "ETH": {
-      "sentiment_score": 37,
+      "sentiment_score": 35,
       "trend": "falling",
-      "volume": "high",
+      "volume": "low",
       "key_narratives": [
-        "Ethereum accumulation phase amid price weakness below $2,000",
-        "Technical breakdown risk if support levels fail",
-        "Institutional buying via spot ETFs providing counter-support",
-        "ETH-BTC ratio undervaluation speculation",
-        "Recovery potential targeting $2,200-$2,300 range",
-        "Whale liquidations and retail selling pressure dominating"
+        "Bearish retail sentiment on Stocktwits with low chatter",
+        "Mini-winter and sentiment-driven de-risking",
+        "Mixed price predictions with positive long-term recovery targets",
+        "ETF outflows and derivatives open interest shedding as downside pressures"
       ],
       "risk_signals": [
-        "Extreme Fear sentiment registered across market",
-        "Price trading at $1,995.65 near critical $2,000 support",
-        "5-10% downside risk if technical support breaks",
-        "$242M spot ETH ETF outflows reported",
-        "80M ETH derivatives open interest liquidations",
-        "Retail sentiment in 'bearish' territory on Stocktwits",
-        "Potential market manipulation speculation (CLARITY Act stalemate)"
+        "ETH price struggling below $2K",
+        "Bearish sentiment echoing past crypto winters",
+        "Short-term risk indicators and volatility",
+        "Heavy long positioning in CFDs indicating potential contrarian risk"
       ],
-      "notable_mentions": 2,
+      "notable_mentions": 1,
       "token": "ETH",
-      "scanned_at": "2026-02-18T04:49:07.735852+00:00"
+      "scanned_at": "2026-02-18T05:33:59.792801+00:00"
     },
     "SOL": {
       "sentiment_score": 28,
@@ -117,5 +108,5 @@
       "scanned_at": "2026-02-18T05:19:07.256486+00:00"
     }
   },
-  "total_signals": 74
+  "total_signals": 75
 }

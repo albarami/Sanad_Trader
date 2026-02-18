@@ -828,185 +828,212 @@ def run_router():
         _save_json_atomic(ROUTER_STATE_PATH, state)
         return
 
-    # --- Select top signal ---
-    selected, selected_score = candidates[0]
-    selected_token = selected.get("token", "?")
-    _log(f"Selected: {selected_token} (score {selected_score}) → feeding to pipeline")
-
-    # --- Record signal in UCB1 ---
+    # --- Select top signals (batch up to 3 for paper mode) ---
     try:
-        from ucb1_scorer import record_signal
-        source_key = selected.get("source", selected.get("_origin", "unknown"))
-        record_signal(source_key)
-    except Exception as e:
-        _log(f"UCB1 record_signal failed: {e}")
+        with open(STATE_DIR / "portfolio.json") as _pf:
+            _portfolio = json.load(_pf)
+        is_paper_mode = _portfolio.get("mode", "paper") == "paper"
+    except Exception:
+        is_paper_mode = True
 
-    # --- Convert to pipeline format ---
-    cross_labels = []
-    if selected_token.upper() in cross_source_tokens:
-        # Find cross-source info
-        for s in all_signals:
-            if s.get("token", "").upper() == selected_token.upper() and s.get("_origin") != selected.get("_origin"):
-                if s.get("_origin") == "coingecko":
-                    rank = s.get("trending_rank")
-                    cross_labels.append(f"CoinGecko trending #{rank + 1}" if rank is not None else "CoinGecko gainer")
-                elif s.get("_origin") == "dexscreener":
-                    boost = s.get("boost_amount")
-                    cross_labels.append(f"DexScreener boost ({boost}x)" if boost else "DexScreener")
-                elif s.get("_origin") == "birdeye":
-                    be_type = s.get("signal_type", "")
-                    cross_labels.append(f"Birdeye {be_type.lower().replace('_', ' ')}")
+    batch_size = 3 if is_paper_mode else 1
+    # Deduplicate: no two signals for the same token in one batch
+    batch = []
+    seen_tokens = set()
+    for s, sc in candidates:
+        tok = s.get("token", "").upper()
+        if tok in seen_tokens:
+            continue
+        seen_tokens.add(tok)
+        batch.append((s, sc))
+        if len(batch) >= batch_size:
+            break
 
-    pipeline_signal = _to_pipeline_signal(selected, cross_labels)
-    pipeline_signal["router_score"] = selected_score  # Pass to pipeline for tier routing
+    _log(f"Batch: {len(batch)} signal(s) selected for pipeline" + (" (paper mode)" if is_paper_mode else ""))
 
-    # --- Inject corroboration data for Sanad verifier ---
-    tok_upper = selected_token.upper()
-    if tok_upper in cross_source_data:
-        corr = cross_source_data[tok_upper]
-    else:
+    for batch_idx, (selected, selected_score) in enumerate(batch):
+        # Check budget before each run
+        if state.get("daily_pipeline_runs", 0) >= MAX_DAILY_RUNS:
+            _log(f"Daily pipeline budget exhausted after batch item {batch_idx}. Stopping.")
+            break
+
+        selected_token = selected.get("token", "?")
+        _log(f"[{batch_idx+1}/{len(batch)}] Selected: {selected_token} (score {selected_score}) → feeding to pipeline")
+
+        # --- Record signal in UCB1 ---
         try:
-            corr = get_corroboration(tok_upper)
-        except Exception:
-            corr = {"cross_source_count": 1, "cross_sources": [], "corroboration_level": "AHAD"}
-    pipeline_signal["cross_source_count"] = corr["cross_source_count"]
-    pipeline_signal["cross_sources"] = corr["cross_sources"]
-    pipeline_signal["corroboration_level"] = corr["corroboration_level"]
-    pipeline_signal["corroboration_quality"] = corr.get("corroboration_quality", "STRONG")
+            from ucb1_scorer import record_signal
+            source_key = selected.get("source", selected.get("_origin", "unknown"))
+            record_signal(source_key)
+        except Exception as e:
+            _log(f"UCB1 record_signal failed: {e}")
 
-    # --- Write temp signal file ---
-    tmp_dir = BASE_DIR / "tmp"
-    tmp_dir.mkdir(parents=True, exist_ok=True)
-    signal_file = tmp_dir / f"router_signal_{now.strftime('%Y%m%d_%H%M%S')}.json"
-    signal_file.write_text(json.dumps(pipeline_signal, indent=2))
+        # --- Convert to pipeline format ---
+        cross_labels = []
+        if selected_token.upper() in cross_source_tokens:
+            # Find cross-source info
+            for s in all_signals:
+                if s.get("token", "").upper() == selected_token.upper() and s.get("_origin") != selected.get("_origin"):
+                    if s.get("_origin") == "coingecko":
+                        rank = s.get("trending_rank")
+                        cross_labels.append(f"CoinGecko trending #{rank + 1}" if rank is not None else "CoinGecko gainer")
+                    elif s.get("_origin") == "dexscreener":
+                        boost = s.get("boost_amount")
+                        cross_labels.append(f"DexScreener boost ({boost}x)" if boost else "DexScreener")
+                    elif s.get("_origin") == "birdeye":
+                        be_type = s.get("signal_type", "")
+                        cross_labels.append(f"Birdeye {be_type.lower().replace('_', ' ')}")
 
-    # --- Call pipeline ---
-    try:
-        result = subprocess.run(
-            ["python3", str(PIPELINE_SCRIPT), str(signal_file)],
-            capture_output=True,
-            text=True,
-            timeout=300,
-        )
-        stdout = result.stdout.strip()
-        stderr = result.stderr.strip()
+        pipeline_signal = _to_pipeline_signal(selected, cross_labels)
+        pipeline_signal["router_score"] = selected_score  # Pass to pipeline for tier routing
 
-        # Try to parse pipeline result from stdout
-        pipeline_action = "UNKNOWN"
-        pipeline_reason = ""
-        for line in reversed(stdout.splitlines()):
-            if '"final_action"' in line:
+        # --- Inject corroboration data for Sanad verifier ---
+        tok_upper = selected_token.upper()
+        if tok_upper in cross_source_data:
+            corr = cross_source_data[tok_upper]
+        else:
+            try:
+                corr = get_corroboration(tok_upper)
+            except Exception:
+                corr = {"cross_source_count": 1, "cross_sources": [], "corroboration_level": "AHAD"}
+        pipeline_signal["cross_source_count"] = corr["cross_source_count"]
+        pipeline_signal["cross_sources"] = corr["cross_sources"]
+        pipeline_signal["corroboration_level"] = corr["corroboration_level"]
+        pipeline_signal["corroboration_quality"] = corr.get("corroboration_quality", "STRONG")
+
+        # --- Write temp signal file ---
+        tmp_dir = BASE_DIR / "tmp"
+        tmp_dir.mkdir(parents=True, exist_ok=True)
+        signal_file = tmp_dir / f"router_signal_{now.strftime('%Y%m%d_%H%M%S')}.json"
+        signal_file.write_text(json.dumps(pipeline_signal, indent=2))
+
+        # --- Call pipeline ---
+        try:
+            result = subprocess.run(
+                ["python3", str(PIPELINE_SCRIPT), str(signal_file)],
+                capture_output=True,
+                text=True,
+                timeout=300,
+            )
+            stdout = result.stdout.strip()
+            stderr = result.stderr.strip()
+
+            # Try to parse pipeline result from stdout
+            pipeline_action = "UNKNOWN"
+            pipeline_reason = ""
+            for line in reversed(stdout.splitlines()):
+                if '"final_action"' in line:
+                    try:
+                        # Try to parse the summary JSON block
+                        pass
+                    except Exception:
+                        pass
+                if "APPROVE" in line.upper():
+                    pipeline_action = "APPROVE"
+                elif "REJECT" in line.upper():
+                    pipeline_action = "REJECT"
+                elif "REVISE" in line.upper():
+                    pipeline_action = "REVISE"
+
+            # Better: look for the SUMMARY block
+            if "SUMMARY" in stdout:
+                summary_start = stdout.index("SUMMARY")
+                summary_text = stdout[summary_start:]
+                for line in summary_text.splitlines():
+                    if '"final_action"' in line:
+                        if "APPROVE" in line:
+                            pipeline_action = "APPROVE"
+                        elif "REJECT" in line:
+                            pipeline_action = "REJECT"
+                        elif "REVISE" in line:
+                            pipeline_action = "REVISE"
+                    if '"reason"' in line or '"rejection_reason"' in line:
+                        pipeline_reason = line.split(":", 1)[-1].strip().strip('",')
+
+            _log(f"Pipeline result: {pipeline_action}" + (f" ({pipeline_reason})" if pipeline_reason else ""))
+
+            if stdout:
+                # Print last 20 lines of pipeline output for visibility
+                lines = stdout.splitlines()
+                if len(lines) > 20:
+                    _log("Pipeline output (last 20 lines):")
+                    for l in lines[-20:]:
+                        print(f"  | {l}")
+                else:
+                    _log("Pipeline output:")
+                    for l in lines:
+                        print(f"  | {l}")
+
+            if stderr:
+                _log(f"Pipeline stderr: {stderr[:500]}")
+
+            if result.returncode != 0:
+                _log(f"Pipeline exited with code {result.returncode}")
+
+        except subprocess.TimeoutExpired:
+            _log("Pipeline TIMEOUT (>5min) — aborting. Will not retry.")
+            pipeline_action = "TIMEOUT"
+            pipeline_reason = "Pipeline exceeded 5 minute timeout"
+        except Exception as e:
+            _log(f"Pipeline ERROR: {e}")
+            pipeline_action = "ERROR"
+            pipeline_reason = str(e)
+
+        # --- Update state ---
+        shash = _signal_hash(selected)
+        processed = list(processed_hashes)
+        processed.append(shash)
+        state["last_run"] = now_str
+        state["signals_scanned"] = len(all_signals)
+        state["signals_filtered"] = len(all_signals) - len(candidates)
+        state["signal_selected"] = {
+            "token": selected_token,
+            "score": selected_score,
+            "source": selected.get("source", ""),
+            "signal_type": selected.get("signal_type", ""),
+        }
+        state["pipeline_result"] = pipeline_action
+        state["pipeline_reason"] = pipeline_reason
+        state["processed_hashes"] = processed
+        state["daily_pipeline_runs"] = state.get("daily_pipeline_runs", 0) + 1
+        daily_runs = state["daily_pipeline_runs"]
+        _log(f"Daily runs: {daily_runs}/{MAX_DAILY_RUNS}")
+
+        # --- Counterfactual tracking for rejections ---
+        # Record rejected signals so we can check later what we missed
+        if pipeline_action in ("REJECT", "REVISE", "TIMEOUT", "ERROR"):
+            try:
+                cf_path = STATE_DIR / "counterfactual_rejections.json"
+                cf_data = _load_json(cf_path, {"rejections": []})
+                cf_entry = {
+                    "token": selected_token,
+                    "symbol": selected.get("symbol", f"{selected_token}USDT"),
+                    "rejected_at": now_str,
+                    "rejection_reason": pipeline_reason or pipeline_action,
+                    "router_score": selected_score,
+                    "source": selected.get("source", ""),
+                    "signal_type": selected.get("signal_type", ""),
+                    "price_at_rejection": None,  # Filled by counterfactual cron
+                    "price_24h_later": None,
+                    "counterfactual_pnl_pct": None,
+                    "checked": False,
+                }
+                # Get current price for rejection snapshot
                 try:
-                    # Try to parse the summary JSON block
-                    pass
+                    sys.path.insert(0, str(SCRIPT_DIR))
+                    from binance_client import get_price
+                    price = get_price(cf_entry["symbol"])
+                    if price:
+                        cf_entry["price_at_rejection"] = float(price)
                 except Exception:
                     pass
-            if "APPROVE" in line.upper():
-                pipeline_action = "APPROVE"
-            elif "REJECT" in line.upper():
-                pipeline_action = "REJECT"
-            elif "REVISE" in line.upper():
-                pipeline_action = "REVISE"
-
-        # Better: look for the SUMMARY block
-        if "SUMMARY" in stdout:
-            summary_start = stdout.index("SUMMARY")
-            summary_text = stdout[summary_start:]
-            for line in summary_text.splitlines():
-                if '"final_action"' in line:
-                    if "APPROVE" in line:
-                        pipeline_action = "APPROVE"
-                    elif "REJECT" in line:
-                        pipeline_action = "REJECT"
-                    elif "REVISE" in line:
-                        pipeline_action = "REVISE"
-                if '"reason"' in line or '"rejection_reason"' in line:
-                    pipeline_reason = line.split(":", 1)[-1].strip().strip('",')
-
-        _log(f"Pipeline result: {pipeline_action}" + (f" ({pipeline_reason})" if pipeline_reason else ""))
-
-        if stdout:
-            # Print last 20 lines of pipeline output for visibility
-            lines = stdout.splitlines()
-            if len(lines) > 20:
-                _log("Pipeline output (last 20 lines):")
-                for l in lines[-20:]:
-                    print(f"  | {l}")
-            else:
-                _log("Pipeline output:")
-                for l in lines:
-                    print(f"  | {l}")
-
-        if stderr:
-            _log(f"Pipeline stderr: {stderr[:500]}")
-
-        if result.returncode != 0:
-            _log(f"Pipeline exited with code {result.returncode}")
-
-    except subprocess.TimeoutExpired:
-        _log("Pipeline TIMEOUT (>5min) — aborting. Will not retry.")
-        pipeline_action = "TIMEOUT"
-        pipeline_reason = "Pipeline exceeded 5 minute timeout"
-    except Exception as e:
-        _log(f"Pipeline ERROR: {e}")
-        pipeline_action = "ERROR"
-        pipeline_reason = str(e)
-
-    # --- Update state ---
-    shash = _signal_hash(selected)
-    processed = list(processed_hashes)
-    processed.append(shash)
-    state["last_run"] = now_str
-    state["signals_scanned"] = len(all_signals)
-    state["signals_filtered"] = len(all_signals) - len(candidates)
-    state["signal_selected"] = {
-        "token": selected_token,
-        "score": selected_score,
-        "source": selected.get("source", ""),
-        "signal_type": selected.get("signal_type", ""),
-    }
-    state["pipeline_result"] = pipeline_action
-    state["pipeline_reason"] = pipeline_reason
-    state["processed_hashes"] = processed
-    state["daily_pipeline_runs"] = state.get("daily_pipeline_runs", 0) + 1
-    daily_runs = state["daily_pipeline_runs"]
-    _log(f"Daily runs: {daily_runs}/{MAX_DAILY_RUNS}")
-
-    # --- Counterfactual tracking for rejections ---
-    # Record rejected signals so we can check later what we missed
-    if pipeline_action in ("REJECT", "REVISE", "TIMEOUT", "ERROR"):
-        try:
-            cf_path = STATE_DIR / "counterfactual_rejections.json"
-            cf_data = _load_json(cf_path, {"rejections": []})
-            cf_entry = {
-                "token": selected_token,
-                "symbol": selected.get("symbol", f"{selected_token}USDT"),
-                "rejected_at": now_str,
-                "rejection_reason": pipeline_reason or pipeline_action,
-                "router_score": selected_score,
-                "source": selected.get("source", ""),
-                "signal_type": selected.get("signal_type", ""),
-                "price_at_rejection": None,  # Filled by counterfactual cron
-                "price_24h_later": None,
-                "counterfactual_pnl_pct": None,
-                "checked": False,
-            }
-            # Get current price for rejection snapshot
-            try:
-                sys.path.insert(0, str(SCRIPT_DIR))
-                from binance_client import get_price
-                price = get_price(cf_entry["symbol"])
-                if price:
-                    cf_entry["price_at_rejection"] = float(price)
-            except Exception:
-                pass
-            cf_data["rejections"].append(cf_entry)
-            # Keep last 200 rejections
-            cf_data["rejections"] = cf_data["rejections"][-200:]
-            _save_json_atomic(cf_path, cf_data)
-            _log(f"Counterfactual: recorded rejection of {selected_token} @ ${cf_entry.get('price_at_rejection', '?')}")
-        except Exception as e:
-            _log(f"Counterfactual recording failed: {e}")
+                cf_data["rejections"].append(cf_entry)
+                # Keep last 200 rejections
+                cf_data["rejections"] = cf_data["rejections"][-200:]
+                _save_json_atomic(cf_path, cf_data)
+                _log(f"Counterfactual: recorded rejection of {selected_token} @ ${cf_entry.get('price_at_rejection', '?')}")
+            except Exception as e:
+                _log(f"Counterfactual recording failed: {e}")
 
     _save_json_atomic(ROUTER_STATE_PATH, state)
 
