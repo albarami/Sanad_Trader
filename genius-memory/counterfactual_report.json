@@ -1,8 +1,8 @@
 {
-  "total_checked": 7,
+  "total_checked": 11,
   "missed_winners": 0,
   "correct_rejections": 0,
-  "neutral": 7,
+  "neutral": 11,
   "gate_accuracy_pct": 100.0,
   "avg_missed_pnl": 0.0,
   "avg_correct_rejection_loss": 0.0,
@@ -18,7 +18,7 @@
       "correct": 0
     },
     "REJECT": {
-      "total": 1,
+      "total": 4,
       "missed": 0,
       "correct": 0
     },
@@ -36,7 +36,12 @@
       "total": 1,
       "missed": 0,
       "correct": 0
+    },
+    "[Errno 32] Broken pipe": {
+      "total": 1,
+      "missed": 0,
+      "correct": 0
     }
   },
-  "updated_at": "2026-02-18T05:55:12.773899+00:00"
+  "updated_at": "2026-02-18T11:55:15.892503+00:00"
 }

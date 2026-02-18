@@ -1,5 +1,5 @@
 {
-  "sent": 89,
+  "sent": 91,
   "failed": 7,
   "history": [
     {
@@ -673,7 +673,21 @@
       "message": "\u2696\ufe0f HOURLY STATUS\n\ud83d\udcb0 Balance: $9,944.03 (unrealized: $-4.85)\n\ud83d\udcc8 Positions (2/10):\n  BTC @ $68,157.29 -> $67,393.41 (-1.1%)\n  SOL @ $85.58 -> $83.56 (-2.4%)\n\ud83d\udcca Today: 123 ingested, 3 executed, 6 rejected\n\ud83d\udd04",
       "channel": "telegram",
       "at": "2026-02-18T11:31:51.830600+00:00"
+    },
+    {
+      "level": "L1",
+      "title": "Signal Rejected",
+      "message": "\ud83d\udd34 *Signal Rejected*\n\nToken: PIPPIN\nReason: {\n  \"result\": \"BLOCK\",\n  \"gates_passed\": [\n    1,\n    2,\n    3,\n    4,\n    5,\n    6,\n    7,\n    8,\n    9,\n    10,\n    11,\n    12,\n    13,\n    14\n  ],\n  \"gate",
+      "channel": "log_only",
+      "at": "2026-02-18T12:02:25.928029+00:00"
+    },
+    {
+      "level": "L2",
+      "title": null,
+      "message": "*Regime Change Detected*\n\n\ud83d\udcca Current: SIDEWAYS\n\n_Choppy, range-bound market_\n\n*Key Adaptations:*\n\u2022 Primary strategy: mean_reversion (50%)\n\u2022 Position size: 2.0% (max exposure: 70.0%)\n\u2022 Trust threshold: ",
+      "channel": "telegram",
+      "at": "2026-02-18T12:34:19.621235+00:00"
     }
   ],
-  "last_sent": "2026-02-18T11:31:51.830615+00:00"
+  "last_sent": "2026-02-18T12:34:19.621250+00:00"
 }
