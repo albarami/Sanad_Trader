@@ -1323,10 +1323,37 @@ Execute your full 5-step Muḥāsibī discipline (Khawāṭir → Murāqaba → 
   "key_concern": "<single most important concern>"
 }}"""
 
-    # Use GPT via OpenAI direct for independent review (different model = different blindspot)
-    print("  [5a] Al-Muhasbi reviewing via GPT-5.2...")
+    # Detect paper mode for prompt calibration
+    try:
+        with open(STATE_DIR / "portfolio.json") as _jf:
+            _judge_paper = json.load(_jf).get("mode", "paper") == "paper"
+    except Exception:
+        _judge_paper = True
+
+    judge_system = JUDGE_PROMPT
+    if _judge_paper:
+        judge_system += """
+
+--- PAPER MODE CALIBRATION ---
+MODE: PAPER TRADING (simulated, no real money at risk)
+
+In paper mode, your calibration shifts toward LEARNING:
+- Default stance: APPROVE unless clear evidence of loss
+- APPROVE when: trust_score >= 15 AND bull_conviction > 50 AND no rugpull flags AND R:R >= 1:1.5
+- REJECT only when: rugpull flags present, OR bear_conviction > 90 with specific structural evidence (not just "market is risky"), OR R:R < 1:1
+- REVISE when: trade has merit but entry/sizing needs adjustment
+
+The purpose of paper trading is to LEARN. Every rejected trade is a missed learning opportunity.
+We need trade outcomes (wins AND losses) to calibrate Kelly sizing, UCB1 source grading,
+Thompson strategy selection, and Genius Memory patterns.
+A paper loss of $50 that teaches the system a pattern is worth more than a paper rejection that teaches nothing.
+--- END PAPER MODE ---"""
+        print("  [5a] Al-Muhasbi reviewing via GPT-5.2 (PAPER MODE — learning calibration)...")
+    else:
+        print("  [5a] Al-Muhasbi reviewing via GPT-5.2...")
+
     judge_response = call_openai(
-        system_prompt=JUDGE_PROMPT,
+        system_prompt=judge_system,
         user_message=judge_message,
         model="gpt-5.2",
         max_tokens=8000,
