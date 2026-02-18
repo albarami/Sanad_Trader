@@ -1432,7 +1432,7 @@ A paper loss of $50 that teaches the system a pattern is worth more than a paper
             evidence_text = ' '.join(bull_result.get('supporting_evidence', [])).lower()
             if "fdv" not in evidence_text and "fully diluted" not in evidence_text:
                 veto_triggered = True
-                veto_reason = f"TIER_2 veto: Circulating {circulating_pct:.1f}% but no FDV analysis"
+                veto_reason = f"TIER_2 veto: Circulating {(circulating_pct or 100):.1f}% but no FDV analysis"
     
     # Universal veto: high conviction without evidence
     if bull_result.get('conviction', 0) > 70:

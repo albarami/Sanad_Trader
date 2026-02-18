@@ -1,5 +1,5 @@
 {
-  "sent": 82,
+  "sent": 83,
   "failed": 7,
   "history": [
     {
@@ -624,7 +624,14 @@
       "message": "\ud83d\udfe2 BREAKTHROUGH: ETH reached Stage 5 (Judge)! Trust=62, CAUTION, passed short-circuit, Bull/Bear debate completed. Strategy fell back to meme-momentum (no bear-market strategies yet). Waiting for Judge",
       "channel": "telegram",
       "at": "2026-02-18T07:05:57.395081+00:00"
+    },
+    {
+      "level": "L2",
+      "title": null,
+      "message": "\ud83d\udd27 FIX: Found crash at Stage 5 Judge \u2014 position_pct was None causing TypeError. Every signal that passed debate was crashing before Judge could render verdict. Fixed + committed (c3a13b1). Next router ",
+      "channel": "telegram",
+      "at": "2026-02-18T07:23:09.426252+00:00"
     }
   ],
-  "last_sent": "2026-02-18T07:05:57.395104+00:00"
+  "last_sent": "2026-02-18T07:23:09.426271+00:00"
 }
