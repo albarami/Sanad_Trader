@@ -995,8 +995,18 @@ def stage_3_strategy_match(signal, sanad_result, profile=None):
         position_pct = THRESHOLDS["sizing"]["kelly_default_pct"]  # 2% cold start
         print(f"  Kelly: cold start ({trade_count}/{min_kelly_trades} trades) → {position_pct:.1%}")
 
-    # Cap at max (before regime adjustment)
-    max_pct = THRESHOLDS["sizing"]["max_position_pct"]
+    # Paper mode: use smaller sizes for more concurrent learning trades
+    try:
+        with open(STATE_DIR / "portfolio.json") as _sf:
+            _sizing_paper = json.load(_sf).get("mode", "paper") == "paper"
+    except Exception:
+        _sizing_paper = True
+
+    if _sizing_paper:
+        position_pct = min(position_pct, THRESHOLDS["sizing"].get("paper_default_pct", 0.02))
+        max_pct = THRESHOLDS["sizing"].get("paper_max_position_pct", 0.05)
+    else:
+        max_pct = THRESHOLDS["sizing"].get("live_max_position_pct", THRESHOLDS["sizing"]["max_position_pct"])
     position_pct = min(position_pct, max_pct)
 
     # ── Regime-adjusted position sizing ──

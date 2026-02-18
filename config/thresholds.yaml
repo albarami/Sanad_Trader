@@ -24,8 +24,8 @@ sizing:
   paper_regime_floor: 0.7
   live_kelly_default_pct: 0.02
   live_max_position_pct: 0.05
-  paper_default_pct: 0.075
-  paper_max_position_pct: 0.15
+  paper_default_pct: 0.02
+  paper_max_position_pct: 0.05
   live_default_pct: 0.02
 learning:
   ucb1_cold_start_signals: 5

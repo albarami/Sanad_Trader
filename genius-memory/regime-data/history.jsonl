@@ -12,3 +12,4 @@
 {"timestamp": "2026-02-17T22:31:22.689205+00:00", "regime_tag": "BEAR_HIGH_VOL", "primary": "BEAR", "volatility": "HIGH_VOL", "confidence": 0.95, "btc_price": 67714.03, "sma_slope": -1.287, "atr_pct": 6.5595, "drawdown": 0.269, "fg_value": 10}
 {"timestamp": "2026-02-18T00:37:17.801531+00:00", "regime_tag": "BEAR_HIGH_VOL", "primary": "BEAR", "volatility": "HIGH_VOL", "confidence": 0.95, "btc_price": 67593.8, "sma_slope": -1.2556, "atr_pct": 6.0536, "drawdown": 0.2456, "fg_value": 8}
 {"timestamp": "2026-02-18T03:12:12.130019+00:00", "regime_tag": "BEAR_HIGH_VOL", "primary": "BEAR", "volatility": "HIGH_VOL", "confidence": 0.95, "btc_price": 67376.91, "sma_slope": -1.2575, "atr_pct": 6.1314, "drawdown": 0.248, "fg_value": 8}
+{"timestamp": "2026-02-18T05:47:48.684633+00:00", "regime_tag": "BEAR_HIGH_VOL", "primary": "BEAR", "volatility": "HIGH_VOL", "confidence": 0.95, "btc_price": 67680.69, "sma_slope": -1.2548, "atr_pct": 6.1366, "drawdown": 0.2446, "fg_value": 8}
