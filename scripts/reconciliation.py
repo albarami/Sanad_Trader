@@ -337,6 +337,26 @@ def emit_recon_event(result):
 if __name__ == "__main__":
     result = reconcile_positions()
     print(json.dumps(result, indent=2))
+    
+    # Update cron_health.json so watchdog knows we ran
+    try:
+        cron_health_file = STATE_DIR / "cron_health.json"
+        cron_health = {}
+        if cron_health_file.exists():
+            try:
+                cron_health = json.load(open(cron_health_file))
+            except:
+                pass
+        
+        cron_health["reconciliation"] = {
+            "last_run": datetime.now(timezone.utc).isoformat(),
+            "status": "ok" if not result["has_mismatch"] else "mismatch"
+        }
+        
+        with open(cron_health_file, "w") as f:
+            json.dump(cron_health, f, indent=2)
+    except Exception as e:
+        log(f"Warning: Failed to update cron_health.json: {e}")
 
     if result["has_mismatch"]:
         sys.exit(1)

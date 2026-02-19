@@ -33,12 +33,13 @@ GENIUS_DIR = BASE_DIR / "genius-memory" / "watchdog-actions"
 WATCHDOG_LOG = LOGS_DIR / "watchdog.log"
 ACTIONS_LOG = GENIUS_DIR / "actions.jsonl"
 
-# Thresholds
+# Thresholds (adjusted to reduce noise)
 CONSECUTIVE_ERROR_THRESHOLD = 3
 ROUTER_STALL_MIN = 30
 POSITION_FRESHNESS_MIN = 5
 DATA_FRESHNESS_MIN = 15
-RECONCILIATION_STALE_SEC = 900  # 15 minutes (matches Gate 11)
+RECONCILIATION_STALE_SEC = 1500  # 25 minutes (was 15, too noisy)
+DEXSCREENER_STALE_MIN = 15  # 15 minutes (was 10)
 LOCK_AGE_MIN = 10
 LONG_RUNNING_PROCESS_SEC = 600
 COST_WARNING_PCT = 0.8
@@ -459,13 +460,8 @@ def check_reconciliation_staleness():
                     attempts=attempts
                 )
                 
-                _alert(
-                    f"🔧 WATCHDOG AUTO-FIX:\n"
-                    f"• Problem: Reconciliation stale ({age_min}min, threshold {threshold_min}min)\n"
-                    f"• Action: Cleared lock + re-ran reconciliation.py\n"
-                    f"• Result: ✅ Fresh (completed in {duration:.1f}s)",
-                    ALERT_LEVEL_INFO
-                )
+                # Tier 0/1: Log only, no Telegram (reduces noise)
+                _log(f"Auto-fix successful: Reconciliation ({age_min}min → fresh in {duration:.1f}s)")
                 
                 return []  # Fixed, no issue
             
@@ -524,8 +520,8 @@ def check_dexscreener_freshness():
         age_sec = time.time() - latest_file.stat().st_mtime
         age_min = int(age_sec / 60)
         
-        # Threshold: 10 minutes (2x the 5min schedule)
-        if age_sec > 600:
+        # Threshold: 15 minutes (was 10, reduced noise)
+        if age_sec > (DEXSCREENER_STALE_MIN * 60):
             _log(f"DexScreener signals stale: {age_min}min ago (max 10min)", "WARNING")
             
             # Track attempts
@@ -546,13 +542,8 @@ def check_dexscreener_freshness():
                     attempts=attempts
                 )
                 
-                _alert(
-                    f"🔧 WATCHDOG AUTO-FIX:\n"
-                    f"• Problem: DexScreener signals stale ({age_min}min, threshold 10min)\n"
-                    f"• Action: Force-ran dexscreener_client.py\n"
-                    f"• Result: ✅ Fresh signals generated ({duration:.1f}s)",
-                    ALERT_LEVEL_INFO
-                )
+                # Tier 0/1: Log only, no Telegram
+                _log(f"Auto-fix successful: DexScreener ({age_min}min → fresh in {duration:.1f}s)")
                 
                 return []
             else:
