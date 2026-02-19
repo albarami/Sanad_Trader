@@ -1,110 +1,118 @@
 {
-  "last_run": "2026-02-19T11:03:53.024484+00:00",
+  "last_run": "2026-02-19T12:03:52.904285+00:00",
   "scans": {
     "positions": {
-      "sentiment_score": 20,
-      "trend": "falling",
-      "volume": "low",
-      "key_narratives": [
-        "Dominance of negative sentiment and rising FUD among retail investors",
-        "Caution and pessimism due to break of key support levels and declining network activity"
-      ],
-      "risk_signals": [
-        "85% negative sentiment vs 15% positive for Bitcoin",
-        "Signals of market bottom but current fear prevailing"
-      ],
-      "notable_mentions": 0,
-      "token": "positions",
-      "scanned_at": "2026-02-19T10:18:54.308658+00:00"
-    },
-    "BTC": {
-      "sentiment_score": 32,
+      "sentiment_score": 15,
       "trend": "falling",
       "volume": "high",
       "key_narratives": [
-        "Bull trap formation at $72k-$76k resistance",
-        "Structural weakness and potential further consolidation",
-        "Fear & Greed Index in extreme fear territory",
-        "ETF selling pressure at key levels",
-        "Capitulation signals suggesting potential local bottom"
+        "Break of key support levels",
+        "Declining network activity",
+        "Fear, uncertainty, and doubt (FUD) dominance among retail investors",
+        "Pessimism signals potential near bottom"
       ],
       "risk_signals": [
-        "Crypto Fear & Greed Index stuck in extreme fear (2022 bear market levels)",
-        "Rising FUD and uncertainty among retail investors",
-        "Major bull trap expected as institutions sell into strength",
-        "40% price drop from all-time high indicates exhaustion",
-        "Multiple analysts citing realized price of $55k as potential bottom",
-        "Break of key support levels with declining network activity"
+        "85% negative sentiment ratio vs 15% positive",
+        "Rising FUD levels across social platforms",
+        "Key support level breaks",
+        "Decreased network activity"
       ],
-      "notable_mentions": 5,
+      "notable_mentions": 0,
+      "token": "positions",
+      "scanned_at": "2026-02-19T11:33:55.223006+00:00"
+    },
+    "BTC": {
+      "sentiment_score": 12,
+      "trend": "falling",
+      "volume": "high",
+      "key_narratives": [
+        "Extreme fear dominance with 85% negative sentiment vs 15% positive",
+        "Support level breaks and declining network activity",
+        "Bitcoin as inflation hedge gaining institutional interest",
+        "Fear & Greed Index at extreme fear levels (11/100)",
+        "Recent recovery above $70k after February slide near $60k",
+        "Capital consolidation into larger-cap assets (BTC dominance 60%)"
+      ],
+      "risk_signals": [
+        "Crypto Fear & Greed Index stuck in extreme fear territory",
+        "FUD (fear, uncertainty, doubt) rising among retail investors",
+        "Bearish funding rates weakening (though showing some stabilization)",
+        "Bitcoin down 28% from all-time high of $126,210",
+        "Six-month low recently hit despite volume surge",
+        "Persistent investor anxiety despite Saturday rebound"
+      ],
+      "notable_mentions": 3,
       "token": "BTC",
-      "scanned_at": "2026-02-19T11:04:04.458309+00:00"
+      "scanned_at": "2026-02-19T12:03:57.547282+00:00"
     },
     "ETH": {
-      "sentiment_score": 25,
+      "sentiment_score": 35,
       "trend": "falling",
       "volume": "normal",
       "key_narratives": [
-        "Bearish price struggles below $2K",
-        "ETF outflows and derivatives open interest shed",
-        "Positive long-term staking surge and price predictions to $2.5K+",
-        "Technical patterns suggesting potential upside but key resistance at $2,200"
+        "ETH struggling to hold $2,000 support level",
+        "Derivatives market weakness with 80M ETH open interest shed",
+        "Fear and Greed Index in Extreme Fear territory",
+        "$242M spot ETH ETF outflow concerns",
+        "Technical resistance at $2,200-$2,300 range",
+        "Comparison to 2018/2022 market bottoms by institutional analysts"
       ],
       "risk_signals": [
-        "Extreme Fear (Fear & Greed Index at 8-12)",
-        "$41.8M-$242M spot ETH ETF outflows",
-        "Institutional trimming and capital flight",
-        "Price trading below key SMAs indicating short-term weakness"
+        "Trading below 200-day SMA indicating short-term weakness",
+        "Daily Extreme Fear recorded on Feb 6, Daily Fear on Feb 19",
+        "Significant ETF outflows suggesting institutional pullback",
+        "Bearish technical sentiment with Fear and Greed Index at 8",
+        "Price consolidation near support without clear breakout catalyst"
       ],
-      "notable_mentions": 2,
+      "notable_mentions": 3,
       "token": "ETH",
-      "scanned_at": "2026-02-19T11:04:08.493709+00:00"
+      "scanned_at": "2026-02-19T11:49:04.549387+00:00"
     },
     "SOL": {
-      "sentiment_score": 18,
+      "sentiment_score": 25,
       "trend": "falling",
       "volume": "low",
       "key_narratives": [
-        "Bearish price outlook with potential drops to $50-$75",
-        "Faded hype from 2025 memecoin mania and high social dominance",
-        "Strong fundamentals like RWA tokenization records and network upgrades (Alpenglow, Firedancer) contrasting weak price action",
-        "Negative funding rates and increasing short exposure",
-        "Declining dApp revenue and underperformance vs market"
+        "Bearish price forecasts amid hawkish Fed tone and Bitcoin decline",
+        "Fading social dominance and memecoin hype",
+        "Negative funding rates indicating short dominance",
+        "Persistent selling pressure despite some ETF inflows"
       ],
       "risk_signals": [
-        "Extreme fear (Fear & Greed Index: 12)",
-        "Network disruption concerns from Feb 4",
-        "High beta sensitivity to Bitcoin declines and macro risk-off",
-        "Outflows in futures open interest down 75%",
-        "Weak on-chain profitability and speculative volume"
+        "SOL slipping below $82 toward $75-$60 support",
+        "Downward social dominance trend since December",
+        "Oversold RSI but bearish momentum gaining",
+        "Weak dApp revenue and futures open interest outflows"
       ],
       "notable_mentions": 0,
       "token": "SOL",
-      "scanned_at": "2026-02-19T11:04:12.684993+00:00"
+      "scanned_at": "2026-02-19T11:49:08.882476+00:00"
     },
     "BNB": {
-      "sentiment_score": 38,
+      "sentiment_score": 28,
       "trend": "falling",
       "volume": "normal",
       "key_narratives": [
-        "BNB price consolidation amid ecosystem expansion (AI integration, RWA tokenization)",
+        "BNB price consolidation at critical $600 support level amid broader altcoin weakness",
         "Anti-Binance sentiment gaining traction with withdrawal calls",
-        "Technical bears vs. conviction holders divide on social media",
-        "Lack of institutional interest contributing to sideways movement",
-        "Long-term fundamentals vs. near-term price weakness debate"
+        "Bearish technical setup: trading below VWAP ($655.17) and key moving averages",
+        "Risk-off sentiment triggered by leveraged liquidations",
+        "Ecosystem fundamentals remain strong (AI integration, RWA tokenization, auto-burn mechanism)",
+        "Institutional analysts maintain medium-term bullish targets ($950-$1,050) despite short-term weakness"
       ],
       "risk_signals": [
-        "BNB trading below VWAP ($655.17) and key moving averages signaling bearish bias",
-        "Order execution issues reported on Binance platform",
-        "30-day declines exceeding 30% despite modest daily gains",
-        "Support level at $600 critical - breakdown could trigger selling toward $520-$570",
-        "Regulatory uncertainties affecting altcoin sentiment",
-        "50-day and 200-day moving averages both falling, indicating weak trends"
+        "Extreme fear condition recorded on February 8 and 17",
+        "30-day decline exceeding 30% despite modest daily gains",
+        "Lack of institutional interest contributing to sideways movement",
+        "Month-over-month decrease of 33.70%",
+        "Potential breakdown below $600 could trigger selling toward $520-$570",
+        "Leveraged liquidations unwinding and risk-off market conditions",
+        "Order execution issues reported on Binance platform"
       ],
-      "notable_mentions": 0,
+      "notable_mentions": 3,
       "token": "BNB",
-      "scanned_at": "2026-02-19T11:04:19.478107+00:00"
+      "scanned_at": "2026-02-19T11:49:15.353953+00:00"
     }
   },
-  "total_signals": 134
+  "total_signals": 137
 }
