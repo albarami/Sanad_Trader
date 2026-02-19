@@ -1571,7 +1571,7 @@ A paper loss of $50 that teaches the system a pattern is worth more than a paper
     judge_response = call_openai(
         system_prompt=judge_system,
         user_message=judge_message,
-        model="gpt-5.2-pro",
+        model="gpt-5.2",
         max_tokens=8000,
         stage="judge",
         token_symbol=signal.get("token", ""),
