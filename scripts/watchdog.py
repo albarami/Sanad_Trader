@@ -52,8 +52,29 @@ ALERT_LEVEL_INFO = 1
 ALERT_LEVEL_WARNING = 2
 ALERT_LEVEL_CRITICAL = 3
 
-# Auto-fix attempt tracking (in-memory for now; could persist to state)
+# Auto-fix attempt tracking (MUST persist across cron runs)
 _fix_attempts = {}
+ATTEMPTS_FILE = STATE_DIR / "watchdog_attempts.json"
+
+def _load_attempts():
+    """Load persisted attempt counters from disk."""
+    global _fix_attempts
+    if ATTEMPTS_FILE.exists():
+        try:
+            _fix_attempts = json.load(open(ATTEMPTS_FILE))
+        except:
+            _fix_attempts = {}
+    else:
+        _fix_attempts = {}
+
+def _save_attempts():
+    """Persist attempt counters to disk."""
+    try:
+        ATTEMPTS_FILE.parent.mkdir(parents=True, exist_ok=True)
+        with open(ATTEMPTS_FILE, "w") as f:
+            json.dump(_fix_attempts, f, indent=2)
+    except Exception as e:
+        _log(f"Failed to save attempts: {e}", "ERROR")
 
 # --- HELPERS ---
 def _log(msg, level="INFO"):
@@ -388,7 +409,7 @@ def _analyze_router_context():
 
 
 def _track_attempts(component):
-    """Track fix attempts for escalation logic."""
+    """Track fix attempts for escalation logic. PERSISTS to disk."""
     if component not in _fix_attempts:
         _fix_attempts[component] = {"count": 0, "last_attempt": 0}
     
@@ -400,13 +421,15 @@ def _track_attempts(component):
     _fix_attempts[component]["count"] += 1
     _fix_attempts[component]["last_attempt"] = now
     
+    _save_attempts()  # PERSIST to survive cron restarts
     return _fix_attempts[component]["count"]
 
 
 def _reset_attempts(component):
-    """Reset attempt counter after successful fix."""
+    """Reset attempt counter after successful fix. PERSISTS to disk."""
     if component in _fix_attempts:
         _fix_attempts[component] = {"count": 0, "last_attempt": 0}
+        _save_attempts()  # PERSIST
 
 
 # --- CHECKS ---
@@ -1232,6 +1255,9 @@ def check_disk_memory():
 
 def run():
     """Run all watchdog checks."""
+    # Load persisted attempt counters FIRST
+    _load_attempts()
+    
     _log("=== WATCHDOG START ===")
     
     all_issues = {}
