@@ -1,32 +1,32 @@
 {
   "token": {
-    "symbol": "XRP",
-    "deployment_timestamp": "2026-01-09T02:16:25.737810+00:00"
+    "symbol": "WOJAK",
+    "deployment_timestamp": "2026-01-09T05:56:19.510639+00:00"
   },
-  "symbol": "XRPUSDT",
+  "symbol": "WOJAKUSDT",
   "venue": "DEX",
-  "exchange": "binance",
-  "strategy_name": "meme-momentum",
+  "exchange": "raydium",
+  "strategy_name": "whale-following",
   "data_timestamps": {
-    "price_timestamp": "2026-02-19T17:16:25.737840+00:00",
-    "onchain_timestamp": "2026-02-19T17:16:25.737843+00:00"
+    "price_timestamp": "2026-02-19T20:56:19.510740+00:00",
+    "onchain_timestamp": "2026-02-19T20:56:19.510871+00:00"
   },
-  "current_price": 1.403,
+  "current_price": null,
   "sanad_verification": {
     "sanad_trust_score": 78,
-    "grade": "Ahad",
+    "grade": "Mashhur",
     "recommendation": "CAUTION",
     "rugpull_flags": []
   },
   "market_data": {
-    "estimated_slippage_bps": 0.7,
-    "spread_bps": 0.7,
-    "depth_sufficient": true,
+    "estimated_slippage_bps": 0,
+    "spread_bps": 0,
+    "depth_sufficient": false,
     "price_change_pct_window": 0
   },
   "trade_intent": {
     "position_size_pct": 0.013999999999999999,
-    "position_usd": 139.09
+    "position_usd": 139.15
   },
   "trade_confidence_score": 38,
   "almuhasbi_verdict": "REVISE",

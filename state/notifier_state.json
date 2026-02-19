@@ -1,91 +1,7 @@
 {
-  "sent": 606,
+  "sent": 618,
   "failed": 7,
   "history": [
-    {
-      "level": "L2",
-      "title": "BUY BTC",
-      "message": "BUY BTC/USDT\n\nEntry: 67,042.8100\nSize: 139 (0.00 units)\n\nStrategy: meme-momentum\nSanad Score: 92\nFee: 0.14\n\nAll 15 policy gates passed",
-      "channel": "telegram",
-      "at": "2026-02-19T09:41:09.814597+00:00"
-    },
-    {
-      "level": "L1",
-      "title": "Signal Rejected",
-      "message": "\ud83d\udd34 *Signal Rejected*\n\nToken: COPPERINU\nReason: {\n  \"result\": \"BLOCK\",\n  \"gates_passed\": [\n    1,\n    2,\n    3,\n    4,\n    5,\n    6,\n    7,\n    8,\n    9,\n    10\n  ],\n  \"gate_failed\": 11,\n  \"gate_failed_",
-      "channel": "log_only",
-      "at": "2026-02-19T09:52:46.681280+00:00"
-    },
-    {
-      "level": 1,
-      "title": null,
-      "message": "\ud83d\udd27 WATCHDOG AUTO-FIX:\n\u2022 Problem: Reconciliation stale (19min, threshold 15min)\n\u2022 Action: Cleared lock + re-ran reconciliation.py\n\u2022 Result: \u2705 Fresh (completed in 0.0s)",
-      "channel": "telegram",
-      "at": "2026-02-19T09:54:03.524637+00:00"
-    },
-    {
-      "level": 1,
-      "title": null,
-      "message": "\ud83d\udd27 WATCHDOG AUTO-FIX:\n\u2022 Problem: DexScreener signals stale (17min, threshold 10min)\n\u2022 Action: Force-ran dexscreener_client.py\n\u2022 Result: \u2705 Fresh signals generated (12.2s)",
-      "channel": "telegram",
-      "at": "2026-02-19T09:54:16.817263+00:00"
-    },
-    {
-      "level": "L1",
-      "title": "Signal Rejected",
-      "message": "\ud83d\udd34 *Signal Rejected*\n\nToken: COPPERINU\nReason: {\n  \"result\": \"BLOCK\",\n  \"gates_passed\": [\n    1,\n    2,\n    3,\n    4,\n    5,\n    6,\n    7,\n    8,\n    9,\n    10\n  ],\n  \"gate_failed\": 11,\n  \"gate_failed_",
-      "channel": "log_only",
-      "at": "2026-02-19T10:12:03.311302+00:00"
-    },
-    {
-      "level": "L2",
-      "title": "SELL XRP",
-      "message": "\ud83d\udd34 SELL XRP/USDT\n\nReason: TIME_EXIT\nEntry: 1.4267\nExit: 1.4145\nPnL: -0.9% (-1.33)\nHold: 8.0h\n\nStrategy: meme-momentum\nSanad Score: 82",
-      "channel": "telegram",
-      "at": "2026-02-19T10:12:55.446950+00:00"
-    },
-    {
-      "level": 1,
-      "title": null,
-      "message": "\ud83d\udd27 WATCHDOG AUTO-FIX:\n\u2022 Problem: Reconciliation stale (20min, threshold 15min)\n\u2022 Action: Cleared lock + re-ran reconciliation.py\n\u2022 Result: \u2705 Fresh (completed in 0.0s)",
-      "channel": "telegram",
-      "at": "2026-02-19T10:14:04.667850+00:00"
-    },
-    {
-      "level": 1,
-      "title": null,
-      "message": "\ud83d\udd27 WATCHDOG AUTO-FIX:\n\u2022 Problem: DexScreener signals stale (19min, threshold 10min)\n\u2022 Action: Force-ran dexscreener_client.py\n\u2022 Result: \u2705 Fresh signals generated (13.0s)",
-      "channel": "telegram",
-      "at": "2026-02-19T10:14:18.813076+00:00"
-    },
-    {
-      "level": "L2",
-      "title": "Heartbeat Alert",
-      "message": "Heartbeat ALERT: cron_health: reconciliation: last ran 80min ago (max 30min)",
-      "channel": "telegram",
-      "at": "2026-02-19T10:20:46.958305+00:00"
-    },
-    {
-      "level": "L2",
-      "title": null,
-      "message": "\u2696\ufe0f HOURLY STATUS\n\ud83d\udcb0 Balance: $9,940.21 (unrealized: $-1.70)\n\ud83d\udcc8 Positions (3/10):\n  SOL @ $82.39 -> $81.75 (-0.8%)\n  ETH @ $1,973.50 -> $1,967.97 (-0.3%)\n  BTC @ $67,042.81 -> $66,931.97 (-0.2%)\n\ud83d\udcca Today:",
-      "channel": "telegram",
-      "at": "2026-02-19T10:20:47.545200+00:00"
-    },
-    {
-      "level": "L2",
-      "title": "Heartbeat Alert",
-      "message": "Heartbeat ALERT: cron_health: reconciliation: last ran 85min ago (max 30min)",
-      "channel": "telegram",
-      "at": "2026-02-19T10:25:38.862683+00:00"
-    },
-    {
-      "level": 1,
-      "title": null,
-      "message": "\ud83d\udd27 WATCHDOG AUTO-FIX:\n\u2022 Problem: DexScreener signals stale (11min, threshold 10min)\n\u2022 Action: Force-ran dexscreener_client.py\n\u2022 Result: \u2705 Fresh signals generated (12.3s)",
-      "channel": "telegram",
-      "at": "2026-02-19T10:26:16.437881+00:00"
-    },
     {
       "level": 2,
       "title": null,
@@ -701,7 +617,91 @@
       "message": "\u2696\ufe0f HOURLY STATUS\n\ud83d\udcb0 Balance: $9,934.68 (unrealized: $-7.23)\n\ud83d\udcc8 Positions (3/10):\n  SOL @ $82.39 -> $80.72 (-2.0%)\n  ETH @ $1,973.50 -> $1,925.56 (-2.4%)\n  BTC @ $67,042.81 -> $66,546.17 (-0.7%)\n\ud83d\udcca Today:",
       "channel": "telegram",
       "at": "2026-02-19T17:50:46.399186+00:00"
+    },
+    {
+      "level": 1,
+      "title": null,
+      "message": "\ud83d\udd27 WATCHDOG AUTO-FIX (attempt 1/4):\n\u2022 Problem: Router stalled (31min since last run)\n\u2022 Context: (token=XRP | stage=sanad | hints=timeout_detected,timeout_detected)\n\u2022 Action: Killed process + cleared lo",
+      "channel": "telegram",
+      "at": "2026-02-19T18:08:04.388222+00:00"
+    },
+    {
+      "level": "L1",
+      "title": "Signal Rejected",
+      "message": "\ud83d\udd34 *Signal Rejected*\n\nToken: GROKIUS\nReason: {\n  \"result\": \"BLOCK\",\n  \"gates_passed\": [\n    1,\n    2,\n    3,\n    4,\n    5,\n    6,\n    7,\n    8,\n    9,\n    10,\n    11,\n    12,\n    13,\n    14\n  ],\n  \"gat",
+      "channel": "log_only",
+      "at": "2026-02-19T18:42:10.332485+00:00"
+    },
+    {
+      "level": "L1",
+      "title": "Signal Rejected",
+      "message": "\ud83d\udd34 *Signal Rejected*\n\nToken: TOTO\nReason: {\n  \"result\": \"BLOCK\",\n  \"gates_passed\": [\n    1,\n    2,\n    3,\n    4,\n    5,\n    6,\n    7,\n    8,\n    9,\n    10,\n    11,\n    12,\n    13,\n    14\n  ],\n  \"gate_f",
+      "channel": "log_only",
+      "at": "2026-02-19T18:48:24.988553+00:00"
+    },
+    {
+      "level": "L2",
+      "title": null,
+      "message": "\u2696\ufe0f HOURLY STATUS\n\ud83d\udcb0 Balance: $9,938.98 (unrealized: $-2.94)\n\ud83d\udcc8 Positions (3/10):\n  SOL @ $82.39 -> $81.97 (-0.5%)\n  ETH @ $1,973.50 -> $1,942.42 (-1.6%)\n  BTC @ $67,042.81 -> $67,026.12 (-0.0%)\n\ud83d\udcca Today:",
+      "channel": "telegram",
+      "at": "2026-02-19T18:50:47.300638+00:00"
+    },
+    {
+      "level": 1,
+      "title": null,
+      "message": "\ud83d\udd27 WATCHDOG AUTO-FIX (attempt 1/4):\n\u2022 Problem: Router stalled (30min since last run)\n\u2022 Context: (token=TOTO | stage=sanad | hints=timeout_detected,timeout_detected,timeout_detected,timeout_detected,tim",
+      "channel": "telegram",
+      "at": "2026-02-19T19:08:46.668843+00:00"
+    },
+    {
+      "level": "L1",
+      "title": "Signal Rejected",
+      "message": "\ud83d\udd34 *Signal Rejected*\n\nToken: GROKIUS\nReason: {\n  \"result\": \"BLOCK\",\n  \"gates_passed\": [\n    1,\n    2,\n    3,\n    4,\n    5,\n    6,\n    7,\n    8,\n    9,\n    10,\n    11,\n    12,\n    13,\n    14\n  ],\n  \"gat",
+      "channel": "log_only",
+      "at": "2026-02-19T19:37:41.441063+00:00"
+    },
+    {
+      "level": "L2",
+      "title": null,
+      "message": "\u2696\ufe0f HOURLY STATUS\n\ud83d\udcb0 Balance: $9,936.95 (unrealized: $-4.96)\n\ud83d\udcc8 Positions (3/10):\n  SOL @ $82.39 -> $81.52 (-1.1%)\n  ETH @ $1,973.50 -> $1,930.93 (-2.2%)\n  BTC @ $67,042.81 -> $66,807.92 (-0.4%)\n\ud83d\udcca Today:",
+      "channel": "telegram",
+      "at": "2026-02-19T19:50:47.645746+00:00"
+    },
+    {
+      "level": "L1",
+      "title": "Signal Rejected",
+      "message": "\ud83d\udd34 *Signal Rejected*\n\nToken: GROKIUS\nReason: {\n  \"result\": \"BLOCK\",\n  \"gates_passed\": [\n    1,\n    2,\n    3,\n    4,\n    5,\n    6,\n    7,\n    8,\n    9,\n    10,\n    11,\n    12,\n    13,\n    14\n  ],\n  \"gat",
+      "channel": "log_only",
+      "at": "2026-02-19T19:54:25.370301+00:00"
+    },
+    {
+      "level": "L1",
+      "title": "Signal Rejected",
+      "message": "\ud83d\udd34 *Signal Rejected*\n\nToken: GROKIUS\nReason: {\n  \"result\": \"BLOCK\",\n  \"gates_passed\": [\n    1,\n    2,\n    3,\n    4,\n    5,\n    6,\n    7,\n    8,\n    9,\n    10,\n    11,\n    12,\n    13,\n    14\n  ],\n  \"gat",
+      "channel": "log_only",
+      "at": "2026-02-19T20:31:35.330743+00:00"
+    },
+    {
+      "level": "L1",
+      "title": "Signal Rejected",
+      "message": "\ud83d\udd34 *Signal Rejected*\n\nToken: GROKIUS\nReason: {\n  \"result\": \"BLOCK\",\n  \"gates_passed\": [\n    1,\n    2,\n    3,\n    4,\n    5,\n    6,\n    7,\n    8,\n    9,\n    10,\n    11,\n    12,\n    13,\n    14\n  ],\n  \"gat",
+      "channel": "log_only",
+      "at": "2026-02-19T20:51:13.135094+00:00"
+    },
+    {
+      "level": "L1",
+      "title": "Signal Rejected",
+      "message": "\ud83d\udd34 *Signal Rejected*\n\nToken: WOJAK\nReason: {\n  \"result\": \"BLOCK\",\n  \"gates_passed\": [\n    1,\n    2,\n    3,\n    4,\n    5,\n    6,\n    7,\n    8,\n    9,\n    10,\n    11,\n    12,\n    13,\n    14\n  ],\n  \"gate_",
+      "channel": "log_only",
+      "at": "2026-02-19T20:56:19.561968+00:00"
+    },
+    {
+      "level": "L2",
+      "title": null,
+      "message": "\u2696\ufe0f HOURLY STATUS\n\ud83d\udcb0 Balance: $9,939.54 (unrealized: $-2.37)\n\ud83d\udcc8 Positions (3/10):\n  SOL @ $82.39 -> $82.14 (-0.3%)\n  ETH @ $1,973.50 -> $1,945.77 (-1.4%)\n  BTC @ $67,042.81 -> $67,045.59 (+0.0%)\n\ud83d\udcca Today:",
+      "channel": "telegram",
+      "at": "2026-02-19T20:56:31.531705+00:00"
     }
   ],
-  "last_sent": "2026-02-19T17:50:46.399212+00:00"
+  "last_sent": "2026-02-19T20:56:31.531721+00:00"
 }

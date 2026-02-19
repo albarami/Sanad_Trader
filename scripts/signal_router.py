@@ -963,7 +963,7 @@ def run_router():
     except Exception:
         is_paper_mode = True
 
-    batch_size = 3 if is_paper_mode else 1
+    batch_size = 2 if is_paper_mode else 1  # Capped at 2 to stay under 600s timeout
     # Deduplicate: no two signals for the same token in one batch
     batch = []
     seen_tokens = set()
@@ -1225,6 +1225,14 @@ def run_router():
             try:
                 cf_path = STATE_DIR / "counterfactual_rejections.json"
                 cf_data = _load_json(cf_path, {"rejections": []})
+                # Get current price from signal (prioritize enriched fields)
+                current_price = (
+                    selected.get("price_usd") or 
+                    selected.get("price") or 
+                    selected.get("current_price_usd") or 
+                    selected.get("current_price")
+                )
+                
                 cf_entry = {
                     "token": selected_token,
                     "symbol": selected.get("symbol", f"{selected_token}USDT"),
@@ -1233,7 +1241,7 @@ def run_router():
                     "router_score": selected_score,
                     "source": selected.get("source", ""),
                     "signal_type": selected.get("signal_type", ""),
-                    "price_at_rejection": None,  # Filled by counterfactual cron
+                    "price_at_rejection": current_price,
                     "price_24h_later": None,
                     "counterfactual_pnl_pct": None,
                     "checked": False,

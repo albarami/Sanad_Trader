@@ -4,11 +4,11 @@
     "status": "ok"
   },
   "reconciliation": {
-    "last_run": "2026-02-19T18:01:24+00:00",
+    "last_run": "2026-02-19T21:01:24+00:00",
     "status": "ok"
   },
   "price_snapshot": {
-    "last_run": "2026-02-19T18:03:44+00:00",
+    "last_run": "2026-02-19T21:00:44+00:00",
     "status": "ok"
   },
   "signal_router": {
@@ -16,15 +16,15 @@
     "status": "ok"
   },
   "whale_tracker": {
-    "last_run": "2026-02-19T18:02:01.951859+00:00",
-    "status": "error"
+    "last_run": "2026-02-19T21:02:23.316222+00:00",
+    "status": "ok"
   },
   "majors_scanner": {
-    "last_run": "2026-02-19T18:02:17.586008+00:00",
+    "last_run": "2026-02-19T20:47:18.745656+00:00",
     "status": "ok"
   },
   "dex_scanner": {
-    "last_run": "2026-02-19T18:03:07.392732+00:00",
+    "last_run": "2026-02-19T21:01:54.045272+00:00",
     "status": "OK",
     "signal_count": 39
   }

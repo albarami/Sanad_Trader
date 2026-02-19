@@ -315,17 +315,16 @@ def run_tracker(test_mode: bool = False):
         _log("=== WHALE TRACKER END (TEST) ===")
         return
     
-    # Track active wallets (grade B or higher)
-    wallets = [w for w in config.get("wallets", []) if w["grade"] in ["S", "A", "B"]]
-    _log(f"Tracking {len(wallets)} active wallets (S/A/B grade)")
+    # Track active wallets
+    wallets = [w for w in config.get("wallets", []) if w.get("active", True)]
+    _log(f"Tracking {len(wallets)} active wallets")
     
     # Poll each wallet for recent transactions
     for wallet in wallets:
         address = wallet["address"]
-        name = wallet["name"]
-        grade = wallet["grade"]
+        name = wallet.get("label", wallet.get("name", "Unknown"))
         
-        _log(f"Polling {name} ({grade}) — {address[:8]}...")
+        _log(f"Polling {name} — {address[:8]}...")
         
         # Get recent transactions via existing helius_client
         try:
@@ -338,7 +337,7 @@ def run_tracker(test_mode: bool = False):
             if address not in state:
                 state[address] = {
                     "name": name,
-                    "grade": grade,
+                    "grade": wallet.get("grade", "B"),  # Default to B if not specified
                     "transactions": []
                 }
             

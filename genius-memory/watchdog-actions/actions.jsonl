@@ -200,3 +200,9 @@
 {"timestamp": "2026-02-19T17:14:15.831942Z", "component": "dexscreener", "problem": "stale_23min", "action": "force_rerun", "result": "success", "attempts": 1, "duration_sec": 11}
 {"timestamp": "2026-02-19T17:30:17.299252Z", "component": "dexscreener", "problem": "stale_15min", "action": "force_rerun", "result": "success", "attempts": 1, "duration_sec": 14}
 {"timestamp": "2026-02-19T17:46:18.172916Z", "component": "dexscreener", "problem": "stale_15min", "action": "force_rerun", "result": "success", "attempts": 1, "duration_sec": 14}
+{"timestamp": "2026-02-19T18:08:03.660664Z", "component": "signal_router", "problem": "stalled_31min (token=XRP | stage=sanad | hints=timeout_detected,timeout_detected)", "action": "kill_process+clear_lock", "result": "success", "attempts": 1}
+{"timestamp": "2026-02-19T18:20:17.167122Z", "component": "dexscreener", "problem": "stale_16min", "action": "force_rerun", "result": "success", "attempts": 1, "duration_sec": 13}
+{"timestamp": "2026-02-19T18:36:17.396675Z", "component": "dexscreener", "problem": "stale_15min", "action": "force_rerun", "result": "success", "attempts": 1, "duration_sec": 14}
+{"timestamp": "2026-02-19T19:08:45.991354Z", "component": "dexscreener", "problem": "stale_16min", "action": "force_rerun", "result": "success", "attempts": 1, "duration_sec": 15}
+{"timestamp": "2026-02-19T19:08:46.004365Z", "component": "signal_router", "problem": "stalled_30min (token=TOTO | stage=sanad | hints=timeout_detected,timeout_detected,timeout_detected,timeout_detected,timeout_detected,timeout_detected)", "action": "kill_process+clear_lock", "result": "success", "attempts": 1}
+{"timestamp": "2026-02-19T19:44:32.767825Z", "component": "dexscreener", "problem": "stale_22min", "action": "force_rerun", "result": "success", "attempts": 1, "duration_sec": 17}

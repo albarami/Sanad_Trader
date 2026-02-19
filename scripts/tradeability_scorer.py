@@ -35,8 +35,8 @@ def score_tradeability(signal: dict) -> int:
     # For majors with indicators
     indicators = signal.get("indicators", {})
     if indicators:
-        rsi = indicators.get("rsi", 50)
-        macd_hist = indicators.get("macd_hist", 0)
+        rsi = indicators.get("rsi", 50) or 50  # None → 50 (neutral)
+        macd_hist = indicators.get("macd_hist", 0) or 0  # None → 0
         
         # RSI distance from extremes (closer to 0 or 100 = stronger)
         rsi_strength = max(50 - abs(rsi - 50), 0) / 50  # 0-1 scale
@@ -50,8 +50,8 @@ def score_tradeability(signal: dict) -> int:
     
     # For tokens without indicators (CEX majors, Solana)
     else:
-        price_1h = signal.get("price_change_1h_pct", 0)
-        price_24h = signal.get("price_change_24h_pct", 0)
+        price_1h = signal.get("price_change_1h_pct") or 0  # None → 0
+        price_24h = signal.get("price_change_24h_pct") or 0  # None → 0
         
         # Strong moves in either direction = tradeable (mean reversion or momentum)
         if abs(price_1h) > 5:
