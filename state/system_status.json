@@ -1,9 +1,9 @@
 {
   "mode": "paper",
   "overall_status": "ALERT",
-  "open_positions": 5,
-  "total_exposure_pct": 0.07,
-  "daily_pnl_pct": 2e-05,
+  "open_positions": 3,
+  "total_exposure_pct": 0.042,
+  "daily_pnl_pct": 5.7e-05,
   "checks": {
     "kill_switch": {
       "status": "OK",
@@ -28,7 +28,7 @@
       "status": "ALERT",
       "detail": "1 cron issues",
       "alerts": [
-        "reconciliation: last ran 40min ago (max 30min)"
+        "reconciliation: last ran 80min ago (max 30min)"
       ]
     },
     "ntp_sync": {
@@ -44,5 +44,5 @@
       "detail": "No escalations"
     }
   },
-  "heartbeat_timestamp": "2026-02-19T07:10:45.403453+00:00"
+  "heartbeat_timestamp": "2026-02-19T10:20:45.793366+00:00"
 }

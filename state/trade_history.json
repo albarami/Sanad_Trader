@@ -180,6 +180,62 @@
       "source": "CoinGecko trending #7",
       "strategy": "meme-momentum",
       "regime_at_entry": "BEAR_HIGH_VOL"
+    },
+    {
+      "token": "LINK",
+      "symbol": "LINKUSDT",
+      "timestamp": "2026-02-19T08:34:53.553551+00:00",
+      "side": "SELL",
+      "reason": "TIME_EXIT",
+      "entry_price": 8.6,
+      "exit_price": 8.63,
+      "pnl_pct": 0.003488372093023388,
+      "pnl_usd": 0.3458461162790882,
+      "source": "CoinGecko trending #15",
+      "strategy": "meme-momentum",
+      "regime_at_entry": "BEAR_HIGH_VOL"
+    },
+    {
+      "token": "ETH",
+      "symbol": "ETHUSDT",
+      "timestamp": "2026-02-19T08:45:53.585964+00:00",
+      "side": "SELL",
+      "reason": "TIME_EXIT",
+      "entry_price": 1959.2599999999998,
+      "exit_price": 1967.99,
+      "pnl_pct": 0.004455763910864431,
+      "pnl_usd": 0.480436440385536,
+      "source": "CoinGecko trending #9",
+      "strategy": "meme-momentum",
+      "regime_at_entry": "BEAR_HIGH_VOL"
+    },
+    {
+      "token": "BTC",
+      "symbol": "BTCUSDT",
+      "timestamp": "2026-02-19T09:04:53.760989+00:00",
+      "side": "SELL",
+      "reason": "TIME_EXIT",
+      "entry_price": 66481.62,
+      "exit_price": 66962.63,
+      "pnl_pct": 0.007235232835782422,
+      "pnl_usd": 0.8668127063781131,
+      "source": "CoinGecko trending #4",
+      "strategy": "meme-momentum",
+      "regime_at_entry": "BEAR_HIGH_VOL"
+    },
+    {
+      "token": "XRP",
+      "symbol": "XRPUSDT",
+      "timestamp": "2026-02-19T10:12:53.452684+00:00",
+      "side": "SELL",
+      "reason": "TIME_EXIT",
+      "entry_price": 1.4267,
+      "exit_price": 1.4145,
+      "pnl_pct": -0.008551202074717872,
+      "pnl_usd": -1.328620979952333,
+      "source": "CoinGecko trending #10",
+      "strategy": "meme-momentum",
+      "regime_at_entry": "BEAR_HIGH_VOL"
     }
   ]
 }

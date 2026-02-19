@@ -1,0 +1,15 @@
+{
+  "token": "BTC",
+  "entry_price": 66481.62,
+  "exit_price": 66962.63,
+  "pnl_pct": 0.007235,
+  "strategy": "unknown",
+  "source": "unknown",
+  "trust_score": 0,
+  "corroboration": 1,
+  "exit_reason": "TIME_EXIT",
+  "entry_time": null,
+  "exit_time": null,
+  "hold_duration_hours": 0,
+  "analyzed_at": "2026-02-19T09:04:56.299394Z"
+}

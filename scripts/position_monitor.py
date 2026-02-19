@@ -211,12 +211,29 @@ def check_trailing_stop(position, current_price, trailing_stops):
 
 
 def check_time_exit(position):
-    """Exit Condition D: Time-based exit (max 48 hours)."""
+    """Exit Condition D: Time-based exit using Bull's timeframe or tier defaults."""
     opened_at = parse_dt(position["opened_at"])
     hold_hours = (now_utc() - opened_at).total_seconds() / 3600
-
-    if hold_hours > MAX_HOLD_HOURS:
-        return True, "TIME_EXIT", f"Position open {hold_hours:.1f}h > {MAX_HOLD_HOURS}h max"
+    
+    # Use Bull's timeframe if available
+    bull_timeframe = position.get("bull_timeframe", "")
+    asset_tier = position.get("asset_tier", "TIER_3_MICRO")
+    
+    try:
+        from exit_time_parser import extract_max_hold_hours
+        max_hold = extract_max_hold_hours(bull_timeframe, asset_tier)
+    except Exception:
+        # Fallback to tier-based defaults
+        tier_defaults = {
+            "TIER_1_MACRO": 168,        # 7 days
+            "TIER_2_ALT_LARGE": 120,    # 5 days
+            "TIER_3_MEME_CEX": 72,      # 3 days
+            "TIER_3_MICRO": 24,         # 1 day
+        }
+        max_hold = tier_defaults.get(asset_tier, MAX_HOLD_HOURS)
+    
+    if hold_hours > max_hold:
+        return True, "TIME_EXIT", f"Position open {hold_hours:.1f}h > {max_hold}h (from Bull: '{bull_timeframe}')"
     return False, None, None
 
 

@@ -1,0 +1,15 @@
+{
+  "token": "ETH",
+  "entry_price": 1959.2599999999998,
+  "exit_price": 1967.99,
+  "pnl_pct": 0.004456,
+  "strategy": "unknown",
+  "source": "unknown",
+  "trust_score": 0,
+  "corroboration": 1,
+  "exit_reason": "TIME_EXIT",
+  "entry_time": null,
+  "exit_time": null,
+  "hold_duration_hours": 0,
+  "analyzed_at": "2026-02-19T08:45:56.019754Z"
+}

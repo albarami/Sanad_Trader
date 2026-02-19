@@ -1,25 +1,23 @@
 {
   "mode": "paper",
   "starting_balance_usd": 10000.0,
-  "current_balance_usd": 9945.23,
-  "daily_pnl_pct": 2e-05,
-  "current_drawdown_pct": 0.006005,
+  "current_balance_usd": 9939.65,
+  "daily_pnl_pct": 5.7e-05,
+  "current_drawdown_pct": 0.006562,
   "peak_balance_usd": 10005.31,
-  "open_position_count": 5,
-  "meme_allocation_pct": 0.07,
-  "total_exposure_pct": 0.07,
+  "open_position_count": 3,
+  "meme_allocation_pct": 0.042,
+  "total_exposure_pct": 0.042,
   "token_exposure_pct": {
-    "LINK": 0.014,
+    "SOL": 0.014,
     "ETH": 0.014,
-    "BTC": 0.014,
-    "XRP": 0.014,
-    "SOL": 0.014
+    "BTC": 0.014
   },
-  "updated_at": "2026-02-19T07:09:54.426233+00:00",
-  "daily_pnl_usd": 0.2,
+  "updated_at": "2026-02-19T10:24:54.107396+00:00",
+  "daily_pnl_usd": 0.57,
   "daily_trades": 0,
   "daily_reset_at": "2026-02-19T00:00:01.798428+00:00",
   "mode_changed_at": "2026-02-16T22:07:14.770355+00:00",
-  "cash_balance_usd": 9941.55,
-  "unrealized_pnl_usd": 3.68
+  "cash_balance_usd": 9941.91,
+  "unrealized_pnl_usd": -2.26
 }

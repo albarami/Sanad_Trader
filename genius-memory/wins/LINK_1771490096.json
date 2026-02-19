@@ -1,0 +1,15 @@
+{
+  "token": "LINK",
+  "entry_price": 8.6,
+  "exit_price": 8.63,
+  "pnl_pct": 0.003488,
+  "strategy": "unknown",
+  "source": "unknown",
+  "trust_score": 0,
+  "corroboration": 1,
+  "exit_reason": "TIME_EXIT",
+  "entry_time": null,
+  "exit_time": null,
+  "hold_duration_hours": 0,
+  "analyzed_at": "2026-02-19T08:34:56.031834Z"
+}
