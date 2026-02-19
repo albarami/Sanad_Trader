@@ -127,3 +127,4 @@
 {"timestamp": "2026-02-19T10:14:04.025725Z", "component": "reconciliation", "problem": "stale_20min", "action": "clear_lock+rerun", "result": "success", "attempts": 1, "duration_sec": 0}
 {"timestamp": "2026-02-19T10:14:17.704766Z", "component": "dexscreener", "problem": "stale_19min", "action": "force_rerun", "result": "success", "attempts": 1, "duration_sec": 13}
 {"timestamp": "2026-02-19T10:26:15.284699Z", "component": "dexscreener", "problem": "stale_11min", "action": "force_rerun", "result": "success", "attempts": 1, "duration_sec": 12}
+{"timestamp": "2026-02-19T10:40:03.489478Z", "component": "reconciliation", "problem": "stale_25min", "action": "clear_lock+rerun", "result": "success", "attempts": 1, "duration_sec": 0}

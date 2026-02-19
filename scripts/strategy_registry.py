@@ -83,6 +83,27 @@ STRATEGIES = {
         },
         "active": True,
     },
+    "paper-mode-any": {
+        "name": "Paper Mode - Any Signal",
+        "description": "Fallback strategy for paper trading: accept any signal that passes Sanad",
+        "chain": [],  # Any chain
+        "direction": "",  # Any direction
+        "entry_conditions": {
+            "min_sanad_score": 50,  # Only requirement: pass Sanad minimum
+        },
+        "exit_conditions": {
+            "stop_loss_pct": 15,
+            "take_profit_pct": 30,
+            "trailing_stop_pct": 3,
+            "max_hold_hours": 24,
+        },
+        "sizing": {
+            "base_pct": 5.0,
+            "max_pct": 10,
+            "kelly_override": None,
+        },
+        "active": True,
+    },
     "early-launch": {
         "name": "Early Launch Sniper",
         "description": "Enter within first 2 hours of token launch on Pump.fun",
@@ -220,24 +241,24 @@ def match_signal_to_strategies(signal: dict) -> list:
 
         for key, threshold in conditions.items():
             if key == "min_volume_24h_usd":
-                val = signal.get("volume_24h", 0)
-                if val < threshold:
+                val = signal.get("volume_24h")
+                if val is not None and val < threshold:
                     met = False; unmet.append(f"{key}: {val} < {threshold}")
             elif key == "min_price_change_pct":
-                val = signal.get("price_change_24h", 0)
-                if val < threshold:
+                val = signal.get("price_change_24h")
+                if val is not None and val < threshold:
                     met = False; unmet.append(f"{key}: {val} < {threshold}")
             elif key == "max_price_change_pct":
-                val = signal.get("price_change_24h", 0)
-                if val > threshold:
+                val = signal.get("price_change_24h")
+                if val is not None and val > threshold:
                     met = False; unmet.append(f"{key}: {val} > {threshold}")
             elif key == "min_sanad_score":
-                val = signal.get("score", signal.get("sanad_score", 0))
-                if val < threshold:
+                val = signal.get("score", signal.get("sanad_score", signal.get("signal_score")))
+                if val is not None and val < threshold:
                     met = False; unmet.append(f"{key}: {val} < {threshold}")
             elif key == "min_holder_count":
-                val = signal.get("holder_count", 0)
-                if val and val < threshold:
+                val = signal.get("holder_count")
+                if val is not None and val < threshold:
                     met = False; unmet.append(f"{key}: {val} < {threshold}")
 
         matches.append({
@@ -249,9 +270,16 @@ def match_signal_to_strategies(signal: dict) -> list:
         })
 
     matched = [m for m in matches if m["matched"]]
-    # Priority order: cex-listing-play > whale-following > sentiment-divergence > meme-momentum > early-launch
-    priority = {"cex-listing-play": 1, "whale-following": 2, "sentiment-divergence": 3, "meme-momentum": 4, "early-launch": 5}
-    matched.sort(key=lambda m: priority.get(m["strategy"], 99))
+    # Priority order: specific strategies first, paper-mode-any last (fallback)
+    priority = {
+        "cex-listing-play": 1,
+        "whale-following": 2,
+        "sentiment-divergence": 3,
+        "meme-momentum": 4,
+        "early-launch": 5,
+        "paper-mode-any": 99,  # Fallback
+    }
+    matched.sort(key=lambda m: priority.get(m["strategy"], 50))
     return matched
 
 

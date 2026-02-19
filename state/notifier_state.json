@@ -1,14 +1,7 @@
 {
-  "sent": 524,
+  "sent": 525,
   "failed": 7,
   "history": [
-    {
-      "level": 2,
-      "title": null,
-      "message": "\u26a0\ufe0f WATCHDOG: Stale data sources detected\n\u2022 Sources: coingecko (24min old)\n\u2022 Note: This usually means scanners haven't run or are failing",
-      "channel": "telegram",
-      "at": "2026-02-19T05:16:19.494435+00:00"
-    },
     {
       "level": 2,
       "title": null,
@@ -701,7 +694,14 @@
       "message": "\u26a0\ufe0f WATCHDOG: Stale data sources detected\n\u2022 Sources: onchain (672min old), coingecko (31min old)\n\u2022 Note: This usually means scanners haven't run or are failing",
       "channel": "telegram",
       "at": "2026-02-19T10:38:03.877155+00:00"
+    },
+    {
+      "level": 2,
+      "title": null,
+      "message": "\u26a0\ufe0f WATCHDOG: Stale data sources detected\n\u2022 Sources: onchain (674min old), coingecko (33min old)\n\u2022 Note: This usually means scanners haven't run or are failing",
+      "channel": "telegram",
+      "at": "2026-02-19T10:40:04.130453+00:00"
     }
   ],
-  "last_sent": "2026-02-19T10:38:03.877171+00:00"
+  "last_sent": "2026-02-19T10:40:04.130464+00:00"
 }
