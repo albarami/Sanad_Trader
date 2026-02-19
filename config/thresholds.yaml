@@ -98,6 +98,23 @@ scoring:
   min_confidence_score: 45
   recency_decay_per_hour: 5
   live_min_trust_score: 70
+strategies:
+  meme-momentum:
+    max_hold_hours: 72
+    trailing_stop_pct: 0.05
+    take_profit_pct: 0.20
+  whale-following:
+    max_hold_hours: 168
+    trailing_stop_pct: 0.08
+    take_profit_pct: 0.30
+  cex-listing-play:
+    max_hold_hours: 120
+    trailing_stop_pct: 0.10
+    take_profit_pct: 0.25
+  sentiment-divergence:
+    max_hold_hours: 48
+    trailing_stop_pct: 0.03
+    take_profit_pct: 0.15
   live_min_confidence_score: 60
   paper_min_trust_score: 10
 execution:
