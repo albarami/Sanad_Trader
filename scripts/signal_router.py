@@ -790,19 +790,25 @@ def run_router():
     except Exception as e:
         _log(f"Strategy pre-filter failed (proceeding without): {e}")
 
-    # --- Tradeability scoring (Phase 3) ---
-    # Add tradeability score as ranking boost
+    # --- Rank by base score first ---
+    candidates.sort(key=lambda x: x[1], reverse=True)
+    
+    # --- Tradeability scoring (Phase 3) - ONLY for top 20 candidates ---
+    # Optimize: expensive scoring only on promising signals
     try:
         from tradeability_scorer import score_tradeability
-        for idx, (s, sc) in enumerate(candidates):
+        top_n = min(20, len(candidates))
+        for idx in range(top_n):
+            s, sc = candidates[idx]
             t_score = score_tradeability(s)
             s["_tradeability_score"] = t_score
             # Add (tradeability_score // 10) to ranking score
             candidates[idx] = (s, sc + (t_score // 10))
+        _log(f"Tradeability scored: top {top_n} candidates")
     except Exception as e:
         _log(f"Tradeability scoring failed (proceeding without): {e}")
 
-    # --- Rank ---
+    # --- Re-rank with tradeability ---
     candidates.sort(key=lambda x: x[1], reverse=True)
     _log(f"Scoring {len(candidates)} candidates...")
 

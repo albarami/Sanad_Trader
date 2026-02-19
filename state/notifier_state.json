@@ -1,21 +1,7 @@
 {
-  "sent": 548,
+  "sent": 550,
   "failed": 7,
   "history": [
-    {
-      "level": "L1",
-      "title": "Signal Rejected",
-      "message": "\ud83d\udd34 *Signal Rejected*\n\nToken: HOSICO\nReason: {\n  \"result\": \"BLOCK\",\n  \"gates_passed\": [\n    1,\n    2,\n    3,\n    4,\n    5,\n    6,\n    7,\n    8,\n    9,\n    10\n  ],\n  \"gate_failed\": 11,\n  \"gate_failed_nam",
-      "channel": "log_only",
-      "at": "2026-02-19T06:47:20.139330+00:00"
-    },
-    {
-      "level": 1,
-      "title": null,
-      "message": "\ud83d\udd27 WATCHDOG AUTO-FIX:\n\u2022 Problem: Reconciliation stale (19min, threshold 15min)\n\u2022 Action: Cleared lock + re-ran reconciliation.py\n\u2022 Result: \u2705 Fresh (completed in 0.0s)",
-      "channel": "telegram",
-      "at": "2026-02-19T06:50:03.848486+00:00"
-    },
     {
       "level": 1,
       "title": null,
@@ -701,7 +687,21 @@
       "message": "\ud83d\udd34 *Signal Rejected*\n\nToken: OPENCLAW\nReason: {\n  \"result\": \"BLOCK\",\n  \"gates_passed\": [\n    1,\n    2,\n    3,\n    4,\n    5,\n    6,\n    7,\n    8,\n    9,\n    10,\n    11,\n    12,\n    13,\n    14\n  ],\n  \"ga",
       "channel": "log_only",
       "at": "2026-02-19T12:21:19.140375+00:00"
+    },
+    {
+      "level": 2,
+      "title": null,
+      "message": "\u26a0\ufe0f WATCHDOG: Stale data sources detected\n\u2022 Sources: coingecko (16min old), dexscreener (16min old), birdeye (16min old)\n\u2022 Note: This usually means scanners haven't run or are failing",
+      "channel": "telegram",
+      "at": "2026-02-19T12:28:03.778021+00:00"
+    },
+    {
+      "level": 2,
+      "title": null,
+      "message": "\u26a0\ufe0f WATCHDOG: Stale data sources detected\n\u2022 Sources: coingecko (20min old), dexscreener (20min old), birdeye (20min old)\n\u2022 Note: This usually means scanners haven't run or are failing",
+      "channel": "telegram",
+      "at": "2026-02-19T12:32:04.368997+00:00"
     }
   ],
-  "last_sent": "2026-02-19T12:21:19.140382+00:00"
+  "last_sent": "2026-02-19T12:32:04.369012+00:00"
 }

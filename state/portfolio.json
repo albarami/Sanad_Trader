@@ -1,9 +1,9 @@
 {
   "mode": "paper",
   "starting_balance_usd": 10000.0,
-  "current_balance_usd": 9936.85,
+  "current_balance_usd": 9937.44,
   "daily_pnl_pct": 5.7e-05,
-  "current_drawdown_pct": 0.006842,
+  "current_drawdown_pct": 0.006784,
   "peak_balance_usd": 10005.31,
   "open_position_count": 3,
   "meme_allocation_pct": 0.042,
@@ -13,11 +13,11 @@
     "ETH": 0.014,
     "BTC": 0.014
   },
-  "updated_at": "2026-02-19T12:10:53.604483+00:00",
+  "updated_at": "2026-02-19T12:29:53.496241+00:00",
   "daily_pnl_usd": 0.57,
   "daily_trades": 0,
   "daily_reset_at": "2026-02-19T00:00:01.798428+00:00",
   "mode_changed_at": "2026-02-16T22:07:14.770355+00:00",
   "cash_balance_usd": 9941.91,
-  "unrealized_pnl_usd": -5.06
+  "unrealized_pnl_usd": -4.48
 }

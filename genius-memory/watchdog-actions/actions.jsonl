@@ -147,3 +147,4 @@
 {"timestamp": "2026-02-19T11:32:15.256967Z", "component": "dexscreener", "problem": "stale_17min", "action": "force_rerun", "result": "success", "attempts": 1, "duration_sec": 11}
 {"timestamp": "2026-02-19T11:48:14.833546Z", "component": "dexscreener", "problem": "stale_15min", "action": "force_rerun", "result": "success", "attempts": 1, "duration_sec": 11}
 {"timestamp": "2026-02-19T12:06:15.287280Z", "component": "dexscreener", "problem": "stale_17min", "action": "force_rerun", "result": "success", "attempts": 1, "duration_sec": 12}
+{"timestamp": "2026-02-19T12:22:15.770761Z", "component": "dexscreener", "problem": "stale_15min", "action": "force_rerun", "result": "success", "attempts": 1, "duration_sec": 11}
