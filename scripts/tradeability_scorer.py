@@ -92,17 +92,33 @@ def score_tradeability(signal: dict) -> int:
         volume_score = 15
     elif volume_ratio > 1.5:
         volume_score = 10
-    # Absolute volume thresholds for majors (no baseline available)
-    elif vol_24h > 1_000_000_000:  # > $1B (top majors)
-        volume_score = 20
-    elif vol_24h > 100_000_000:  # > $100M (mid majors)
-        volume_score = 15
-    elif vol_24h > 10_000_000:  # > $10M (small caps)
-        volume_score = 10
-    elif vol_24h > 1_000_000:  # > $1M (micro)
-        volume_score = 5
+    # Chain-specific volume thresholds
+    elif signal.get("chain") == "binance":
+        # Binance majors (higher thresholds)
+        if vol_24h > 1_000_000_000:  # > $1B
+            volume_score = 20
+        elif vol_24h > 100_000_000:  # > $100M
+            volume_score = 15
+        elif vol_24h > 10_000_000:  # > $10M
+            volume_score = 10
+        elif vol_24h > 1_000_000:  # > $1M
+            volume_score = 5
+    elif signal.get("chain") == "solana":
+        # Solana tokens (lower thresholds, DEX volume)
+        if vol_24h > 50_000_000:  # > $50M (very hot)
+            volume_score = 20
+        elif vol_24h > 10_000_000:  # > $10M (hot)
+            volume_score = 15
+        elif vol_24h > 1_000_000:  # > $1M (active)
+            volume_score = 10
+        elif vol_24h > 100_000:  # > $100k (emerging)
+            volume_score = 5
     else:
-        volume_score = 0
+        # Unknown chain, use conservative thresholds
+        if vol_24h > 10_000_000:
+            volume_score = 10
+        elif vol_24h > 1_000_000:
+            volume_score = 5
     
     components["volume"] = volume_score
     score += volume_score
