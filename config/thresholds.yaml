@@ -137,3 +137,16 @@ router:
   bear_market_cex_only: true
   min_volume_24h_usd: 1000000
   min_liquidity_usd: 500000
+tradeability:
+  gate_threshold:
+    BULL: 55
+    BEAR_HIGH_VOL: 35
+    BEAR_LOW_VOL: 40
+    UNKNOWN: 40
+  component_max:
+    momentum: 25
+    volume: 20
+    liquidity: 20
+    timing: 15
+    catalyst: 10
+    crowding: 10
