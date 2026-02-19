@@ -1939,7 +1939,10 @@ def stage_7_execute(signal, sanad_result, strategy_result, bull_result, bear_res
             if fill_result.get("fill_pct", 1.0) < 0.5:
                 # Less than 50% fill expected — skip trade
                 print(f"  Partial fill sim: only {fill_result['fill_pct']*100:.0f}% fill expected — SKIPPING")
-                return None, "Partial fill too low"
+                # Return consistent dict format
+                decision_record["final_action"] = "REJECT"
+                decision_record["rejection_reason"] = "Partial fill too low"
+                return decision_record
         except Exception as e:
             print(f"  Partial fill sim error ({e}) — proceeding")
 
@@ -2646,9 +2649,13 @@ def run_pipeline(signal):
 
     # Stage 7: Execute / Log
     decision_record = stage_7_execute(signal, sanad_result, strategy_result, bull_result, bear_result, judge_result, policy_result, profile)
+    
+    # Hotfix: tolerate tuple return (legacy/alternate code path)
+    if isinstance(decision_record, tuple):
+        decision_record = decision_record[0]
 
     print("\n" + "=" * 60)
-    print(f"PIPELINE COMPLETE — Final Action: {decision_record['final_action']}")
+    print(f"PIPELINE COMPLETE — Final Action: {decision_record.get('final_action', 'UNKNOWN')}")
     print("=" * 60)
 
     return decision_record

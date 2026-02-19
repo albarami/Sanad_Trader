@@ -1,36 +1,36 @@
 {
   "token": {
-    "symbol": "WOJAK",
-    "deployment_timestamp": "2026-01-09T05:56:19.510639+00:00"
+    "symbol": "XRP",
+    "deployment_timestamp": "2026-01-09T06:10:49.010220+00:00"
   },
-  "symbol": "WOJAKUSDT",
+  "symbol": "XRPUSDT",
   "venue": "DEX",
-  "exchange": "raydium",
-  "strategy_name": "whale-following",
+  "exchange": "binance",
+  "strategy_name": "sentiment-divergence",
   "data_timestamps": {
-    "price_timestamp": "2026-02-19T20:56:19.510740+00:00",
-    "onchain_timestamp": "2026-02-19T20:56:19.510871+00:00"
+    "price_timestamp": "2026-02-19T21:10:49.010366+00:00",
+    "onchain_timestamp": "2026-02-19T21:10:49.010368+00:00"
   },
-  "current_price": null,
+  "current_price": 1.4112,
   "sanad_verification": {
-    "sanad_trust_score": 78,
-    "grade": "Mashhur",
-    "recommendation": "CAUTION",
+    "sanad_trust_score": 82,
+    "grade": "Ahad",
+    "recommendation": "PROCEED",
     "rugpull_flags": []
   },
   "market_data": {
-    "estimated_slippage_bps": 0,
-    "spread_bps": 0,
-    "depth_sufficient": false,
+    "estimated_slippage_bps": 0.7,
+    "spread_bps": 0.7,
+    "depth_sufficient": true,
     "price_change_pct_window": 0
   },
   "trade_intent": {
     "position_size_pct": 0.013999999999999999,
-    "position_usd": 139.15
+    "position_usd": 139.16
   },
-  "trade_confidence_score": 38,
-  "almuhasbi_verdict": "REVISE",
-  "almuhasbi_confidence": 38,
+  "trade_confidence_score": 52,
+  "almuhasbi_verdict": "APPROVE",
+  "almuhasbi_confidence": 52,
   "dex_sim_result": null,
   "volatility_30min_pct": 0,
   "has_verified_catalyst": false
