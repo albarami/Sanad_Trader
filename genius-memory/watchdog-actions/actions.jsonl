@@ -184,3 +184,19 @@
 {"timestamp": "2026-02-19T14:46:13.589054Z", "component": "dexscreener", "problem": "stale_15min", "action": "force_rerun", "result": "success", "attempts": 1, "duration_sec": 10}
 {"timestamp": "2026-02-19T14:46:13.599601Z", "component": "signal_router", "problem": "stalled_32min (token=USDT | stage=sanad)", "action": "kill_process+clear_lock", "result": "success", "attempts": 1}
 {"timestamp": "2026-02-19T14:54:12.451519Z", "component": "signal_router", "problem": "stalled_39min", "action": "kill+force_manual_run", "result": "success", "attempts": 2, "duration_sec": 8}
+{"timestamp": "2026-02-19T15:10:19.866580Z", "component": "dexscreener", "problem": "stale_15min", "action": "force_rerun", "result": "success", "attempts": 1, "duration_sec": 15}
+{"timestamp": "2026-02-19T15:26:14.026432Z", "component": "dexscreener", "problem": "stale_15min", "action": "force_rerun", "result": "success", "attempts": 1, "duration_sec": 11}
+{"timestamp": "2026-02-19T15:30:03.365412Z", "component": "signal_router", "problem": "stalled_31min (token=PEACE | stage=sanad)", "action": "kill_process+clear_lock", "result": "success", "attempts": 1}
+{"timestamp": "2026-02-19T15:32:28.712901Z", "component": "signal_router", "problem": "stalled_33min", "action": "kill+force_manual_run", "result": "success", "attempts": 2, "duration_sec": 25}
+{"timestamp": "2026-02-19T15:44:13.966218Z", "component": "dexscreener", "problem": "stale_17min", "action": "force_rerun", "result": "success", "attempts": 1, "duration_sec": 10}
+{"timestamp": "2026-02-19T16:02:14.133335Z", "component": "dexscreener", "problem": "stale_17min", "action": "force_rerun", "result": "success", "attempts": 1, "duration_sec": 10}
+{"timestamp": "2026-02-19T16:06:03.019033Z", "component": "signal_router", "problem": "stalled_33min (token=GROKIUS | stage=sanad)", "action": "kill_process+clear_lock", "result": "success", "attempts": 1}
+{"timestamp": "2026-02-19T16:08:14.395938Z", "component": "signal_router", "problem": "stalled_35min", "action": "kill+force_manual_run", "result": "success", "attempts": 2, "duration_sec": 11}
+{"timestamp": "2026-02-19T16:18:15.026502Z", "component": "dexscreener", "problem": "stale_15min", "action": "force_rerun", "result": "success", "attempts": 1, "duration_sec": 11}
+{"timestamp": "2026-02-19T16:34:14.166680Z", "component": "dexscreener", "problem": "stale_15min", "action": "force_rerun", "result": "success", "attempts": 1, "duration_sec": 11}
+{"timestamp": "2026-02-19T16:42:03.154511Z", "component": "signal_router", "problem": "stalled_30min (token=GROKIUS | stage=sanad)", "action": "kill_process+clear_lock", "result": "success", "attempts": 1}
+{"timestamp": "2026-02-19T16:46:10.823745Z", "component": "signal_router", "problem": "stalled_34min", "action": "kill+force_manual_run", "result": "success", "attempts": 2, "duration_sec": 7}
+{"timestamp": "2026-02-19T16:50:15.431743Z", "component": "dexscreener", "problem": "stale_15min", "action": "force_rerun", "result": "success", "attempts": 1, "duration_sec": 12}
+{"timestamp": "2026-02-19T17:14:15.831942Z", "component": "dexscreener", "problem": "stale_23min", "action": "force_rerun", "result": "success", "attempts": 1, "duration_sec": 11}
+{"timestamp": "2026-02-19T17:30:17.299252Z", "component": "dexscreener", "problem": "stale_15min", "action": "force_rerun", "result": "success", "attempts": 1, "duration_sec": 14}
+{"timestamp": "2026-02-19T17:46:18.172916Z", "component": "dexscreener", "problem": "stale_15min", "action": "force_rerun", "result": "success", "attempts": 1, "duration_sec": 14}

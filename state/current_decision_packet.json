@@ -1,36 +1,36 @@
 {
   "token": {
-    "symbol": "OPENCLAW",
-    "deployment_timestamp": "2026-01-08T21:21:19.090749+00:00"
+    "symbol": "XRP",
+    "deployment_timestamp": "2026-01-09T02:16:25.737810+00:00"
   },
-  "symbol": "OPENCLAWUSDT",
+  "symbol": "XRPUSDT",
   "venue": "DEX",
-  "exchange": "raydium",
-  "strategy_name": "cex-listing-play",
+  "exchange": "binance",
+  "strategy_name": "meme-momentum",
   "data_timestamps": {
-    "price_timestamp": "2026-02-19T12:21:19.090783+00:00",
-    "onchain_timestamp": "2026-02-19T12:21:19.090785+00:00"
+    "price_timestamp": "2026-02-19T17:16:25.737840+00:00",
+    "onchain_timestamp": "2026-02-19T17:16:25.737843+00:00"
   },
-  "current_price": null,
+  "current_price": 1.403,
   "sanad_verification": {
-    "sanad_trust_score": 62,
-    "grade": "Mashhur",
+    "sanad_trust_score": 78,
+    "grade": "Ahad",
     "recommendation": "CAUTION",
     "rugpull_flags": []
   },
   "market_data": {
-    "estimated_slippage_bps": 0,
-    "spread_bps": 0,
-    "depth_sufficient": false,
+    "estimated_slippage_bps": 0.7,
+    "spread_bps": 0.7,
+    "depth_sufficient": true,
     "price_change_pct_window": 0
   },
   "trade_intent": {
     "position_size_pct": 0.013999999999999999,
-    "position_usd": 139.12
+    "position_usd": 139.09
   },
-  "trade_confidence_score": 0,
-  "almuhasbi_verdict": "REJECT",
-  "almuhasbi_confidence": 59,
+  "trade_confidence_score": 38,
+  "almuhasbi_verdict": "REVISE",
+  "almuhasbi_confidence": 38,
   "dex_sim_result": null,
   "volatility_30min_pct": 0,
   "has_verified_catalyst": false

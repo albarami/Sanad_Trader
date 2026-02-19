@@ -1,70 +1,7 @@
 {
-  "sent": 597,
+  "sent": 606,
   "failed": 7,
   "history": [
-    {
-      "level": 1,
-      "title": null,
-      "message": "\ud83d\udd27 WATCHDOG AUTO-FIX:\n\u2022 Problem: DexScreener signals stale (11min, threshold 10min)\n\u2022 Action: Force-ran dexscreener_client.py\n\u2022 Result: \u2705 Fresh signals generated (11.3s)",
-      "channel": "telegram",
-      "at": "2026-02-19T09:00:16.556988+00:00"
-    },
-    {
-      "level": "L2",
-      "title": "SELL BTC",
-      "message": "\ud83d\udfe2 SELL BTC/USDT\n\nReason: TIME_EXIT\nEntry: 66,481.6200\nExit: 66,962.6300\nPnL: +0.7% (+0.87)\nHold: 8.1h\n\nStrategy: meme-momentum\nSanad Score: 94",
-      "channel": "telegram",
-      "at": "2026-02-19T09:04:56.297191+00:00"
-    },
-    {
-      "level": 1,
-      "title": null,
-      "message": "\ud83d\udd27 WATCHDOG AUTO-FIX:\n\u2022 Problem: DexScreener signals stale (11min, threshold 10min)\n\u2022 Action: Force-ran dexscreener_client.py\n\u2022 Result: \u2705 Fresh signals generated (13.1s)",
-      "channel": "telegram",
-      "at": "2026-02-19T09:12:17.255324+00:00"
-    },
-    {
-      "level": 1,
-      "title": null,
-      "message": "\ud83d\udd27 WATCHDOG AUTO-FIX:\n\u2022 Problem: Reconciliation stale (15min, threshold 15min)\n\u2022 Action: Cleared lock + re-ran reconciliation.py\n\u2022 Result: \u2705 Fresh (completed in 0.0s)",
-      "channel": "telegram",
-      "at": "2026-02-19T09:16:03.702505+00:00"
-    },
-    {
-      "level": "L2",
-      "title": "BUY ETH",
-      "message": "BUY ETH/USDT\n\nEntry: 1,973.5000\nSize: 139 (0.07 units)\n\nStrategy: meme-momentum\nSanad Score: 82\nFee: 0.14\n\nAll 15 policy gates passed",
-      "channel": "telegram",
-      "at": "2026-02-19T09:20:41.625489+00:00"
-    },
-    {
-      "level": 1,
-      "title": null,
-      "message": "\ud83d\udd27 WATCHDOG AUTO-FIX:\n\u2022 Problem: DexScreener signals stale (11min, threshold 10min)\n\u2022 Action: Force-ran dexscreener_client.py\n\u2022 Result: \u2705 Fresh signals generated (12.3s)",
-      "channel": "telegram",
-      "at": "2026-02-19T09:24:16.811111+00:00"
-    },
-    {
-      "level": "L1",
-      "title": "Signal Rejected",
-      "message": "\ud83d\udd34 *Signal Rejected*\n\nToken: COPPERINU\nReason: {\n  \"result\": \"BLOCK\",\n  \"gates_passed\": [\n    1,\n    2,\n    3,\n    4,\n    5,\n    6,\n    7,\n    8,\n    9,\n    10\n  ],\n  \"gate_failed\": 11,\n  \"gate_failed_",
-      "channel": "log_only",
-      "at": "2026-02-19T09:32:22.851903+00:00"
-    },
-    {
-      "level": 1,
-      "title": null,
-      "message": "\ud83d\udd27 WATCHDOG AUTO-FIX:\n\u2022 Problem: Reconciliation stale (18min, threshold 15min)\n\u2022 Action: Cleared lock + re-ran reconciliation.py\n\u2022 Result: \u2705 Fresh (completed in 0.0s)",
-      "channel": "telegram",
-      "at": "2026-02-19T09:34:04.106090+00:00"
-    },
-    {
-      "level": 1,
-      "title": null,
-      "message": "\ud83d\udd27 WATCHDOG AUTO-FIX:\n\u2022 Problem: DexScreener signals stale (11min, threshold 10min)\n\u2022 Action: Force-ran dexscreener_client.py\n\u2022 Result: \u2705 Fresh signals generated (11.4s)",
-      "channel": "telegram",
-      "at": "2026-02-19T09:36:15.980859+00:00"
-    },
     {
       "level": "L2",
       "title": "BUY BTC",
@@ -701,7 +638,70 @@
       "message": "\ud83d\udd27 WATCHDOG AUTO-FIX (attempt 2/4):\n\u2022 Problem: Router stalled again (39min)\n\u2022 Action: Killed + force manual run\n\u2022 Result: \u2705 Completed successfully (8.2s)",
       "channel": "telegram",
       "at": "2026-02-19T14:54:13.075934+00:00"
+    },
+    {
+      "level": 1,
+      "title": null,
+      "message": "\ud83d\udd27 WATCHDOG AUTO-FIX (attempt 1/4):\n\u2022 Problem: Router stalled (31min since last run)\n\u2022 Context: (token=PEACE | stage=sanad)\n\u2022 Action: Killed process + cleared lock\n\u2022 Result: \u2705 Restarted (cron will pick",
+      "channel": "telegram",
+      "at": "2026-02-19T15:30:04.027856+00:00"
+    },
+    {
+      "level": 1,
+      "title": null,
+      "message": "\ud83d\udd27 WATCHDOG AUTO-FIX (attempt 2/4):\n\u2022 Problem: Router stalled again (33min)\n\u2022 Action: Killed + force manual run\n\u2022 Result: \u2705 Completed successfully (25.2s)",
+      "channel": "telegram",
+      "at": "2026-02-19T15:32:29.389845+00:00"
+    },
+    {
+      "level": "L2",
+      "title": null,
+      "message": "\u2696\ufe0f HOURLY STATUS\n\ud83d\udcb0 Balance: $9,934.63 (unrealized: $-7.28)\n\ud83d\udcc8 Positions (3/10):\n  SOL @ $82.39 -> $80.64 (-2.1%)\n  ETH @ $1,973.50 -> $1,929.28 (-2.2%)\n  BTC @ $67,042.81 -> $66,462.00 (-0.9%)\n\ud83d\udcca Today:",
+      "channel": "telegram",
+      "at": "2026-02-19T15:42:39.350975+00:00"
+    },
+    {
+      "level": 1,
+      "title": null,
+      "message": "\ud83d\udd27 WATCHDOG AUTO-FIX (attempt 1/4):\n\u2022 Problem: Router stalled (33min since last run)\n\u2022 Context: (token=GROKIUS | stage=sanad)\n\u2022 Action: Killed process + cleared lock\n\u2022 Result: \u2705 Restarted (cron will pi",
+      "channel": "telegram",
+      "at": "2026-02-19T16:06:03.660305+00:00"
+    },
+    {
+      "level": 1,
+      "title": null,
+      "message": "\ud83d\udd27 WATCHDOG AUTO-FIX (attempt 2/4):\n\u2022 Problem: Router stalled again (35min)\n\u2022 Action: Killed + force manual run\n\u2022 Result: \u2705 Completed successfully (11.2s)",
+      "channel": "telegram",
+      "at": "2026-02-19T16:08:15.020921+00:00"
+    },
+    {
+      "level": 1,
+      "title": null,
+      "message": "\ud83d\udd27 WATCHDOG AUTO-FIX (attempt 1/4):\n\u2022 Problem: Router stalled (30min since last run)\n\u2022 Context: (token=GROKIUS | stage=sanad)\n\u2022 Action: Killed process + cleared lock\n\u2022 Result: \u2705 Restarted (cron will pi",
+      "channel": "telegram",
+      "at": "2026-02-19T16:42:03.779209+00:00"
+    },
+    {
+      "level": 1,
+      "title": null,
+      "message": "\ud83d\udd27 WATCHDOG AUTO-FIX (attempt 2/4):\n\u2022 Problem: Router stalled again (34min)\n\u2022 Action: Killed + force manual run\n\u2022 Result: \u2705 Completed successfully (8.0s)",
+      "channel": "telegram",
+      "at": "2026-02-19T16:46:11.467844+00:00"
+    },
+    {
+      "level": "L2",
+      "title": null,
+      "message": "\u2696\ufe0f HOURLY STATUS\n\ud83d\udcb0 Balance: $9,934.25 (unrealized: $-7.67)\n\ud83d\udcc8 Positions (3/10):\n  SOL @ $82.39 -> $80.59 (-2.2%)\n  ETH @ $1,973.50 -> $1,926.57 (-2.4%)\n  BTC @ $67,042.81 -> $66,409.33 (-0.9%)\n\ud83d\udcca Today:",
+      "channel": "telegram",
+      "at": "2026-02-19T16:47:23.558238+00:00"
+    },
+    {
+      "level": "L2",
+      "title": null,
+      "message": "\u2696\ufe0f HOURLY STATUS\n\ud83d\udcb0 Balance: $9,934.68 (unrealized: $-7.23)\n\ud83d\udcc8 Positions (3/10):\n  SOL @ $82.39 -> $80.72 (-2.0%)\n  ETH @ $1,973.50 -> $1,925.56 (-2.4%)\n  BTC @ $67,042.81 -> $66,546.17 (-0.7%)\n\ud83d\udcca Today:",
+      "channel": "telegram",
+      "at": "2026-02-19T17:50:46.399186+00:00"
     }
   ],
-  "last_sent": "2026-02-19T14:54:13.075958+00:00"
+  "last_sent": "2026-02-19T17:50:46.399212+00:00"
 }
