@@ -988,6 +988,10 @@ def run_router():
 
         # --- Tradeability Gate (Phase 3) ---
         try:
+            # Enrich signal with real-time market data before scoring
+            from market_data_enricher import enrich_signal
+            selected = enrich_signal(selected)
+            
             from tradeability_scorer import score_tradeability
             t_score = score_tradeability(selected)
             selected['tradeability_score'] = t_score
