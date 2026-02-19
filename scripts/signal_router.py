@@ -5,8 +5,8 @@ Reads CoinGecko + DexScreener + Birdeye signals, ranks them, feeds the best
 candidate into sanad_pipeline.py. Deterministic Python. No LLMs.
 
 # Ignore SIGPIPE to prevent broken pipe crashes in cron/subprocess contexts
-import signal as _signal
-_signal.signal(_signal.SIGPIPE, _signal.SIG_DFL)
+import signal
+signal.signal(signal.SIGPIPE, signal.SIG_DFL)
 Designed to run as a cron job every 15 minutes.
 """
 
