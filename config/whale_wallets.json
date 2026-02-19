@@ -1,41 +1,98 @@
 {
-  "version": "1.0",
-  "updated": "2026-02-19",
-  "description": "Seed whale wallets. System discovers new ones via whale_discovery.py",
   "wallets": [
-    {"name": "GOOD TRADER 7", "address": "RFSqPtn1JfavGiUD4HJsZyYXvZsycxf31hnYfbyG6iB", "grade": "A", "origin": "seed", "notes": "916 SOL"},
-    {"name": "JAMAL", "address": "JDd3hy3gQn2V982mi1zqhNqUw1GfV2UL6g76STojCJPN", "grade": "A", "origin": "seed", "notes": "672 SOL, high frequency"},
-    {"name": "CUPSEY2", "address": "suqh5sHtr8HyJ7q8scBimULPkPpA557prMG47xCHQfK", "grade": "A", "origin": "seed", "notes": "790 SOL"},
-    {"name": "SPUNOSOUNDS", "address": "GfXQesPe3Zuwg8JhAt6Cg8euJDTVx751enp9EQQmhzPH", "grade": "B", "origin": "seed", "notes": "53 SOL"},
-    {"name": "COOKER", "address": "8deJ9xeUvXSJwicYptA9mHsU2rN2pDx37KWzkDkEXhU6", "grade": "S", "origin": "seed", "notes": "2351 SOL, top priority"},
-    {"name": "WADDLES", "address": "73LnJ7G9ffBDjEBGgJDdgvLUhD5APLonKrNiHsKDCw5B", "grade": "A", "origin": "seed", "notes": "2907 SOL"},
-    {"name": "ZOOKES", "address": "5TMR5GFPTzkNhprnty2ocXEFLoLur1uchg4NkEr5WEf4", "grade": "B", "origin": "seed", "notes": "53 SOL"},
-    {"name": "PATTYICE", "address": "6nhskL8RVpXzWXC7mcC1UXpe3ze2p6P6og1jXVGUW88s", "grade": "B", "origin": "seed", "notes": "23 SOL"},
-    {"name": "GAKE", "address": "DNfuF1L62WWyW3pNakVkyGGFzVVhj4Yr52jSmdTyeBHm", "grade": "A", "origin": "seed", "notes": "989 SOL"},
-    {"name": "ZEREBRO 100K", "address": "BDC19MFbzDpoF37QCxe4JR6i7UmXNMSiEqrxuQgJoWte", "grade": "B", "origin": "seed", "notes": "16 SOL"},
-    {"name": "EQ", "address": "AbcX4XBm7DJ3i9p29i6sU8WLmiW4FWY5tiwB9D6UBbcE", "grade": "B", "origin": "seed", "notes": "44 SOL"},
-    {"name": "GOODTRADER 1", "address": "4hSXPtxZgXFpo6Vxq9yqxNjcBoqWN3VoaPJWonUtupzD", "grade": "A", "origin": "seed", "notes": "199 SOL"},
-    {"name": "BLOSSOM", "address": "62FZUSWPMX9pofoV1uWHMdzFJRjwMa1LHgh2zhdEB7Zj", "grade": "C", "origin": "seed", "notes": "0.72 SOL, watch only"},
-    {"name": "LATUCHE", "address": "GJA1HEbxGnqBhBifH9uQauzXSB53to5rhDrzmKxhSU65", "grade": "B", "origin": "seed", "notes": "23 SOL"},
-    {"name": "EURIS", "address": "DfMxre4cKmvogbLrPigxmibVTTQDuzjdXojWzjCXXhzj", "grade": "S", "origin": "seed", "notes": "3624 SOL, top priority"},
-    {"name": "FROSTYJAYS", "address": "HtucFepgUkMpHdrYsxMqjBNN6qVBdjmFaLZneNXopuJm", "grade": "A", "origin": "seed", "notes": "738 SOL, quant"},
-    {"name": "TERP2", "address": "HkFt55P3PhRWHXoTFeuvkKEE4ab26xZ1bk6UmXV88Pwz", "grade": "C", "origin": "seed", "notes": "8 SOL, watch only"}
+    {
+      "address": "RFSqPtn1JfavGiUD4HJsZyYXvZsycxf31hnYfbyG6iB",
+      "label": "GOOD TRADER 7",
+      "active": true,
+      "added": "2026-02-19T17:51:31.355233+00:00",
+      "source": "xlsx_manual"
+    },
+    {
+      "address": "JDd3hy3gQn2V982mi1zqhNqUw1GfV2UL6g76STojCJPN",
+      "label": "JAMAL",
+      "active": true,
+      "added": "2026-02-19T17:51:31.355272+00:00",
+      "source": "xlsx_manual"
+    },
+    {
+      "address": "suqh5sHtr8HyJ7q8scBimULPkPpA557prMG47xCHQfK",
+      "label": "CUPSEY2",
+      "active": true,
+      "added": "2026-02-19T17:51:31.355274+00:00",
+      "source": "xlsx_manual"
+    },
+    {
+      "address": "GfXQesPe3Zuwg8JhAt6Cg8euJDTVx751enp9EQQmhzPH",
+      "label": "SPUNOSOUNDS",
+      "active": true,
+      "added": "2026-02-19T17:51:31.355276+00:00",
+      "source": "xlsx_manual"
+    },
+    {
+      "address": "8deJ9xeUvXSJwicYptA9mHsU2rN2pDx37KWzkDkEXhU6",
+      "label": "COOKER",
+      "active": true,
+      "added": "2026-02-19T17:51:31.355278+00:00",
+      "source": "xlsx_manual"
+    },
+    {
+      "address": "73LnJ7G9ffBDjEBGgJDdgvLUhD5APLonKrNiHsKDCw5B",
+      "label": "WADDLES",
+      "active": true,
+      "added": "2026-02-19T17:51:31.355279+00:00",
+      "source": "xlsx_manual"
+    },
+    {
+      "address": "5TMR5GFPTzkNhprnty2ocXEFLoLur1uchg4NkEr5WEf4",
+      "label": "ZOOKES",
+      "active": true,
+      "added": "2026-02-19T17:51:31.355280+00:00",
+      "source": "xlsx_manual"
+    },
+    {
+      "address": "6nhskL8RVpXzWXC7mcC1UXpe3ze2p6P6og1jXVGUW88s",
+      "label": "PATTYICE",
+      "active": true,
+      "added": "2026-02-19T17:51:31.355281+00:00",
+      "source": "xlsx_manual"
+    },
+    {
+      "address": "DNfuF1L62WWyW3pNakVkyGGFzVVhj4Yr52jSmdTyeBHm",
+      "label": "GAKE",
+      "active": true,
+      "added": "2026-02-19T17:51:31.355283+00:00",
+      "source": "xlsx_manual"
+    },
+    {
+      "address": "BDC19MFbzDpoF37QCxe4JR6i7UmXNMSiEqrxuQgJoWte",
+      "label": "ZEREBRO 100K",
+      "active": true,
+      "added": "2026-02-19T17:51:31.355284+00:00",
+      "source": "xlsx_manual"
+    },
+    {
+      "address": "AbcX4XBm7DJ3i9p29i6sU8WLmiW4FWY5tiwB9D6UBbcE",
+      "label": "EQ",
+      "active": true,
+      "added": "2026-02-19T17:51:31.355286+00:00",
+      "source": "xlsx_manual"
+    },
+    {
+      "address": "4hSXPtxZgXFpo6Vxq9yqxNjcBoqWN3VoaPJWonUtupzD",
+      "label": "GOODTRADER 1",
+      "active": true,
+      "added": "2026-02-19T17:51:31.355293+00:00",
+      "source": "xlsx_manual"
+    },
+    {
+      "address": "62FZUSWPMX9pofoV1uWHMdzFJRjwMa1LHgh2zhdEB7Zj",
+      "label": "BLOSSOM",
+      "active": true,
+      "added": "2026-02-19T17:51:31.355295+00:00",
+      "source": "xlsx_manual"
+    }
   ],
-  "grade_weights": {"S": 3.0, "A": 2.0, "B": 1.0, "C": 0.5},
-  "min_accumulation_wallets": 3,
-  "accumulation_window_hours": 6,
-  "cooldown_hours": 2,
-  "min_weighted_score": 5.0,
-  "max_tracked_wallets": 100,
-  "discovery_enabled": true,
-  "promotion_gates": {
-    "min_trades_30d": 10,
-    "min_win_rate": 0.55,
-    "min_median_roi_pct": 3.0,
-    "exclude_market_makers": true
-  },
-  "demotion_gates": {
-    "inactive_days_remove": 30,
-    "negative_expectancy_weeks_remove": 3
-  }
+  "last_updated": "2026-02-19T17:51:31.355301+00:00",
+  "description": "Active whale wallets synced from seed list",
+  "total_count": 13
 }
