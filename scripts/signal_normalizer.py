@@ -156,22 +156,23 @@ PROVIDERS = {
     "coingecko": ["coingecko", "cg", "gecko"],
     "dexscreener": ["dexscreener", "dex", "screener"],
     "birdeye": ["birdeye", "bird"],
-    "onchain": ["onchain", "helius", "solscan"],
+    "onchain": ["onchain", "helius", "solscan", "whale_tracker"],
     "telegram": ["telegram", "tg", "ct"],
     "sentiment": ["sentiment", "fud", "hype"],
     "pumpfun": ["pumpfun", "pump"],
-    "binance": ["binance", "bnb", "cex"],
+    "binance": ["binance", "bnb", "cex", "majors_scanner"],
 }
 
 VARIANTS = {
     "trending": ["trending", "trend", "hot"],
     "boost": ["boost", "boosted", "promoted"],
     "gainers": ["gainers", "gainer", "winner", "top"],
-    "whale_alert": ["whale", "whale_alert", "large_tx"],
+    "whale_alert": ["whale", "whale_alert", "whale_tracker", "large_tx"],
     "new_listing": ["new_listing", "new", "launch", "ilo"],
     "community_takeover": ["community_takeover", "cto", "takeover"],
     "meme_radar": ["meme_radar", "meme", "radar"],
     "volume_spike": ["volume", "volume_spike", "vol"],
+    "ta_signal": ["majors_scanner", "ta", "technical", "mean-reversion", "trend-following", "scalping"],
 }
 
 
