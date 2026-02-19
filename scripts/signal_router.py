@@ -968,6 +968,9 @@ def run_router():
 
     _log(f"Batch: {len(batch)} signal(s) selected for pipeline" + (" (paper mode)" if is_paper_mode else ""))
 
+    # Initialize pipeline_action in case all signals are skipped
+    pipeline_action = "NO_SIGNALS"
+    
     for batch_idx, (selected, selected_score) in enumerate(batch):
         # Check budget before each run
         if state.get("daily_pipeline_runs", 0) >= MAX_DAILY_RUNS:
