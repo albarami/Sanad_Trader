@@ -254,6 +254,80 @@ def call_openai(system_prompt, user_message, model="gpt-5.2", max_tokens=2000, s
         return _fallback_openrouter(system_prompt, user_message, f"openai/{model}", max_tokens, stage, token_symbol)
 
 
+def call_openai_responses(system_prompt, user_message, model="gpt-5.2-pro", max_tokens=8000, stage="unknown", token_symbol=""):
+    """
+    Call OpenAI Responses API for models that require it (e.g. gpt-5.2-pro).
+    
+    Args:
+        system_prompt: System prompt string
+        user_message: User message string
+        model: Model name (default: gpt-5.2-pro)
+        max_tokens: Max tokens for response
+        stage: Pipeline stage for cost tracking
+        token_symbol: Trading token symbol for cost tracking
+    
+    Returns:
+        Response text string, or None on failure
+    """
+    if not OPENAI_API_KEY:
+        print(f"    [OpenAI key missing — cannot use Responses API]")
+        return None
+
+    url = "https://api.openai.com/v1/responses"
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {OPENAI_API_KEY}",
+    }
+
+    try:
+        response = requests.post(
+            url,
+            headers=headers,
+            json={
+                "model": model,
+                "input": [
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_message},
+                ],
+                "max_output_tokens": max_tokens,
+            },
+            timeout=(10, 120)  # Longer timeout for deep reasoning
+        )
+        response.raise_for_status()
+        result = response.json()
+        
+        # Extract text from Responses API structure
+        for item in result.get("output", []):
+            if item.get("type") == "message":
+                for content in item.get("content", []):
+                    if content.get("type") == "output_text":
+                        text = content.get("text", "")
+                        if text:
+                            print(f"    [OpenAI Responses API OK — {model}]")
+                            
+                            # Log cost
+                            usage = result.get("usage", {})
+                            input_tokens = usage.get("input_tokens", 0)
+                            output_tokens = usage.get("output_tokens", 0)
+                            try:
+                                from cost_tracker import log_api_call
+                                log_api_call(model, input_tokens, output_tokens, stage, token_symbol)
+                            except Exception as e:
+                                print(f"    [Cost tracking failed: {e}]")
+                            
+                            return text
+        
+        print(f"    [OpenAI Responses API returned unexpected structure: {str(result)[:200]}]")
+        return None
+        
+    except (requests.exceptions.Timeout, requests.exceptions.ConnectionError) as e:
+        print(f"    [OpenAI Responses API TIMEOUT/CONNECTION: {e}]")
+        return None
+    except Exception as e:
+        print(f"    [OpenAI Responses API FAILED: {e}]")
+        return None
+
+
 def call_perplexity(query, model="sonar-pro", stage="unknown", token_symbol=""):
     """
     Call Perplexity API directly for real-time intelligence.
@@ -1568,7 +1642,7 @@ A paper loss of $50 that teaches the system a pattern is worth more than a paper
     else:
         print("  [5a] Al-Muhasbi reviewing via GPT-5.2...")
 
-    judge_response = call_openai(
+    judge_response = call_openai_responses(
         system_prompt=judge_system,
         user_message=judge_message,
         model="gpt-5.2-pro",
