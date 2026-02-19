@@ -10,6 +10,12 @@ import time
 import urllib.request
 import urllib.error
 from pathlib import Path
+from dotenv import load_dotenv
+
+# Load .env if not already in environment
+if not os.environ.get("SOLSCAN_API_KEY"):
+    env_path = Path(__file__).resolve().parents[1] / "config" / ".env"
+    load_dotenv(env_path)
 
 SOLSCAN_API_KEY = os.environ.get("SOLSCAN_API_KEY")
 BASE_URL = "https://pro-api.solscan.io/v2.0"

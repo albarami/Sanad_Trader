@@ -147,15 +147,41 @@ def _get_binance_1h_change(symbol: str) -> float | None:
 
 
 def _enrich_solana_token(signal: dict) -> dict:
-    """
-    Enrich Solana token using Birdeye API.
+    """Enrich Solana token using Birdeye + Solscan APIs."""
+    token_address = signal.get("token_address", "")
+    if not token_address or len(token_address) < 32:
+        return signal  # Invalid/missing address
     
-    TODO: Requires Birdeye API key and client.
-    For now, return signal unchanged (Solana enrichment Sprint 4).
-    """
-    # Placeholder for Birdeye integration
-    # Would call: GET /defi/token_overview?address={CA}
-    # Returns: price, volume24h, liquidity, priceChange24hPercent, priceChange1hPercent
+    # Birdeye market data
+    try:
+        import birdeye_client
+        birdeye_data = birdeye_client.get_token_overview(token_address)
+        
+        if birdeye_data:
+            signal["volume_24h_usd"] = birdeye_data.get("v24hUSD", 0)
+            signal["price_change_1h_pct"] = birdeye_data.get("priceChange1hPercent", 0)
+            signal["price_change_24h_pct"] = birdeye_data.get("priceChange24hPercent", 0)
+            signal["liquidity_usd"] = birdeye_data.get("liquidity", 0)
+            signal["current_price"] = birdeye_data.get("price", signal.get("current_price", 0))
+            signal["market_cap"] = birdeye_data.get("marketCap", 0)
+            signal["chain"] = "solana"  # Confirm chain
+    except Exception:
+        pass  # Birdeye failed, continue to Solscan
+    
+    # Solscan holder data + metadata
+    try:
+        from solscan_client import enrich_signal_with_solscan
+        
+        # Use existing enrichment function
+        enriched = enrich_signal_with_solscan(signal)
+        
+        # Map Solscan fields to canonical fields
+        if "solscan_holder_count" in enriched:
+            signal["holder_count"] = enriched["solscan_holder_count"]
+        if "solscan_top_10_pct" in enriched:
+            signal["top10_holder_pct"] = enriched["solscan_top_10_pct"]
+    except Exception:
+        pass  # Solscan failed, but don't block signal
     
     return signal
 
