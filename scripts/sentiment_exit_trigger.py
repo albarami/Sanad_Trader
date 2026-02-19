@@ -62,7 +62,14 @@ def _save_json(path, data):
 
 def _get_open_positions() -> dict:
     """Get open positions as {token: position_data}."""
-    positions = _load_json(POSITIONS_PATH, {})
+    data = _load_json(POSITIONS_PATH, {})
+    
+    # Handle {"positions": [...]} structure
+    if isinstance(data, dict) and "positions" in data:
+        positions = data["positions"]
+    else:
+        positions = data
+    
     if isinstance(positions, list):
         return {p.get("token", p.get("symbol", "")): p for p in positions if p.get("status", "").upper() == "OPEN"}
     elif isinstance(positions, dict):
