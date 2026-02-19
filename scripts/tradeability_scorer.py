@@ -50,8 +50,8 @@ def score_tradeability(signal: dict) -> int:
     
     # For tokens without indicators (CEX majors, Solana)
     else:
-        price_1h = signal.get("price_change_1h", 0)
-        price_24h = signal.get("price_change_24h", 0)
+        price_1h = signal.get("price_change_1h_pct", 0)
+        price_24h = signal.get("price_change_24h_pct", 0)
         
         # Strong moves in either direction = tradeable (mean reversion or momentum)
         if abs(price_1h) > 5:
@@ -77,7 +77,7 @@ def score_tradeability(signal: dict) -> int:
     
     # Check volume ratio from indicators or use absolute thresholds
     volume_ratio = indicators.get("volume_ratio", 0)
-    vol_24h = signal.get("volume_24h", 0)
+    vol_24h = signal.get("volume_24h_usd", signal.get("volume_24h", 0))  # Canonical + legacy fallback
     
     if volume_ratio > 3:
         volume_score = 20

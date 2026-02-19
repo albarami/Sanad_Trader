@@ -662,9 +662,19 @@ def run_router():
     # --- Register all signals in corroboration engine (rolling window) ---
     try:
         from corroboration_engine import register_signal, get_corroboration
+        from signal_normalizer import normalize_signal
+        
+        normalized_count = 0
         for s in all_signals:
-            register_signal(s)
-        _log(f"Corroboration engine: registered {len(all_signals)} signals in rolling window")
+            # Normalize before registering (ensures signal_window has canonical fields)
+            origin = s.get("_origin", "unknown")
+            normalized = normalize_signal(s, origin)
+            if normalized:
+                register_signal(normalized)
+                normalized_count += 1
+            else:
+                register_signal(s)  # Fallback to raw if normalization fails
+        _log(f"Corroboration engine: registered {normalized_count}/{len(all_signals)} signals (normalized)")
     except Exception as e:
         _log(f"Corroboration engine registration failed: {e}")
 

@@ -74,15 +74,15 @@ def _enrich_binance_major(signal: dict) -> dict:
         ticker = get_ticker_24h(symbol)
         if ticker:
             # Update with Binance data (authoritative for CEX pairs)
-            signal["volume_24h"] = float(ticker.get("quoteVolume", 0))  # Volume in USDT
-            signal["price_change_24h"] = float(ticker.get("priceChangePercent", 0))
+            signal["volume_24h_usd"] = float(ticker.get("quoteVolume", 0))  # Volume in USDT (≈USD)
+            signal["price_change_24h_pct"] = float(ticker.get("priceChangePercent", 0))
             signal["current_price"] = float(ticker.get("lastPrice", signal.get("current_price", 0)))
             signal["chain"] = "binance"  # Confirm chain
             
             # Calculate 1-hour price change from klines
             price_1h = _get_binance_1h_change(symbol)
             if price_1h is not None:
-                signal["price_change_1h"] = price_1h
+                signal["price_change_1h_pct"] = price_1h
                 
     except Exception as e:
         # Enrichment failed, but don't block signal
