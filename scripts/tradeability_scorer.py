@@ -64,7 +64,14 @@ def score_tradeability(signal: dict) -> int:
         elif abs(price_24h) > 5:
             momentum_score += 5
         
-        # Bonus for acceleration (1h > 24h means speeding up)
+        # Relative strength bonus: Trending while down = reversal setup
+        # If source indicates "trending" and price is negative, reward resilience
+        source = signal.get("source", "").lower()
+        if "trending" in source and price_24h < 0:
+            # Trending on CoinGecko/Birdeye despite negative price = relative strength
+            momentum_score += 5  # Reward the reversal potential
+        
+        # Acceleration bonus (1h momentum stronger than 24h average)
         if price_1h and price_24h and abs(price_1h) > abs(price_24h / 24):
             momentum_score += 5
     

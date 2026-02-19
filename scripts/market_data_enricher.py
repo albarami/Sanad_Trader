@@ -15,6 +15,7 @@ Used by signal_router.py BEFORE tradeability scoring.
 import sys
 from pathlib import Path
 from datetime import datetime, timezone, timedelta
+import time
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 BASE_DIR = Path(__file__).resolve().parents[1]
@@ -26,6 +27,22 @@ try:
 except ImportError:
     get_ticker_24h = None
     binance_request = None
+
+# In-memory cache (TTL 60s to limit Binance API calls)
+_BINANCE_CACHE = {}
+_CACHE_TTL = 60  # seconds
+
+def _get_cached_binance_data(symbol: str):
+    """Get cached Binance data if fresh (<60s old)."""
+    if symbol in _BINANCE_CACHE:
+        data, timestamp = _BINANCE_CACHE[symbol]
+        if time.time() - timestamp < _CACHE_TTL:
+            return data
+    return None
+
+def _cache_binance_data(symbol: str, data: dict):
+    """Cache Binance data with timestamp."""
+    _BINANCE_CACHE[symbol] = (data, time.time())
 
 BINANCE_MAJORS = {
     "BTC", "ETH", "BNB", "SOL", "XRP", "ADA", "DOGE", "DOT", "MATIC", "AVAX",
@@ -63,15 +80,26 @@ def enrich_signal(signal: dict) -> dict:
 
 
 def _enrich_binance_major(signal: dict) -> dict:
-    """Enrich Binance-listed major using Binance API."""
+    """Enrich Binance-listed major using Binance API with caching."""
     if not get_ticker_24h:
         return signal  # Binance client not available
     
     token = signal.get("token", "").upper()
     symbol = token + "USDT"  # Standard quote currency
     
+    # Check cache first (avoid redundant API calls)
+    cached = _get_cached_binance_data(symbol)
+    if cached:
+        ticker = cached
+    else:
+        try:
+            ticker = get_ticker_24h(symbol)
+            if ticker:
+                _cache_binance_data(symbol, ticker)
+        except Exception:
+            return signal  # API call failed, return unchanged
+    
     try:
-        ticker = get_ticker_24h(symbol)
         if ticker:
             # Update with Binance data (authoritative for CEX pairs)
             signal["volume_24h_usd"] = float(ticker.get("quoteVolume", 0))  # Volume in USDT (≈USD)
@@ -79,12 +107,12 @@ def _enrich_binance_major(signal: dict) -> dict:
             signal["current_price"] = float(ticker.get("lastPrice", signal.get("current_price", 0)))
             signal["chain"] = "binance"  # Confirm chain
             
-            # Calculate 1-hour price change from klines
+            # Calculate 1-hour price change from klines (also cached)
             price_1h = _get_binance_1h_change(symbol)
             if price_1h is not None:
                 signal["price_change_1h_pct"] = price_1h
                 
-    except Exception as e:
+    except Exception:
         # Enrichment failed, but don't block signal
         pass
     
