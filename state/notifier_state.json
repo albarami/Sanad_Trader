@@ -1,28 +1,7 @@
 {
-  "sent": 532,
+  "sent": 535,
   "failed": 7,
   "history": [
-    {
-      "level": "L1",
-      "title": "Signal Rejected",
-      "message": "\ud83d\udd34 *Signal Rejected*\n\nToken: TOTO\nReason: {\n  \"result\": \"BLOCK\",\n  \"gates_passed\": [\n    1,\n    2,\n    3,\n    4,\n    5,\n    6,\n    7,\n    8,\n    9,\n    10,\n    11\n  ],\n  \"gate_failed\": 12,\n  \"gate_fail",
-      "channel": "log_only",
-      "at": "2026-02-19T05:37:48.903327+00:00"
-    },
-    {
-      "level": "L2",
-      "title": "SELL SOL",
-      "message": "\ud83d\udfe2 SELL SOL/USDT\n\nReason: TIME_EXIT\nEntry: 81.5200\nExit: 81.7200\nPnL: +0.2% (+0.20)\nHold: 8.1h\n\nStrategy: meme-momentum\nSanad Score: 66",
-      "channel": "telegram",
-      "at": "2026-02-19T05:39:56.339756+00:00"
-    },
-    {
-      "level": "L2",
-      "title": "Heartbeat Alert",
-      "message": "Heartbeat ALERT: cron_health: reconciliation: last ran 70min ago (max 30min)",
-      "channel": "telegram",
-      "at": "2026-02-19T05:40:46.643686+00:00"
-    },
     {
       "level": 1,
       "title": null,
@@ -701,7 +680,28 @@
       "message": "\u26a0\ufe0f WATCHDOG: Stale data sources detected\n\u2022 Sources: onchain (684min old)\n\u2022 Note: This usually means scanners haven't run or are failing",
       "channel": "telegram",
       "at": "2026-02-19T10:50:06.638917+00:00"
+    },
+    {
+      "level": 1,
+      "title": null,
+      "message": "\ud83d\udd27 WATCHDOG AUTO-FIX (attempt 1/4):\n\u2022 Problem: Router stalled (30min since last run)\n\u2022 Context: (token=COPPERINU | stage=sanad | hints=timeout_detected,timeout_detected)\n\u2022 Action: Killed process + clea",
+      "channel": "telegram",
+      "at": "2026-02-19T10:58:15.425771+00:00"
+    },
+    {
+      "level": 1,
+      "title": null,
+      "message": "\ud83d\udd27 WATCHDOG AUTO-FIX (attempt 1/4):\n\u2022 Problem: Router stalled (34min since last run)\n\u2022 Context: (token=COPPERINU | stage=sanad | hints=timeout_detected,timeout_detected)\n\u2022 Action: Killed process + clea",
+      "channel": "telegram",
+      "at": "2026-02-19T11:02:03.643919+00:00"
+    },
+    {
+      "level": "L2",
+      "title": null,
+      "message": "TEST: special chars _ * [ ] ( ) ~ should not break",
+      "channel": "telegram",
+      "at": "2026-02-19T11:02:21.215934+00:00"
     }
   ],
-  "last_sent": "2026-02-19T10:50:06.638934+00:00"
+  "last_sent": "2026-02-19T11:02:21.215950+00:00"
 }

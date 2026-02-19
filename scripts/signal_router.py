@@ -839,10 +839,10 @@ def run_router():
         # Only prefilter DexScreener boost signals
         if origin == "dexscreener" and boost > 0:
             token_name = s.get("token", "?")
-            liquidity = s.get("liquidity", 0)
-            token_age_h = s.get("token_age_hours", 0)
-            holder_count = s.get("holder_count", 0)
-            rugcheck_score = s.get("rugcheck_score", 0)
+            liquidity = s.get("liquidity") or 0
+            token_age_h = s.get("token_age_hours") or 0
+            holder_count = s.get("holder_count") or 0
+            rugcheck_score = s.get("rugcheck_score") or 0
             
             # REQUIRE ALL: liquidity $200K+, age 24h+, holders 1000+, rugcheck 50+
             reasons = []

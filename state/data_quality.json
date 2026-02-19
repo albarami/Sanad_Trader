@@ -1,6 +1,6 @@
 {
-  "status": "WARN",
-  "timestamp": "2026-02-19T10:47:22.058730+00:00",
+  "status": "OK",
+  "timestamp": "2026-02-19T11:03:37.098696+00:00",
   "checks": [
     {
       "check": "timestamp_skew",
@@ -19,25 +19,11 @@
     },
     {
       "check": "stale_detection",
-      "status": "WARN",
-      "issues": [
-        {
-          "symbol": "SHIBUSDT",
-          "stale_price": 6.24e-06,
-          "consecutive_polls": 5,
-          "severity": "WARN"
-        },
-        {
-          "symbol": "WIFUSDT",
-          "stale_price": 0.22,
-          "consecutive_polls": 5,
-          "severity": "WARN"
-        }
-      ]
+      "status": "OK",
+      "issues": []
     }
   ],
   "summary": {
-    "OK": 3,
-    "WARN": 1
+    "OK": 4
   }
 }
