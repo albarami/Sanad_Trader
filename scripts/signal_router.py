@@ -971,6 +971,12 @@ def run_router():
     # Initialize pipeline_action in case all signals are skipped
     pipeline_action = "NO_SIGNALS"
     
+    # Update last_run timestamp at start (so watchdog knows router is running)
+    now = datetime.now(timezone.utc)
+    now_str = now.isoformat().replace("+00:00", "+00:00")
+    state["last_run"] = now_str
+    _save_json_atomic(ROUTER_STATE_PATH, state)
+    
     for batch_idx, (selected, selected_score) in enumerate(batch):
         # Check budget before each run
         if state.get("daily_pipeline_runs", 0) >= MAX_DAILY_RUNS:
