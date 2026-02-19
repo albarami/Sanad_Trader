@@ -362,27 +362,79 @@ def simulate_transaction(encoded_transaction: str) -> dict | None:
 # 6. get_recent_transactions
 # ---------------------------------------------------------------------------
 def get_recent_transactions(address: str, limit: int = 20) -> list | None:
-    """Get recent transactions for an address."""
+    """
+    Get recent transactions for an address with full parsed data.
+    Uses Helius Enhanced Transactions API to get token transfers, swap details, etc.
+    """
+    _check_circuit()
+    _rate_limit()
+    
+    # Step 1: Get signature list
     sigs = _rpc("getSignaturesForAddress", [address, {"limit": limit}])
     if sigs is None:
         return None
 
+    # Step 2: Fetch parsed transaction data via Helius Enhanced API
+    # Helius Enhanced API endpoint
+    enhanced_url = f"https://api.helius.xyz/v0/transactions/?api-key={HELIUS_API_KEY}"
+    
     transactions = []
-    # Only fetch details for first 10 to avoid rate limits
-    for sig_info in sigs[:min(limit, 10)]:
-        sig = sig_info.get("signature")
-        block_time = sig_info.get("blockTime")
-        ts = datetime.fromtimestamp(block_time, tz=timezone.utc).isoformat() if block_time else None
-
-        transactions.append({
-            "signature": sig,
-            "timestamp": ts,
-            "block_time": block_time,
-            "slot": sig_info.get("slot"),
-            "err": sig_info.get("err"),
-            "memo": sig_info.get("memo"),
-        })
-
+    # Batch signatures (Helius accepts array of transactions)
+    signatures = [s["signature"] for s in sigs[:min(limit, 10)]]  # Limit to 10 to avoid rate limits
+    
+    if not signatures:
+        return []
+    
+    try:
+        resp = requests.post(
+            enhanced_url,
+            json={"transactions": signatures},
+            timeout=30
+        )
+        resp.raise_for_status()
+        enhanced_txs = resp.json()
+        
+        if not isinstance(enhanced_txs, list):
+            _log(f"Enhanced API returned non-list: {type(enhanced_txs)}")
+            _record_failure()
+            return None
+            
+        _reset_circuit()
+        
+        # Parse enhanced transaction data
+        for tx_data in enhanced_txs:
+            sig = tx_data.get("signature")
+            timestamp = tx_data.get("timestamp")
+            
+            # Convert Unix timestamp to ISO format
+            if timestamp:
+                ts = datetime.fromtimestamp(timestamp, tz=timezone.utc).isoformat()
+            else:
+                ts = None
+            
+            transactions.append({
+                "signature": sig,
+                "timestamp": ts,
+                "block_time": timestamp,
+                "slot": tx_data.get("slot"),
+                "err": None if tx_data.get("type") else tx_data.get("err"),
+                "memo": tx_data.get("description"),
+                # Enhanced fields
+                "type": tx_data.get("type"),
+                "source": tx_data.get("source"),
+                "fee": tx_data.get("fee"),
+                "feePayer": tx_data.get("feePayer"),
+                "nativeTransfers": tx_data.get("nativeTransfers", []),
+                "tokenTransfers": tx_data.get("tokenTransfers", []),
+                "accountData": tx_data.get("accountData", []),
+                "instructions": tx_data.get("instructions", []),
+            })
+            
+    except requests.exceptions.RequestException as e:
+        _log(f"Enhanced API request failed: {e}")
+        _record_failure()
+        return None
+    
     return transactions
 
 
