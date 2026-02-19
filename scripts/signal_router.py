@@ -993,8 +993,17 @@ def run_router():
             selected['tradeability_score'] = t_score
             _log(f"  Tradeability: {t_score}/100")
             
-            if t_score < 55:
-                _log(f"  SKIP {selected_token}: tradeability={t_score} (below 55)")
+            # Regime-adaptive threshold (lower during bear markets)
+            regime_tag = selected.get('regime_tag', 'UNKNOWN')
+            if regime_tag in ['BEAR_HIGH_VOL', 'BEAR_LOW_VOL']:
+                threshold = 35  # More lenient in bear markets
+            elif regime_tag == 'UNKNOWN':
+                threshold = 40  # Moderate default when regime unknown (paper mode learning)
+            else:
+                threshold = 55  # Strict in bull markets
+            
+            if t_score < threshold:
+                _log(f"  SKIP {selected_token}: tradeability={t_score} (below {threshold} for {regime_tag})")
                 continue
         except Exception as e:
             _log(f"  Tradeability scoring failed: {e}")
