@@ -1,36 +1,36 @@
 {
   "token": {
-    "symbol": "XRP",
-    "deployment_timestamp": "2026-01-09T06:10:49.010220+00:00"
+    "symbol": "TESTICLE",
+    "deployment_timestamp": "2026-01-09T06:30:42.435965+00:00"
   },
-  "symbol": "XRPUSDT",
+  "symbol": "TESTICLEUSDT",
   "venue": "DEX",
-  "exchange": "binance",
-  "strategy_name": "sentiment-divergence",
+  "exchange": "raydium",
+  "strategy_name": "whale-following",
   "data_timestamps": {
-    "price_timestamp": "2026-02-19T21:10:49.010366+00:00",
-    "onchain_timestamp": "2026-02-19T21:10:49.010368+00:00"
+    "price_timestamp": "2026-02-19T21:30:42.436033+00:00",
+    "onchain_timestamp": "2026-02-19T21:30:42.436036+00:00"
   },
-  "current_price": 1.4112,
+  "current_price": null,
   "sanad_verification": {
-    "sanad_trust_score": 82,
-    "grade": "Ahad",
-    "recommendation": "PROCEED",
+    "sanad_trust_score": 73,
+    "grade": "Mashhur",
+    "recommendation": "CAUTION",
     "rugpull_flags": []
   },
   "market_data": {
-    "estimated_slippage_bps": 0.7,
-    "spread_bps": 0.7,
-    "depth_sufficient": true,
+    "estimated_slippage_bps": 0,
+    "spread_bps": 0,
+    "depth_sufficient": false,
     "price_change_pct_window": 0
   },
   "trade_intent": {
     "position_size_pct": 0.013999999999999999,
     "position_usd": 139.16
   },
-  "trade_confidence_score": 52,
-  "almuhasbi_verdict": "APPROVE",
-  "almuhasbi_confidence": 52,
+  "trade_confidence_score": 35,
+  "almuhasbi_verdict": "REVISE",
+  "almuhasbi_confidence": 35,
   "dex_sim_result": null,
   "volatility_30min_pct": 0,
   "has_verified_catalyst": false

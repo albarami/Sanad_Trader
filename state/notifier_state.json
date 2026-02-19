@@ -1,21 +1,7 @@
 {
-  "sent": 618,
+  "sent": 620,
   "failed": 7,
   "history": [
-    {
-      "level": 2,
-      "title": null,
-      "message": "\u26a0\ufe0f WATCHDOG: Stale data sources detected\n\u2022 Sources: coingecko (19min old)\n\u2022 Note: This usually means scanners haven't run or are failing",
-      "channel": "telegram",
-      "at": "2026-02-19T10:26:16.996101+00:00"
-    },
-    {
-      "level": "L1",
-      "title": "Signal Rejected",
-      "message": "\ud83d\udd34 *Signal Rejected*\n\nToken: TOTO\nReason: {\n  \"result\": \"BLOCK\",\n  \"gates_passed\": [\n    1,\n    2,\n    3,\n    4,\n    5,\n    6,\n    7,\n    8,\n    9,\n    10\n  ],\n  \"gate_failed\": 11,\n  \"gate_failed_name\"",
-      "channel": "log_only",
-      "at": "2026-02-19T10:30:57.012554+00:00"
-    },
     {
       "level": "L2",
       "title": "Heartbeat Alert",
@@ -701,7 +687,21 @@
       "message": "\u2696\ufe0f HOURLY STATUS\n\ud83d\udcb0 Balance: $9,939.54 (unrealized: $-2.37)\n\ud83d\udcc8 Positions (3/10):\n  SOL @ $82.39 -> $82.14 (-0.3%)\n  ETH @ $1,973.50 -> $1,945.77 (-1.4%)\n  BTC @ $67,042.81 -> $67,045.59 (+0.0%)\n\ud83d\udcca Today:",
       "channel": "telegram",
       "at": "2026-02-19T20:56:31.531705+00:00"
+    },
+    {
+      "level": "L1",
+      "title": "Signal Rejected",
+      "message": "\ud83d\udd34 *Signal Rejected*\n\nToken: XRP\nReason: {\n  \"result\": \"BLOCK\",\n  \"gates_passed\": [\n    1,\n    2,\n    3,\n    4,\n    5,\n    6,\n    7,\n    8,\n    9,\n    10,\n    11,\n    12,\n    13,\n    14\n  ],\n  \"gate_fa",
+      "channel": "log_only",
+      "at": "2026-02-19T21:20:59.031158+00:00"
+    },
+    {
+      "level": "L1",
+      "title": "Signal Rejected",
+      "message": "\ud83d\udd34 *Signal Rejected*\n\nToken: TESTICLE\nReason: {\n  \"result\": \"BLOCK\",\n  \"gates_passed\": [\n    1,\n    2,\n    3,\n    4,\n    5,\n    6,\n    7,\n    8,\n    9,\n    10,\n    11,\n    12,\n    13,\n    14\n  ],\n  \"ga",
+      "channel": "log_only",
+      "at": "2026-02-19T21:21:11.916644+00:00"
     }
   ],
-  "last_sent": "2026-02-19T20:56:31.531721+00:00"
+  "last_sent": "2026-02-19T21:21:11.916654+00:00"
 }

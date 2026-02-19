@@ -1,6 +1,6 @@
 {
   "status": "WARN",
-  "timestamp": "2026-02-19T21:07:33.098424+00:00",
+  "timestamp": "2026-02-19T21:37:38.737100+00:00",
   "checks": [
     {
       "check": "timestamp_skew",
@@ -22,8 +22,8 @@
       "status": "WARN",
       "issues": [
         {
-          "symbol": "PEPEUSDT",
-          "stale_price": 4.22e-06,
+          "symbol": "RAYUSDT",
+          "stale_price": 0.631,
           "consecutive_polls": 5,
           "severity": "WARN"
         }

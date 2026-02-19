@@ -64,9 +64,9 @@ def _get_open_positions() -> dict:
     """Get open positions as {token: position_data}."""
     positions = _load_json(POSITIONS_PATH, {})
     if isinstance(positions, list):
-        return {p.get("token", p.get("symbol", "")): p for p in positions if p.get("status") == "open"}
+        return {p.get("token", p.get("symbol", "")): p for p in positions if p.get("status", "").upper() == "OPEN"}
     elif isinstance(positions, dict):
-        return {k: v for k, v in positions.items() if isinstance(v, dict) and v.get("status") == "open"}
+        return {k: v for k, v in positions.items() if isinstance(v, dict) and v.get("status", "").upper() == "OPEN"}
     return {}
 
 
