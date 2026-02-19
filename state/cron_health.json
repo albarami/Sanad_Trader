@@ -18,5 +18,9 @@
   "whale_tracker": {
     "last_run": "2026-02-19T12:14:37.304498+00:00",
     "status": "ok"
+  },
+  "majors_scanner": {
+    "last_run": "2026-02-19T12:17:32.688887+00:00",
+    "status": "ok"
   }
 }
