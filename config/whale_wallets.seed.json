@@ -1,0 +1,28 @@
+{
+  "seed_wallets": [
+    "3FDvYAhSXq7rNHDPyx6hbw5yDjrHMpSa53aTQEYYsh3m",
+    "4hSXPtxZgXFpo6Vxq9yqxNjcBoqWN3VoaPJWonUtupzD",
+    "4zMmxWeRK2WdzXHf6HkBRF3PRnHLDe6wCqyvxupyj44e",
+    "5TMR5GFPTzkNhprnty2ocXEFLoLur1uchg4NkEr5WEf4",
+    "5Tytu6cHm69UN9k1ZEqrvCmfJsdUAJnTJpaAV1fZ2e4h",
+    "5aUVvRGDzwQ4Cgy1Je5sthVpiH1reojqC1QLc93qCiZU",
+    "62FZUSWPMX9pofoV1uWHMdzFJRjwMa1LHgh2zhdEB7Zj",
+    "6QEC34YPZxN2t48suxVFuhnTv7ihCcYoXTQpCtryBfiw",
+    "6nhskL8RVpXzWXC7mcC1UXpe3ze2p6P6og1jXVGUW88s",
+    "73LnJ7G9ffBDjEBGgJDdgvLUhD5APLonKrNiHsKDCw5B",
+    "771Nx7UF24GKSpCc2TYwqWds9WRd1S3bNB82KfxhyYHT",
+    "8deJ9xeUvXSJwicYptA9mHsU2rN2pDx37KWzkDkEXhU6",
+    "AbcX4XBm7DJ3i9p29i6sU8WLmiW4FWY5tiwB9D6UBbcE",
+    "BDC19MFbzDpoF37QCxe4JR6i7UmXNMSiEqrxuQgJoWte",
+    "BcbwUzUWSfgBPBeXZRG5ELqrsLT5rVSvdFs3yNf3DJEY",
+    "DNfuF1L62WWyW3pNakVkyGGFzVVhj4Yr52jSmdTyeBHm",
+    "FNrwxRPRTtrRtFjogkJXxgY6mB5S71kgiEvjj4UgwV3K",
+    "GfXQesPe3Zuwg8JhAt6Cg8euJDTVx751enp9EQQmhzPH",
+    "JDd3hy3gQn2V982mi1zqhNqUw1GfV2UL6g76STojCJPN",
+    "RFSqPtn1JfavGiUD4HJsZyYXvZsycxf31hnYfbyG6iB",
+    "suqh5sHtr8HyJ7q8scBimULPkPpA557prMG47xCHQfK"
+  ],
+  "description": "Bootstrap seed list of 21 Solana whale wallets",
+  "last_updated": "2026-02-19T12:48:00Z",
+  "expansion_enabled": true
+}
