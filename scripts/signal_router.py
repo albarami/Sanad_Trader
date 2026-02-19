@@ -877,7 +877,7 @@ def run_router():
     rugcheck_log_parts = []
     rugcheck_skipped: set[int] = set()
     checked_rc = 0
-    for idx, (s, sc) in enumerate(candidates):
+    for idx, (s, sc) in enumerate(prefiltered):
         addr = s.get("token_address", "")
         chain = s.get("chain", "")
         if not addr or chain != "solana" or checked_rc >= 3:
@@ -891,7 +891,7 @@ def run_router():
             rc_safe = safety.get("safe_to_trade", False)
 
             if rc_score is not None and rc_score > 70:
-                candidates[idx] = (s, sc + 10)  # bonus
+                prefiltered[idx] = (s, sc + 10)  # bonus
             if rc_score is not None and rc_score < 30:
                 rugcheck_skipped.add(idx)
                 rugcheck_log_parts.append(f"{token_name} score {rc_score} ({rc_level}) ⛔ SKIPPED")
@@ -915,9 +915,11 @@ def run_router():
 
     # Remove skipped candidates
     if rugcheck_skipped:
-        candidates = [(s, sc) for idx, (s, sc) in enumerate(candidates) if idx not in rugcheck_skipped]
-        # Re-sort after bonus adjustments
-        candidates.sort(key=lambda x: x[1], reverse=True)
+        prefiltered = [(s, sc) for idx, (s, sc) in enumerate(prefiltered) if idx not in rugcheck_skipped]
+    
+    # Re-sort after bonus adjustments and prefiltering
+    candidates = prefiltered
+    candidates.sort(key=lambda x: x[1], reverse=True)
 
     if not candidates:
         _log("No candidates remaining after RugCheck safety gate.")
