@@ -1,0 +1,16 @@
+{
+  "token": "LINK",
+  "entry_price": 8.6,
+  "exit_price": 8.63,
+  "pnl_pct": 0.003488372093023388,
+  "strategy": "meme-momentum",
+  "source": "coingecko:trending",
+  "source_raw": "CoinGecko trending #15",
+  "trust_score": 0,
+  "corroboration": 1,
+  "exit_reason": "TIME_EXIT",
+  "entry_time": null,
+  "exit_time": "2026-02-19T08:34:53.553551+00:00",
+  "hold_duration_hours": 0,
+  "analyzed_at": "2026-02-19T14:56:19.199726Z"
+}

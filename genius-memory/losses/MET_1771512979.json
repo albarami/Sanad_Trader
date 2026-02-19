@@ -1,0 +1,16 @@
+{
+  "token": "MET",
+  "entry_price": 0.2272,
+  "exit_price": 0.2195,
+  "pnl_pct": -0.03389084507042259,
+  "strategy": "sentiment-divergence",
+  "source": "birdeye:trending",
+  "source_raw": "Birdeye trending",
+  "trust_score": 0,
+  "corroboration": 1,
+  "exit_reason": "STOP_LOSS",
+  "entry_time": null,
+  "exit_time": "2026-02-17T15:35:24.017486+00:00",
+  "hold_duration_hours": 0,
+  "analyzed_at": "2026-02-19T14:56:19.197018Z"
+}

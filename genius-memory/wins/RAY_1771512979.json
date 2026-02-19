@@ -1,0 +1,16 @@
+{
+  "token": "RAY",
+  "entry_price": 0.691,
+  "exit_price": 0.696,
+  "pnl_pct": 0.007235890014471787,
+  "strategy": "unknown",
+  "source": "unknown:general",
+  "source_raw": "unknown",
+  "trust_score": 0,
+  "corroboration": 1,
+  "exit_reason": "TRAILING_STOP",
+  "entry_time": null,
+  "exit_time": "2026-02-17T11:24:01.843939+00:00",
+  "hold_duration_hours": 0,
+  "analyzed_at": "2026-02-19T14:56:19.195938Z"
+}

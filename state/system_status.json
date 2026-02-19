@@ -39,8 +39,8 @@
     },
     "openclaw_escalation": {
       "status": "OK",
-      "detail": "No escalations"
+      "detail": "No active escalations"
     }
   },
-  "heartbeat_timestamp": "2026-02-19T12:22:55.534892+00:00"
+  "heartbeat_timestamp": "2026-02-19T14:50:48.154874+00:00"
 }

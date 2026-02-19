@@ -1,0 +1,135 @@
+{
+  "date": "20260219",
+  "trades_analyzed": 18,
+  "regime": "UNKNOWN",
+  "rolling_7d": {
+    "trades": 0,
+    "period_days": 7
+  },
+  "rolling_30d": {
+    "trades": 0,
+    "period_days": 30
+  },
+  "rolling_90d": {
+    "trades": 0,
+    "period_days": 90
+  },
+  "by_strategy": {
+    "unknown": {
+      "trades": 5,
+      "win_rate": 0.6,
+      "total_return_pct": -0.02,
+      "avg_pnl_pct": -0.0
+    },
+    "whale-following": {
+      "trades": 3,
+      "win_rate": 0.3333,
+      "total_return_pct": -0.01,
+      "avg_pnl_pct": -0.0
+    },
+    "sentiment-divergence": {
+      "trades": 1,
+      "win_rate": 0.0,
+      "total_return_pct": -0.03,
+      "avg_pnl_pct": -0.03
+    },
+    "cex-listing-play": {
+      "trades": 2,
+      "win_rate": 1.0,
+      "total_return_pct": 0.02,
+      "avg_pnl_pct": 0.01
+    },
+    "meme-momentum": {
+      "trades": 7,
+      "win_rate": 0.5714,
+      "total_return_pct": -0.04,
+      "avg_pnl_pct": -0.01
+    }
+  },
+  "by_source": {
+    "unknown": {
+      "trades": 5,
+      "win_rate": 0.6,
+      "avg_pnl_pct": -0.0
+    },
+    "coingecko_trending": {
+      "trades": 4,
+      "win_rate": 0.5,
+      "avg_pnl_pct": -0.0
+    },
+    "Birdeye trending": {
+      "trades": 1,
+      "win_rate": 0.0,
+      "avg_pnl_pct": -0.03
+    },
+    "CoinGecko trending #12": {
+      "trades": 1,
+      "win_rate": 1.0,
+      "avg_pnl_pct": 0.02
+    },
+    "CoinGecko trending #3": {
+      "trades": 1,
+      "win_rate": 0.0,
+      "avg_pnl_pct": -0.01
+    },
+    "CoinGecko trending #14": {
+      "trades": 1,
+      "win_rate": 0.0,
+      "avg_pnl_pct": -0.04
+    },
+    "CoinGecko trending #7": {
+      "trades": 1,
+      "win_rate": 1.0,
+      "avg_pnl_pct": 0.0
+    },
+    "CoinGecko trending #15": {
+      "trades": 1,
+      "win_rate": 1.0,
+      "avg_pnl_pct": 0.0
+    },
+    "CoinGecko trending #9": {
+      "trades": 1,
+      "win_rate": 1.0,
+      "avg_pnl_pct": 0.0
+    },
+    "CoinGecko trending #4": {
+      "trades": 1,
+      "win_rate": 1.0,
+      "avg_pnl_pct": 0.01
+    },
+    "CoinGecko trending #10": {
+      "trades": 1,
+      "win_rate": 0.0,
+      "avg_pnl_pct": -0.01
+    }
+  },
+  "gpt_validation": {
+    "verdict": "CRITICAL",
+    "sample_size_adequate": false,
+    "statistically_significant_patterns": [],
+    "noise_patterns": [
+      "cex-listing-play 100% win rate (2/2 trades)",
+      "meme-momentum 57% win rate (4/7 trades)",
+      "unknown 60% win rate (3/5 trades)",
+      "all CoinGecko rank-specific sources (n=1 each)"
+    ],
+    "strategy_verdicts": {
+      "unknown": "WATCH",
+      "whale-following": "DEACTIVATE",
+      "sentiment-divergence": "DEACTIVATE",
+      "cex-listing-play": "WATCH",
+      "meme-momentum": "DEACTIVATE"
+    },
+    "recommendations": [
+      "Do not draw any performance conclusions until each strategy has at least 50\u2013100 trades; current total sample (18 trades) is statistically meaningless.",
+      "Apply a binomial test vs 50% baseline: none of the strategies reject the null at p<0.05 (e.g., 2/2 wins has p=0.25; 4/7 wins has p\u22480.68).",
+      "Disable strategies with negative total return and no statistical support (sentiment-divergence, whale-following, meme-momentum) to prevent capital bleed during further data collection.",
+      "Standardize source labeling (e.g., consolidate CoinGecko ranks) to avoid artificial fragmentation of data into n=1 buckets.",
+      "Recompute performance after minimum 50 trades per strategy and report confidence intervals for win rate and mean return, not just point estimates.",
+      "Do not report Sharpe ratio until at least 30\u201350 independent return observations; current sample is far too small for stable volatility estimation."
+    ],
+    "confidence_level": "high",
+    "summary": "The dataset (18 total trades) is far too small for statistical inference. No strategy demonstrates significance versus randomness, and several show negative expectancy. Any apparent edge is almost certainly noise."
+  },
+  "generated_at": "2026-02-19T14:56:42.465824+00:00"
+}

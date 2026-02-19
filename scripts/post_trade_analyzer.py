@@ -303,7 +303,22 @@ def run():
         except:
             pass
     
-    closed_trades = [t for t in trades if t.get("exit_time")]
+    # Normalize trade format (handle both old and new formats)
+    closed_trades = []
+    for t in trades:
+        # Old format has "timestamp" (exit time), new format has "exit_time"
+        if t.get("exit_time") or (t.get("timestamp") and t.get("side") == "SELL"):
+            # Generate unique ID from timestamp+token if missing
+            if not t.get("trade_id"):
+                ts = t.get("timestamp") or t.get("exit_time")
+                t["trade_id"] = f"{t.get('token')}_{ts}"
+            # Normalize field names
+            if "timestamp" in t and "exit_time" not in t:
+                t["exit_time"] = t["timestamp"]
+            if "reason" in t and "exit_reason" not in t:
+                t["exit_reason"] = t["reason"]
+            closed_trades.append(t)
+    
     new_closed = [t for t in closed_trades if t.get("trade_id") not in analyzed_ids]
     
     if not new_closed:

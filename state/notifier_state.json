@@ -1,336 +1,7 @@
 {
-  "sent": 550,
+  "sent": 597,
   "failed": 7,
   "history": [
-    {
-      "level": 1,
-      "title": null,
-      "message": "\ud83d\udd27 WATCHDOG AUTO-FIX:\n\u2022 Problem: DexScreener signals stale (15min, threshold 10min)\n\u2022 Action: Force-ran dexscreener_client.py\n\u2022 Result: \u2705 Fresh signals generated (12.8s)",
-      "channel": "telegram",
-      "at": "2026-02-19T06:56:16.856493+00:00"
-    },
-    {
-      "level": "L2",
-      "title": "Heartbeat Alert",
-      "message": "Heartbeat ALERT: cron_health: reconciliation: last ran 30min ago (max 30min)",
-      "channel": "telegram",
-      "at": "2026-02-19T07:00:56.427491+00:00"
-    },
-    {
-      "level": "L2",
-      "title": "Heartbeat Alert",
-      "message": "Heartbeat ALERT: cron_health: reconciliation: last ran 33min ago (max 30min)",
-      "channel": "telegram",
-      "at": "2026-02-19T07:03:23.229721+00:00"
-    },
-    {
-      "level": "L2",
-      "title": "Heartbeat Alert",
-      "message": "Heartbeat ALERT: cron_health: reconciliation: last ran 34min ago (max 30min)",
-      "channel": "telegram",
-      "at": "2026-02-19T07:04:20.819219+00:00"
-    },
-    {
-      "level": "L2",
-      "title": "Heartbeat Alert",
-      "message": "Heartbeat ALERT: cron_health: reconciliation: last ran 34min ago (max 30min)",
-      "channel": "telegram",
-      "at": "2026-02-19T07:04:44.040746+00:00"
-    },
-    {
-      "level": "L2",
-      "title": "Heartbeat Alert",
-      "message": "Heartbeat ALERT: cron_health: reconciliation: last ran 39min ago (max 30min)",
-      "channel": "telegram",
-      "at": "2026-02-19T07:09:24.248653+00:00"
-    },
-    {
-      "level": 1,
-      "title": null,
-      "message": "\ud83d\udd27 WATCHDOG AUTO-FIX:\n\u2022 Problem: Reconciliation stale (19min, threshold 15min)\n\u2022 Action: Cleared lock + re-ran reconciliation.py\n\u2022 Result: \u2705 Fresh (completed in 0.0s)",
-      "channel": "telegram",
-      "at": "2026-02-19T07:10:03.778459+00:00"
-    },
-    {
-      "level": "L2",
-      "title": "Heartbeat Alert",
-      "message": "Heartbeat ALERT: cron_health: reconciliation: last ran 40min ago (max 30min)",
-      "channel": "telegram",
-      "at": "2026-02-19T07:10:46.545301+00:00"
-    },
-    {
-      "level": "L1",
-      "title": "Signal Rejected",
-      "message": "\ud83d\udd34 *Signal Rejected*\n\nToken: CC\nReason: {\n  \"result\": \"BLOCK\",\n  \"gates_passed\": [\n    1,\n    2,\n    3,\n    4,\n    5,\n    6,\n    7,\n    8,\n    9,\n    10,\n    11\n  ],\n  \"gate_failed\": 12,\n  \"gate_failed",
-      "channel": "log_only",
-      "at": "2026-02-19T07:17:43.793976+00:00"
-    },
-    {
-      "level": "L2",
-      "title": "Heartbeat Alert",
-      "message": "Heartbeat ALERT: cron_health: reconciliation: last ran 47min ago (max 30min)",
-      "channel": "telegram",
-      "at": "2026-02-19T07:17:52.777084+00:00"
-    },
-    {
-      "level": "L2",
-      "title": null,
-      "message": "\u2696\ufe0f HOURLY STATUS\n\ud83d\udcb0 Balance: $9,945.23 (unrealized: +$3.68)\n\ud83d\udcc8 Positions (5/10):\n  LINK @ $8.60 -> $8.69 (+1.0%)\n  ETH @ $1,959.26 -> $1,980.40 (+1.1%)\n  BTC @ $66,481.62 -> $67,063.12 (+0.9%)\n  XRP @ $",
-      "channel": "telegram",
-      "at": "2026-02-19T07:17:53.369441+00:00"
-    },
-    {
-      "level": 1,
-      "title": null,
-      "message": "\ud83d\udd27 WATCHDOG AUTO-FIX:\n\u2022 Problem: DexScreener signals stale (13min, threshold 10min)\n\u2022 Action: Force-ran dexscreener_client.py\n\u2022 Result: \u2705 Fresh signals generated (11.8s)",
-      "channel": "telegram",
-      "at": "2026-02-19T07:18:16.609211+00:00"
-    },
-    {
-      "level": "L2",
-      "title": "Heartbeat Alert",
-      "message": "Heartbeat ALERT: cron_health: reconciliation: last ran 48min ago (max 30min)",
-      "channel": "telegram",
-      "at": "2026-02-19T07:18:22.623529+00:00"
-    },
-    {
-      "level": "L2",
-      "title": "Heartbeat Alert",
-      "message": "Heartbeat ALERT: cron_health: reconciliation: last ran 48min ago (max 30min)",
-      "channel": "telegram",
-      "at": "2026-02-19T07:19:11.710309+00:00"
-    },
-    {
-      "level": "L2",
-      "title": "Heartbeat Alert",
-      "message": "Heartbeat ALERT: cron_health: reconciliation: last ran 50min ago (max 30min)",
-      "channel": "telegram",
-      "at": "2026-02-19T07:20:47.179096+00:00"
-    },
-    {
-      "level": "L1",
-      "title": "Signal Rejected",
-      "message": "\ud83d\udd34 *Signal Rejected*\n\nToken: PROJECT89\nReason: {\n  \"result\": \"BLOCK\",\n  \"gates_passed\": [\n    1,\n    2,\n    3,\n    4,\n    5,\n    6,\n    7,\n    8,\n    9,\n    10\n  ],\n  \"gate_failed\": 11,\n  \"gate_failed_",
-      "channel": "log_only",
-      "at": "2026-02-19T07:28:25.374866+00:00"
-    },
-    {
-      "level": "L2",
-      "title": "Heartbeat Alert",
-      "message": "Heartbeat ALERT: cron_health: reconciliation: last ran 58min ago (max 30min)",
-      "channel": "telegram",
-      "at": "2026-02-19T07:28:34.870865+00:00"
-    },
-    {
-      "level": 1,
-      "title": null,
-      "message": "\ud83d\udd27 WATCHDOG AUTO-FIX:\n\u2022 Problem: Reconciliation stale (19min, threshold 15min)\n\u2022 Action: Cleared lock + re-ran reconciliation.py\n\u2022 Result: \u2705 Fresh (completed in 0.0s)",
-      "channel": "telegram",
-      "at": "2026-02-19T07:30:03.704738+00:00"
-    },
-    {
-      "level": 1,
-      "title": null,
-      "message": "\ud83d\udd27 WATCHDOG AUTO-FIX:\n\u2022 Problem: DexScreener signals stale (11min, threshold 10min)\n\u2022 Action: Force-ran dexscreener_client.py\n\u2022 Result: \u2705 Fresh signals generated (12.4s)",
-      "channel": "telegram",
-      "at": "2026-02-19T07:30:17.245290+00:00"
-    },
-    {
-      "level": "L2",
-      "title": "Heartbeat Alert",
-      "message": "Heartbeat ALERT: cron_health: reconciliation: last ran 60min ago (max 30min)",
-      "channel": "telegram",
-      "at": "2026-02-19T07:30:24.421728+00:00"
-    },
-    {
-      "level": "L2",
-      "title": "Heartbeat Alert",
-      "message": "Heartbeat ALERT: cron_health: reconciliation: last ran 67min ago (max 30min)",
-      "channel": "telegram",
-      "at": "2026-02-19T07:37:24.674853+00:00"
-    },
-    {
-      "level": "L2",
-      "title": "Heartbeat Alert",
-      "message": "Heartbeat ALERT: cron_health: reconciliation: last ran 70min ago (max 30min)",
-      "channel": "telegram",
-      "at": "2026-02-19T07:40:46.672290+00:00"
-    },
-    {
-      "level": 1,
-      "title": null,
-      "message": "\ud83d\udd27 WATCHDOG AUTO-FIX:\n\u2022 Problem: DexScreener signals stale (13min, threshold 10min)\n\u2022 Action: Force-ran dexscreener_client.py\n\u2022 Result: \u2705 Fresh signals generated (12.5s)",
-      "channel": "telegram",
-      "at": "2026-02-19T07:44:16.805558+00:00"
-    },
-    {
-      "level": "L2",
-      "title": "Heartbeat Alert",
-      "message": "Heartbeat ALERT: cron_health: reconciliation: last ran 74min ago (max 30min)",
-      "channel": "telegram",
-      "at": "2026-02-19T07:44:24.520443+00:00"
-    },
-    {
-      "level": "L2",
-      "title": "Heartbeat Alert",
-      "message": "Heartbeat ALERT: cron_health: reconciliation: last ran 75min ago (max 30min)",
-      "channel": "telegram",
-      "at": "2026-02-19T07:45:21.222934+00:00"
-    },
-    {
-      "level": 1,
-      "title": null,
-      "message": "\ud83d\udd27 WATCHDOG AUTO-FIX:\n\u2022 Problem: Reconciliation stale (16min, threshold 15min)\n\u2022 Action: Cleared lock + re-ran reconciliation.py\n\u2022 Result: \u2705 Fresh (completed in 0.0s)",
-      "channel": "telegram",
-      "at": "2026-02-19T07:46:03.841421+00:00"
-    },
-    {
-      "level": "L1",
-      "title": "Signal Rejected",
-      "message": "\ud83d\udd34 *Signal Rejected*\n\nToken: HOSICO\nReason: {\n  \"result\": \"BLOCK\",\n  \"gates_passed\": [\n    1,\n    2,\n    3,\n    4,\n    5,\n    6,\n    7,\n    8,\n    9,\n    10,\n    11\n  ],\n  \"gate_failed\": 12,\n  \"gate_fa",
-      "channel": "log_only",
-      "at": "2026-02-19T07:50:19.656192+00:00"
-    },
-    {
-      "level": "L2",
-      "title": "Heartbeat Alert",
-      "message": "Heartbeat ALERT: cron_health: reconciliation: last ran 80min ago (max 30min)",
-      "channel": "telegram",
-      "at": "2026-02-19T07:51:12.380924+00:00"
-    },
-    {
-      "level": "L2",
-      "title": "Heartbeat Alert",
-      "message": "Heartbeat ALERT: cron_health: reconciliation: last ran 83min ago (max 30min)",
-      "channel": "telegram",
-      "at": "2026-02-19T07:53:24.062768+00:00"
-    },
-    {
-      "level": 1,
-      "title": null,
-      "message": "\ud83d\udd27 WATCHDOG AUTO-FIX:\n\u2022 Problem: DexScreener signals stale (11min, threshold 10min)\n\u2022 Action: Force-ran dexscreener_client.py\n\u2022 Result: \u2705 Fresh signals generated (13.0s)",
-      "channel": "telegram",
-      "at": "2026-02-19T07:56:17.558808+00:00"
-    },
-    {
-      "level": "L2",
-      "title": "Heartbeat Alert",
-      "message": "Heartbeat ALERT: cron_health: reconciliation: last ran 86min ago (max 30min)",
-      "channel": "telegram",
-      "at": "2026-02-19T07:56:25.094154+00:00"
-    },
-    {
-      "level": "L1",
-      "title": "Signal Rejected",
-      "message": "\ud83d\udd34 *Signal Rejected*\n\nToken: 21\nReason: {\n  \"result\": \"BLOCK\",\n  \"gates_passed\": [\n    1,\n    2,\n    3,\n    4,\n    5,\n    6,\n    7,\n    8,\n    9,\n    10\n  ],\n  \"gate_failed\": 11,\n  \"gate_failed_name\": ",
-      "channel": "log_only",
-      "at": "2026-02-19T08:04:51.185882+00:00"
-    },
-    {
-      "level": 1,
-      "title": null,
-      "message": "\ud83d\udd27 WATCHDOG AUTO-FIX:\n\u2022 Problem: Reconciliation stale (23min, threshold 15min)\n\u2022 Action: Cleared lock + re-ran reconciliation.py\n\u2022 Result: \u2705 Fresh (completed in 0.0s)",
-      "channel": "telegram",
-      "at": "2026-02-19T08:10:03.442323+00:00"
-    },
-    {
-      "level": 1,
-      "title": null,
-      "message": "\ud83d\udd27 WATCHDOG AUTO-FIX:\n\u2022 Problem: DexScreener signals stale (13min, threshold 10min)\n\u2022 Action: Force-ran dexscreener_client.py\n\u2022 Result: \u2705 Fresh signals generated (12.8s)",
-      "channel": "telegram",
-      "at": "2026-02-19T08:10:17.307971+00:00"
-    },
-    {
-      "level": "L2",
-      "title": "Heartbeat Alert",
-      "message": "Heartbeat ALERT: cron_health: reconciliation: last ran 100min ago (max 30min)",
-      "channel": "telegram",
-      "at": "2026-02-19T08:10:46.849211+00:00"
-    },
-    {
-      "level": "L1",
-      "title": "Signal Rejected",
-      "message": "\ud83d\udd34 *Signal Rejected*\n\nToken: 21\nReason: {\n  \"result\": \"BLOCK\",\n  \"gates_passed\": [\n    1,\n    2,\n    3,\n    4,\n    5,\n    6,\n    7,\n    8,\n    9,\n    10,\n    11\n  ],\n  \"gate_failed\": 12,\n  \"gate_failed",
-      "channel": "log_only",
-      "at": "2026-02-19T08:18:14.026469+00:00"
-    },
-    {
-      "level": "L2",
-      "title": "Heartbeat Alert",
-      "message": "Heartbeat ALERT: cron_health: reconciliation: last ran 110min ago (max 30min)",
-      "channel": "telegram",
-      "at": "2026-02-19T08:20:47.357429+00:00"
-    },
-    {
-      "level": "L2",
-      "title": null,
-      "message": "\u2696\ufe0f HOURLY STATUS\n\ud83d\udcb0 Balance: $9,945.34 (unrealized: +$3.79)\n\ud83d\udcc8 Positions (5/10):\n  LINK @ $8.60 -> $8.68 (+0.9%)\n  ETH @ $1,959.26 -> $1,979.01 (+1.0%)\n  BTC @ $66,481.62 -> $67,099.99 (+0.9%)\n  XRP @ $",
-      "channel": "telegram",
-      "at": "2026-02-19T08:20:47.910095+00:00"
-    },
-    {
-      "level": 1,
-      "title": null,
-      "message": "\ud83d\udd27 WATCHDOG AUTO-FIX:\n\u2022 Problem: DexScreener signals stale (11min, threshold 10min)\n\u2022 Action: Force-ran dexscreener_client.py\n\u2022 Result: \u2705 Fresh signals generated (11.7s)",
-      "channel": "telegram",
-      "at": "2026-02-19T08:22:17.926457+00:00"
-    },
-    {
-      "level": 1,
-      "title": null,
-      "message": "\ud83d\udd27 WATCHDOG AUTO-FIX:\n\u2022 Problem: Reconciliation stale (23min, threshold 15min)\n\u2022 Action: Cleared lock + re-ran reconciliation.py\n\u2022 Result: \u2705 Fresh (completed in 0.0s)",
-      "channel": "telegram",
-      "at": "2026-02-19T08:34:03.411690+00:00"
-    },
-    {
-      "level": 1,
-      "title": null,
-      "message": "\ud83d\udd27 WATCHDOG AUTO-FIX:\n\u2022 Problem: DexScreener signals stale (11min, threshold 10min)\n\u2022 Action: Force-ran dexscreener_client.py\n\u2022 Result: \u2705 Fresh signals generated (12.8s)",
-      "channel": "telegram",
-      "at": "2026-02-19T08:34:17.301171+00:00"
-    },
-    {
-      "level": "L2",
-      "title": "SELL LINK",
-      "message": "\ud83d\udfe2 SELL LINK/USDT\n\nReason: TIME_EXIT\nEntry: 8.6000\nExit: 8.6300\nPnL: +0.3% (+0.35)\nHold: 8.0h\n\nStrategy: meme-momentum\nSanad Score: 92",
-      "channel": "telegram",
-      "at": "2026-02-19T08:34:56.029553+00:00"
-    },
-    {
-      "level": "L2",
-      "title": "Heartbeat Alert",
-      "message": "Heartbeat ALERT: cron_health: reconciliation: last ran 130min ago (max 30min)",
-      "channel": "telegram",
-      "at": "2026-02-19T08:40:47.245495+00:00"
-    },
-    {
-      "level": "L2",
-      "title": "SELL ETH",
-      "message": "\ud83d\udfe2 SELL ETH/USDT\n\nReason: TIME_EXIT\nEntry: 1,959.2600\nExit: 1,967.9900\nPnL: +0.4% (+0.48)\nHold: 8.0h\n\nStrategy: meme-momentum\nSanad Score: 92",
-      "channel": "telegram",
-      "at": "2026-02-19T08:45:56.017276+00:00"
-    },
-    {
-      "level": 1,
-      "title": null,
-      "message": "\ud83d\udd27 WATCHDOG AUTO-FIX:\n\u2022 Problem: DexScreener signals stale (13min, threshold 10min)\n\u2022 Action: Force-ran dexscreener_client.py\n\u2022 Result: \u2705 Fresh signals generated (11.4s)",
-      "channel": "telegram",
-      "at": "2026-02-19T08:48:15.656642+00:00"
-    },
-    {
-      "level": 1,
-      "title": null,
-      "message": "\ud83d\udd27 WATCHDOG AUTO-FIX:\n\u2022 Problem: Reconciliation stale (16min, threshold 15min)\n\u2022 Action: Cleared lock + re-ran reconciliation.py\n\u2022 Result: \u2705 Fresh (completed in 0.0s)",
-      "channel": "telegram",
-      "at": "2026-02-19T08:50:03.668309+00:00"
-    },
-    {
-      "level": "L2",
-      "title": "Heartbeat Alert",
-      "message": "Heartbeat ALERT: cron_health: reconciliation: last ran 140min ago (max 30min)",
-      "channel": "telegram",
-      "at": "2026-02-19T08:50:47.065214+00:00"
-    },
     {
       "level": 1,
       "title": null,
@@ -701,7 +372,336 @@
       "message": "\u26a0\ufe0f WATCHDOG: Stale data sources detected\n\u2022 Sources: coingecko (20min old), dexscreener (20min old), birdeye (20min old)\n\u2022 Note: This usually means scanners haven't run or are failing",
       "channel": "telegram",
       "at": "2026-02-19T12:32:04.368997+00:00"
+    },
+    {
+      "level": "L2",
+      "title": null,
+      "message": "\u2696\ufe0f HOURLY STATUS\n\ud83d\udcb0 Balance: $9,937.32 (unrealized: $-4.59)\n\ud83d\udcc8 Positions (3/10):\n  SOL @ $82.39 -> $81.10 (-1.6%)\n  ETH @ $1,973.50 -> $1,951.67 (-1.1%)\n  BTC @ $67,042.81 -> $66,622.46 (-0.6%)\n\ud83d\udcca Today:",
+      "channel": "telegram",
+      "at": "2026-02-19T12:34:44.185626+00:00"
+    },
+    {
+      "level": 2,
+      "title": null,
+      "message": "\u26a0\ufe0f WATCHDOG: Stale data sources detected\n\u2022 Sources: coingecko (24min old), dexscreener (24min old), birdeye (24min old)\n\u2022 Note: This usually means scanners haven't run or are failing",
+      "channel": "telegram",
+      "at": "2026-02-19T12:36:03.854533+00:00"
+    },
+    {
+      "level": 2,
+      "title": null,
+      "message": "\u26a0\ufe0f WATCHDOG: Stale data sources detected\n\u2022 Sources: coingecko (26min old), dexscreener (26min old), birdeye (26min old)\n\u2022 Note: This usually means scanners haven't run or are failing",
+      "channel": "telegram",
+      "at": "2026-02-19T12:38:15.790253+00:00"
+    },
+    {
+      "level": 2,
+      "title": null,
+      "message": "\u26a0\ufe0f WATCHDOG: Stale data sources detected\n\u2022 Sources: coingecko (28min old), dexscreener (28min old), birdeye (28min old)\n\u2022 Note: This usually means scanners haven't run or are failing",
+      "channel": "telegram",
+      "at": "2026-02-19T12:40:03.936336+00:00"
+    },
+    {
+      "level": 1,
+      "title": null,
+      "message": "\ud83d\udd27 WATCHDOG AUTO-FIX (attempt 1/4):\n\u2022 Problem: Router stalled (31min since last run)\n\u2022 Context: (token=OPENCLAW | stage=sanad | hints=timeout_detected,timeout_detected,timeout_detected,timeout_detected",
+      "channel": "telegram",
+      "at": "2026-02-19T12:44:03.842679+00:00"
+    },
+    {
+      "level": 2,
+      "title": null,
+      "message": "\u26a0\ufe0f WATCHDOG: Stale data sources detected\n\u2022 Sources: coingecko (32min old), dexscreener (32min old), birdeye (32min old)\n\u2022 Note: This usually means scanners haven't run or are failing",
+      "channel": "telegram",
+      "at": "2026-02-19T12:44:04.408313+00:00"
+    },
+    {
+      "level": 1,
+      "title": null,
+      "message": "\ud83d\udd27 WATCHDOG AUTO-FIX (attempt 1/4):\n\u2022 Problem: Router stalled (33min since last run)\n\u2022 Context: (token=OPENCLAW | stage=sanad | hints=timeout_detected,timeout_detected,timeout_detected,timeout_detected",
+      "channel": "telegram",
+      "at": "2026-02-19T12:46:03.374747+00:00"
+    },
+    {
+      "level": 2,
+      "title": null,
+      "message": "\u26a0\ufe0f WATCHDOG: Stale data sources detected\n\u2022 Sources: coingecko (34min old), dexscreener (34min old), birdeye (34min old)\n\u2022 Note: This usually means scanners haven't run or are failing",
+      "channel": "telegram",
+      "at": "2026-02-19T12:46:03.967506+00:00"
+    },
+    {
+      "level": 1,
+      "title": null,
+      "message": "\ud83d\udd27 WATCHDOG AUTO-FIX (attempt 1/4):\n\u2022 Problem: Router stalled (35min since last run)\n\u2022 Context: (token=OPENCLAW | stage=sanad | hints=timeout_detected,timeout_detected,timeout_detected,timeout_detected",
+      "channel": "telegram",
+      "at": "2026-02-19T12:48:03.607325+00:00"
+    },
+    {
+      "level": 2,
+      "title": null,
+      "message": "\u26a0\ufe0f WATCHDOG: Stale data sources detected\n\u2022 Sources: coingecko (36min old), dexscreener (36min old), birdeye (36min old)\n\u2022 Note: This usually means scanners haven't run or are failing",
+      "channel": "telegram",
+      "at": "2026-02-19T12:48:04.191672+00:00"
+    },
+    {
+      "level": 1,
+      "title": null,
+      "message": "\ud83d\udd27 WATCHDOG AUTO-FIX (attempt 1/4):\n\u2022 Problem: Router stalled (37min since last run)\n\u2022 Context: (token=OPENCLAW | stage=sanad | hints=timeout_detected,timeout_detected,timeout_detected,timeout_detected",
+      "channel": "telegram",
+      "at": "2026-02-19T12:50:03.349883+00:00"
+    },
+    {
+      "level": 2,
+      "title": null,
+      "message": "\u26a0\ufe0f WATCHDOG: Stale data sources detected\n\u2022 Sources: coingecko (38min old), dexscreener (38min old), birdeye (38min old)\n\u2022 Note: This usually means scanners haven't run or are failing",
+      "channel": "telegram",
+      "at": "2026-02-19T12:50:04.041224+00:00"
+    },
+    {
+      "level": 1,
+      "title": null,
+      "message": "\ud83d\udd27 WATCHDOG AUTO-FIX (attempt 1/4):\n\u2022 Problem: Router stalled (39min since last run)\n\u2022 Context: (token=OPENCLAW | stage=sanad | hints=timeout_detected,timeout_detected,timeout_detected,timeout_detected",
+      "channel": "telegram",
+      "at": "2026-02-19T12:52:04.875729+00:00"
+    },
+    {
+      "level": 2,
+      "title": null,
+      "message": "\u26a0\ufe0f WATCHDOG: Stale data sources detected\n\u2022 Sources: coingecko (40min old), dexscreener (40min old), birdeye (40min old)\n\u2022 Note: This usually means scanners haven't run or are failing",
+      "channel": "telegram",
+      "at": "2026-02-19T12:52:05.447457+00:00"
+    },
+    {
+      "level": 1,
+      "title": null,
+      "message": "\ud83d\udd27 WATCHDOG AUTO-FIX (attempt 1/4):\n\u2022 Problem: Router stalled (42min since last run)\n\u2022 Context: (token=OPENCLAW | stage=sanad | hints=timeout_detected,timeout_detected,timeout_detected,timeout_detected",
+      "channel": "telegram",
+      "at": "2026-02-19T12:54:17.974506+00:00"
+    },
+    {
+      "level": 2,
+      "title": null,
+      "message": "\u26a0\ufe0f WATCHDOG: Stale data sources detected\n\u2022 Sources: coingecko (42min old), dexscreener (42min old), birdeye (42min old)\n\u2022 Note: This usually means scanners haven't run or are failing",
+      "channel": "telegram",
+      "at": "2026-02-19T12:54:18.527163+00:00"
+    },
+    {
+      "level": 1,
+      "title": null,
+      "message": "\ud83d\udd27 WATCHDOG AUTO-FIX (attempt 1/4):\n\u2022 Problem: Router stalled (43min since last run)\n\u2022 Context: (token=OPENCLAW | stage=sanad | hints=timeout_detected,timeout_detected,timeout_detected,timeout_detected",
+      "channel": "telegram",
+      "at": "2026-02-19T12:56:03.847768+00:00"
+    },
+    {
+      "level": 2,
+      "title": null,
+      "message": "\u26a0\ufe0f WATCHDOG: Stale data sources detected\n\u2022 Sources: coingecko (44min old), dexscreener (44min old), birdeye (44min old)\n\u2022 Note: This usually means scanners haven't run or are failing",
+      "channel": "telegram",
+      "at": "2026-02-19T12:56:04.580664+00:00"
+    },
+    {
+      "level": 1,
+      "title": null,
+      "message": "\ud83d\udd27 WATCHDOG AUTO-FIX (attempt 1/4):\n\u2022 Problem: Router stalled (45min since last run)\n\u2022 Context: (token=OPENCLAW | stage=sanad | hints=timeout_detected,timeout_detected,timeout_detected,timeout_detected",
+      "channel": "telegram",
+      "at": "2026-02-19T12:58:03.187212+00:00"
+    },
+    {
+      "level": 2,
+      "title": null,
+      "message": "\u26a0\ufe0f WATCHDOG: Stale data sources detected\n\u2022 Sources: coingecko (46min old), dexscreener (46min old), birdeye (46min old)\n\u2022 Note: This usually means scanners haven't run or are failing",
+      "channel": "telegram",
+      "at": "2026-02-19T12:58:03.784847+00:00"
+    },
+    {
+      "level": 1,
+      "title": null,
+      "message": "\ud83d\udd27 WATCHDOG AUTO-FIX (attempt 1/4):\n\u2022 Problem: Router stalled (47min since last run)\n\u2022 Context: (token=OPENCLAW | stage=sanad | hints=timeout_detected,timeout_detected,timeout_detected,timeout_detected",
+      "channel": "telegram",
+      "at": "2026-02-19T13:00:03.904697+00:00"
+    },
+    {
+      "level": 2,
+      "title": null,
+      "message": "\u26a0\ufe0f WATCHDOG: Stale data sources detected\n\u2022 Sources: coingecko (48min old), dexscreener (48min old), birdeye (48min old)\n\u2022 Note: This usually means scanners haven't run or are failing",
+      "channel": "telegram",
+      "at": "2026-02-19T13:00:04.489716+00:00"
+    },
+    {
+      "level": 1,
+      "title": null,
+      "message": "\ud83d\udd27 WATCHDOG AUTO-FIX (attempt 1/4):\n\u2022 Problem: Router stalled (51min since last run)\n\u2022 Context: (token=OPENCLAW | stage=sanad | hints=timeout_detected,timeout_detected,timeout_detected,timeout_detected",
+      "channel": "telegram",
+      "at": "2026-02-19T13:04:04.463288+00:00"
+    },
+    {
+      "level": 2,
+      "title": null,
+      "message": "\u26a0\ufe0f WATCHDOG: Stale data sources detected\n\u2022 Sources: coingecko (52min old), dexscreener (52min old), birdeye (52min old)\n\u2022 Note: This usually means scanners haven't run or are failing",
+      "channel": "telegram",
+      "at": "2026-02-19T13:04:05.031375+00:00"
+    },
+    {
+      "level": 2,
+      "title": null,
+      "message": "\u26a0\ufe0f WATCHDOG: Stale data sources detected\n\u2022 Sources: birdeye (56min old)\n\u2022 Note: This usually means scanners haven't run or are failing",
+      "channel": "telegram",
+      "at": "2026-02-19T13:08:11.480150+00:00"
+    },
+    {
+      "level": 2,
+      "title": null,
+      "message": "\u26a0\ufe0f WATCHDOG ESCALATION (attempt 3/4):\n\u2022 Problem: Router stalled AGAIN (58min)\n\u2022 Action: Enabled FAST-PATH mode (skip LLM debates)\n\u2022 Next: If this fails, I'll pause router and escalate to you",
+      "channel": "telegram",
+      "at": "2026-02-19T13:10:16.768895+00:00"
+    },
+    {
+      "level": 2,
+      "title": null,
+      "message": "\u26a0\ufe0f WATCHDOG: Stale data sources detected\n\u2022 Sources: birdeye (58min old)\n\u2022 Note: This usually means scanners haven't run or are failing",
+      "channel": "telegram",
+      "at": "2026-02-19T13:10:17.412780+00:00"
+    },
+    {
+      "level": 2,
+      "title": null,
+      "message": "\ud83e\udd16 WATCHDOG \u2192 OPENCLAW (attempt 4/5):\n\u2022 Problem: Router stalled repeatedly (token=TOTO | stage=sanad | hints=timeout_detected,timeout_detected,timeout_detected)\n\u2022 Watchdog tried: Kill+restart, force ru",
+      "channel": "telegram",
+      "at": "2026-02-19T13:12:04.394324+00:00"
+    },
+    {
+      "level": 2,
+      "title": null,
+      "message": "\u26a0\ufe0f WATCHDOG: Stale data sources detected\n\u2022 Sources: birdeye (60min old)\n\u2022 Note: This usually means scanners haven't run or are failing",
+      "channel": "telegram",
+      "at": "2026-02-19T13:12:04.958258+00:00"
+    },
+    {
+      "level": 3,
+      "title": null,
+      "message": "\ud83d\udea8 SALIM: HUMAN INTERVENTION NEEDED (Tier 4):\n\n\ud83d\udcca PROBLEM:\n  Router stalled repeatedly (61min) (token=TOTO | stage=sanad | hints=timeout_detected,timeout_detected,timeout_detected)\n\n\ud83d\udd27 WATCHDOG TRIED:\n  ",
+      "channel": "telegram",
+      "at": "2026-02-19T13:14:04.673741+00:00"
+    },
+    {
+      "level": 1,
+      "title": null,
+      "message": "\ud83d\udd27 WATCHDOG AUTO-FIX (attempt 1/4):\n\u2022 Problem: Router stalled (63min since last run)\n\u2022 Context: (token=TOTO | stage=sanad | hints=timeout_detected,timeout_detected,timeout_detected)\n\u2022 Action: Killed pr",
+      "channel": "telegram",
+      "at": "2026-02-19T13:16:03.828865+00:00"
+    },
+    {
+      "level": 1,
+      "title": null,
+      "message": "\ud83d\udd27 WATCHDOG AUTO-FIX (attempt 2/4):\n\u2022 Problem: Router stalled again (65min)\n\u2022 Action: Killed + force manual run\n\u2022 Result: \u2705 Completed successfully (6.9s)",
+      "channel": "telegram",
+      "at": "2026-02-19T13:18:11.035650+00:00"
+    },
+    {
+      "level": 2,
+      "title": null,
+      "message": "\u26a0\ufe0f WATCHDOG ESCALATION (attempt 3/4):\n\u2022 Problem: Router stalled AGAIN (69min)\n\u2022 Action: Enabled FAST-PATH mode (skip LLM debates)\n\u2022 Next: If this fails, I'll pause router and escalate to you",
+      "channel": "telegram",
+      "at": "2026-02-19T13:22:03.513377+00:00"
+    },
+    {
+      "level": 2,
+      "title": null,
+      "message": "\ud83e\udd16 WATCHDOG \u2192 OPENCLAW (attempt 4/5):\n\u2022 Problem: Router stalled repeatedly (token=TOTO | stage=sanad)\n\u2022 Watchdog tried: Kill+restart, force run, fast-path mode\n\u2022 Action: Sent diagnostic package to Open",
+      "channel": "telegram",
+      "at": "2026-02-19T13:24:06.443046+00:00"
+    },
+    {
+      "level": 1,
+      "title": null,
+      "message": "\ud83d\udd27 WATCHDOG AUTO-FIX (attempt 1/4):\n\u2022 Problem: Router stalled (73min since last run)\n\u2022 Context: (token=TOTO | stage=sanad)\n\u2022 Action: Killed process + cleared lock\n\u2022 Result: \u2705 Restarted (cron will pick ",
+      "channel": "telegram",
+      "at": "2026-02-19T13:26:16.264802+00:00"
+    },
+    {
+      "level": 1,
+      "title": null,
+      "message": "\ud83d\udd27 WATCHDOG AUTO-FIX (attempt 2/4):\n\u2022 Problem: Router stalled again (75min)\n\u2022 Action: Killed + force manual run\n\u2022 Result: \u2705 Completed successfully (8.1s)",
+      "channel": "telegram",
+      "at": "2026-02-19T13:28:11.585713+00:00"
+    },
+    {
+      "level": 2,
+      "title": null,
+      "message": "\u26a0\ufe0f WATCHDOG ESCALATION (attempt 3/4):\n\u2022 Problem: Router stalled AGAIN (77min)\n\u2022 Action: Enabled FAST-PATH mode (skip LLM debates)\n\u2022 Next: If this fails, I'll pause router and escalate to you",
+      "channel": "telegram",
+      "at": "2026-02-19T13:30:03.557876+00:00"
+    },
+    {
+      "level": 2,
+      "title": null,
+      "message": "\ud83e\udd16 WATCHDOG \u2192 OPENCLAW (attempt 4/5):\n\u2022 Problem: Router stalled repeatedly (token=ANDREW | stage=sanad)\n\u2022 Watchdog tried: Kill+restart, force run, fast-path mode\n\u2022 Action: Sent diagnostic package to Op",
+      "channel": "telegram",
+      "at": "2026-02-19T13:32:03.741361+00:00"
+    },
+    {
+      "level": 3,
+      "title": null,
+      "message": "\ud83d\udea8 SALIM: HUMAN INTERVENTION NEEDED (Tier 4):\n\n\ud83d\udcca PROBLEM:\n  Router stalled repeatedly (83min) (token=ANDREW | stage=sanad)\n\n\ud83d\udd27 WATCHDOG TRIED:\n  \u2022 Tier 1: Kill + restart\n  \u2022 Tier 2: Force manual run\n  \u2022",
+      "channel": "telegram",
+      "at": "2026-02-19T13:36:03.352666+00:00"
+    },
+    {
+      "level": 1,
+      "title": null,
+      "message": "\ud83d\udd27 WATCHDOG AUTO-FIX (attempt 1/4):\n\u2022 Problem: Router stalled (85min since last run)\n\u2022 Context: (token=ANDREW | stage=sanad)\n\u2022 Action: Killed process + cleared lock\n\u2022 Result: \u2705 Restarted (cron will pic",
+      "channel": "telegram",
+      "at": "2026-02-19T13:38:04.461255+00:00"
+    },
+    {
+      "level": "L2",
+      "title": null,
+      "message": "\u2696\ufe0f HOURLY STATUS\n\ud83d\udcb0 Balance: $9,932.78 (unrealized: $-9.13)\n\ud83d\udcc8 Positions (3/10):\n  SOL @ $82.39 -> $80.10 (-2.8%)\n  ETH @ $1,973.50 -> $1,926.51 (-2.4%)\n  BTC @ $67,042.81 -> $66,105.00 (-1.4%)\n\ud83d\udcca Today:",
+      "channel": "telegram",
+      "at": "2026-02-19T13:40:46.864174+00:00"
+    },
+    {
+      "level": 2,
+      "title": null,
+      "message": "\u26a0\ufe0f WATCHDOG: Stale data sources detected\n\u2022 Sources: coingecko (24min old), dexscreener (24min old), birdeye (24min old)\n\u2022 Note: This usually means scanners haven't run or are failing",
+      "channel": "telegram",
+      "at": "2026-02-19T14:04:16.133407+00:00"
+    },
+    {
+      "level": 1,
+      "title": null,
+      "message": "\ud83d\udd27 WATCHDOG AUTO-FIX (attempt 1/4):\n\u2022 Problem: Router stalled (31min since last run)\n\u2022 Context: (token=TOTO | stage=sanad)\n\u2022 Action: Killed process + cleared lock\n\u2022 Result: \u2705 Restarted (cron will pick ",
+      "channel": "telegram",
+      "at": "2026-02-19T14:12:04.708803+00:00"
+    },
+    {
+      "level": 1,
+      "title": null,
+      "message": "\ud83d\udd27 WATCHDOG AUTO-FIX (attempt 2/4):\n\u2022 Problem: Router stalled again (33min)\n\u2022 Action: Killed + force manual run\n\u2022 Result: \u2705 Completed successfully (8.5s)",
+      "channel": "telegram",
+      "at": "2026-02-19T14:14:11.693720+00:00"
+    },
+    {
+      "level": "L2",
+      "title": null,
+      "message": "\u2696\ufe0f HOURLY STATUS\n\ud83d\udcb0 Balance: $9,933.93 (unrealized: $-7.98)\n\ud83d\udcc8 Positions (3/10):\n  SOL @ $82.39 -> $80.59 (-2.2%)\n  ETH @ $1,973.50 -> $1,930.96 (-2.2%)\n  BTC @ $67,042.81 -> $66,108.07 (-1.4%)\n\ud83d\udcca Today:",
+      "channel": "telegram",
+      "at": "2026-02-19T14:40:48.626543+00:00"
+    },
+    {
+      "level": 1,
+      "title": null,
+      "message": "\ud83d\udd27 WATCHDOG AUTO-FIX (attempt 1/4):\n\u2022 Problem: Router stalled (32min since last run)\n\u2022 Context: (token=USDT | stage=sanad)\n\u2022 Action: Killed process + cleared lock\n\u2022 Result: \u2705 Restarted (cron will pick ",
+      "channel": "telegram",
+      "at": "2026-02-19T14:46:14.225905+00:00"
+    },
+    {
+      "level": 1,
+      "title": null,
+      "message": "\ud83d\udd27 WATCHDOG AUTO-FIX (attempt 2/4):\n\u2022 Problem: Router stalled again (39min)\n\u2022 Action: Killed + force manual run\n\u2022 Result: \u2705 Completed successfully (8.2s)",
+      "channel": "telegram",
+      "at": "2026-02-19T14:54:13.075934+00:00"
     }
   ],
-  "last_sent": "2026-02-19T12:32:04.369012+00:00"
+  "last_sent": "2026-02-19T14:54:13.075958+00:00"
 }

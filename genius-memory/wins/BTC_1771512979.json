@@ -1,0 +1,16 @@
+{
+  "token": "BTC",
+  "entry_price": 66481.62,
+  "exit_price": 66962.63,
+  "pnl_pct": 0.007235232835782422,
+  "strategy": "meme-momentum",
+  "source": "coingecko:trending",
+  "source_raw": "CoinGecko trending #4",
+  "trust_score": 0,
+  "corroboration": 1,
+  "exit_reason": "TIME_EXIT",
+  "entry_time": null,
+  "exit_time": "2026-02-19T09:04:53.760989+00:00",
+  "hold_duration_hours": 0,
+  "analyzed_at": "2026-02-19T14:56:19.200696Z"
+}

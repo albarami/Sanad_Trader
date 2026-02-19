@@ -1,0 +1,16 @@
+{
+  "token": "XRP",
+  "entry_price": 1.4267,
+  "exit_price": 1.4145,
+  "pnl_pct": -0.008551202074717872,
+  "strategy": "meme-momentum",
+  "source": "coingecko:trending",
+  "source_raw": "CoinGecko trending #10",
+  "trust_score": 0,
+  "corroboration": 1,
+  "exit_reason": "TIME_EXIT",
+  "entry_time": null,
+  "exit_time": "2026-02-19T10:12:53.452684+00:00",
+  "hold_duration_hours": 0,
+  "analyzed_at": "2026-02-19T14:56:19.201094Z"
+}

@@ -1,0 +1,16 @@
+{
+  "token": "LINK",
+  "entry_price": 8.92,
+  "exit_price": 8.81,
+  "pnl_pct": -0.012331838565022358,
+  "strategy": "whale-following",
+  "source": "coingecko:trending",
+  "source_raw": "coingecko_trending",
+  "trust_score": 0,
+  "corroboration": 1,
+  "exit_reason": "TIME_EXIT",
+  "entry_time": null,
+  "exit_time": "2026-02-17T13:35:42.357825+00:00",
+  "hold_duration_hours": 0,
+  "analyzed_at": "2026-02-19T14:56:19.196653Z"
+}
