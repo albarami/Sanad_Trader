@@ -46,6 +46,23 @@ CANONICAL_DEFAULTS = {
     "source_detail": "",
 }
 
+# Binance-listed majors (for automatic chain detection)
+BINANCE_MAJORS = {
+    "BTC", "ETH", "BNB", "SOL", "XRP", "ADA", "DOGE", "DOT", "MATIC", "AVAX",
+    "LINK", "UNI", "ATOM", "LTC", "ETC", "XLM", "ALGO", "VET", "ICP", "FIL",
+    "TRX", "APT", "ARB", "OP", "NEAR", "SUI", "SEI", "PEPE", "SHIB", "WIF",
+    "BONK", "FLOKI", "FET", "GRT", "SAND", "MANA", "AXS", "IMX", "GALA",
+}
+
+def _detect_chain(token: str) -> str:
+    """Detect chain from token symbol."""
+    if token.upper() in BINANCE_MAJORS:
+        return "binance"
+    # Length check for Solana contract addresses
+    if len(token) > 30:  # Likely a Solana address
+        return "solana"
+    return "unknown"
+
 
 def _detect_source(raw: dict) -> str:
     """Detect signal source type from structure."""
@@ -97,13 +114,16 @@ def normalize_signal(raw: dict, source_hint: str = "") -> dict | None:
             "timestamp": datetime.now(timezone.utc).isoformat(),
         },
         "coingecko": lambda r: {
-            "token": r.get("symbol", "").upper(),
+            "token": r.get("token", r.get("symbol", "")).upper(),
             "source": "coingecko",
             "direction": "LONG",
+            "chain": _detect_chain(r.get("token", r.get("symbol", "")).upper()),
             "market_cap": r.get("market_cap", 0),
-            "volume_24h": r.get("total_volume", 0),
-            "price_change_24h": r.get("price_change_percentage_24h", 0),
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "volume_24h": r.get("volume_24h", r.get("total_volume", 0)),
+            "price_change_24h": r.get("price_change_24h_pct", r.get("price_change_percentage_24h", 0)),
+            "price_change_1h": r.get("price_change_1h_pct", 0),
+            "current_price": r.get("current_price", 0),
+            "timestamp": r.get("timestamp", datetime.now(timezone.utc).isoformat()),
         },
         "dexscreener": lambda r: {
             "token": r.get("baseToken", {}).get("symbol", ""),
