@@ -1,11 +1,10 @@
 {
-  "last_reconciliation_timestamp": "2026-02-19T21:34:45.953247+00:00",
-  "has_mismatch": false,
-  "mismatch_details": null,
-  "positions_checked": 0,
+  "last_reconciliation_timestamp": "2026-02-19T21:40:58.777932+00:00",
+  "has_mismatch": true,
+  "mismatch_details": "Exposure mismatch: computed 0.0000, portfolio reports 0.0420",
+  "positions_checked": 3,
   "exchanges_checked": [
-    "binance",
-    "mexc"
+    "paper"
   ],
-  "mode": "LIVE"
+  "mode": "PAPER"
 }

@@ -150,7 +150,7 @@ def reconcile_positions():
 
     # In PAPER mode: no real exchange to check against
     # Reconciliation verifies internal state consistency only
-    if mode == "PAPER":
+    if mode.upper() == "PAPER":
         result = reconcile_paper_mode(portfolio, internal_positions)
     else:
         result = reconcile_live_mode(portfolio, internal_positions, config)
@@ -187,9 +187,9 @@ def reconcile_paper_mode(portfolio, internal_positions):
     # Count actual open positions
     open_positions = []
     if isinstance(internal_positions, list):
-        open_positions = [p for p in internal_positions if p.get("status") == "open"]
+        open_positions = [p for p in internal_positions if p.get("status", "").upper() == "OPEN"]
     elif isinstance(internal_positions, dict) and "positions" in internal_positions:
-        open_positions = [p for p in internal_positions["positions"] if p.get("status") == "open"]
+        open_positions = [p for p in internal_positions["positions"] if p.get("status", "").upper() == "OPEN"]
 
     reported_count = portfolio.get("open_position_count", 0)
     actual_count = len(open_positions)

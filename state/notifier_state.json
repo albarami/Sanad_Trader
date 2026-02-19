@@ -1,14 +1,7 @@
 {
-  "sent": 620,
+  "sent": 621,
   "failed": 7,
   "history": [
-    {
-      "level": "L2",
-      "title": "Heartbeat Alert",
-      "message": "Heartbeat ALERT: cron_health: reconciliation: last ran 94min ago (max 30min)",
-      "channel": "telegram",
-      "at": "2026-02-19T10:34:21.416019+00:00"
-    },
     {
       "level": "L1",
       "title": "Signal Rejected",
@@ -701,7 +694,14 @@
       "message": "\ud83d\udd34 *Signal Rejected*\n\nToken: TESTICLE\nReason: {\n  \"result\": \"BLOCK\",\n  \"gates_passed\": [\n    1,\n    2,\n    3,\n    4,\n    5,\n    6,\n    7,\n    8,\n    9,\n    10,\n    11,\n    12,\n    13,\n    14\n  ],\n  \"ga",
       "channel": "log_only",
       "at": "2026-02-19T21:21:11.916644+00:00"
+    },
+    {
+      "level": "L1",
+      "title": "Signal Rejected",
+      "message": "\ud83d\udd34 *Signal Rejected*\n\nToken: XRP\nReason: {\n  \"result\": \"BLOCK\",\n  \"gates_passed\": [\n    1,\n    2,\n    3,\n    4,\n    5,\n    6,\n    7,\n    8,\n    9,\n    10,\n    11,\n    12,\n    13,\n    14\n  ],\n  \"gate_fa",
+      "channel": "log_only",
+      "at": "2026-02-19T21:40:38.211902+00:00"
     }
   ],
-  "last_sent": "2026-02-19T21:21:11.916654+00:00"
+  "last_sent": "2026-02-19T21:40:38.211910+00:00"
 }
