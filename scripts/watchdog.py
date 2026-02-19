@@ -1015,34 +1015,36 @@ def check_data_freshness():
             except Exception as e:
                 _log(f"Onchain initial run failed: {e}")
         
-        signal_window = STATE_DIR / "signal_window.json"
-        if not signal_window.exists():
-            return issues
-        
-        window = json.load(open(signal_window))
-        signals = window.get("signals", window) if isinstance(window, dict) else window
-        
-        # Group by source, find newest
+        # Check scanner output files directly (not signal_window which has rolling history)
         from collections import defaultdict
-        source_newest = defaultdict(int)
+        import os
+        
+        signals_dir = BASE_DIR / "signals"
+        scanner_dirs = {
+            "coingecko": signals_dir / "coingecko",
+            "dexscreener": signals_dir / "dexscreener", 
+            "birdeye": signals_dir / "birdeye"
+        }
         
         now = time.time()
-        for sig in signals:
-            ts_str = sig.get("_timestamp") or sig.get("timestamp")
-            if not ts_str:
+        source_ages = {}
+        
+        for source_name, source_dir in scanner_dirs.items():
+            if not source_dir.exists():
                 continue
             
-            try:
-                ts = datetime.fromisoformat(ts_str.replace("Z", "+00:00")).timestamp()
-                source = sig.get("provider") or sig.get("source") or "unknown"
-                source_newest[source] = max(source_newest[source], ts)
-            except Exception:
+            # Find newest file (exclude global_latest.json)
+            files = [f for f in source_dir.glob("*.json") if f.name != "global_latest.json"]
+            if not files:
                 continue
+            
+            newest_file = max(files, key=lambda f: f.stat().st_mtime)
+            age_minutes = (now - newest_file.stat().st_mtime) / 60
+            source_ages[source_name] = age_minutes
         
-        # Check age
-        for source, ts in source_newest.items():
-            age_minutes = (now - ts) / 60
-            if age_minutes > DATA_FRESHNESS_MIN:
+        # Check age - only alert if >20min (scanners run every 5min, allow 4x buffer)
+        for source, age_minutes in source_ages.items():
+            if age_minutes > 20:  # Changed from 15 to 20min
                 issues.append(f"{source} ({age_minutes:.0f}min old)")
                 _log(f"Data source stale: {source} ({age_minutes:.0f}min)", "WARNING")
     
