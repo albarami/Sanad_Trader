@@ -950,9 +950,36 @@ def check_data_freshness():
     """Check if scanners have fresh data (<15 min)."""
     issues = []
     try:
+        # Check onchain signals explicitly (often goes stale)
+        onchain_dir = BASE_DIR / "signals" / "onchain"
+        if onchain_dir.exists():
+            onchain_files = list(onchain_dir.glob("*.json"))
+            if onchain_files:
+                newest_onchain = max(onchain_files, key=lambda p: p.stat().st_mtime)
+                age_min = (time.time() - newest_onchain.stat().st_mtime) / 60
+                if age_min > 30:  # Onchain should run every 15min
+                    issues.append(f"onchain ({age_min:.0f}min old)")
+                    _log(f"Onchain signals STALE: {age_min:.0f}min", "WARNING")
+                    
+                    # Tier 2 intervention: force rerun
+                    _log("Tier 2: Force rerunning onchain_analytics.py...")
+                    try:
+                        result = subprocess.run(
+                            ["python3", str(SCRIPTS_DIR / "onchain_analytics.py")],
+                            timeout=120,
+                            capture_output=True
+                        )
+                        if result.returncode == 0:
+                            _log("Onchain analytics rerun: SUCCESS")
+                            _log_action("onchain", f"stale_{age_min:.0f}min", "force_rerun", "success", attempts=1)
+                        else:
+                            _log(f"Onchain analytics rerun FAILED: {result.stderr[:200]}")
+                    except Exception as e:
+                        _log(f"Onchain rerun failed: {e}")
+        
         signal_window = STATE_DIR / "signal_window.json"
         if not signal_window.exists():
-            return []
+            return issues
         
         window = json.load(open(signal_window))
         signals = window.get("signals", window) if isinstance(window, dict) else window

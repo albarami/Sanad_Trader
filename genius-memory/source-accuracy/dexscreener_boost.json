@@ -1,6 +1,6 @@
 {
   "source_name": "dexscreener_boost",
-  "total_signals": 171,
+  "total_signals": 172,
   "trades_executed": 0,
   "wins": 0,
   "losses": 0,
@@ -10,7 +10,7 @@
   "win_rate": 0.0,
   "ucb1_score": 50,
   "grade": "C",
-  "last_signal_at": "2026-02-19T10:23:26.891377+00:00",
+  "last_signal_at": "2026-02-19T10:30:58.690835+00:00",
   "last_trade_at": null,
   "last_win_at": null,
   "last_recalc_at": null,

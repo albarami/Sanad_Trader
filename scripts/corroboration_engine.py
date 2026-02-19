@@ -123,13 +123,17 @@ def _build_result(providers_seen: set, source_labels: list) -> dict:
     # Quality: STRONG requires at least one non-hype evidence source
     # Hype sources = trending/boost lists (same hype everywhere ≠ real corroboration)
     # Evidence sources = on-chain analytics, sentiment analysis, telegram sniffer, solscan, smart money
-    HYPE_SOURCES = {"coingecko", "birdeye", "dexscreener"}
-    EVIDENCE_SOURCES = {"onchain", "sentiment", "telegram", "solscan", "smart_money"}
+    HYPE_SOURCES = {"coingecko", "birdeye", "dexscreener", "pumpfun"}
+    EVIDENCE_SOURCES = {"onchain", "sentiment", "telegram", "solscan", "smart_money", "binance", "whale_alert"}
     has_evidence = bool(providers_seen & EVIDENCE_SOURCES)
     all_hype = providers_seen and providers_seen.issubset(HYPE_SOURCES)
 
     if count >= 2 and all_hype and not has_evidence:
         quality = "WEAK"  # Same hype appearing everywhere — no independent evidence
+        # CRITICAL: Two hype sources alone = MASHHUR maximum, NEVER Tawatur
+        if level in ("TAWATUR", "TAWATUR_QAWIY"):
+            level = "MASHHUR"
+            count = 2  # Downgrade to 2-source equivalent
     else:
         quality = "STRONG"
 
