@@ -1,42 +1,42 @@
 {
   "status": "OK",
-  "timestamp": "2026-02-19T11:04:41.862749+00:00",
+  "timestamp": "2026-02-19T11:06:30.594707+00:00",
   "checked": 10,
   "warnings": 0,
   "blocked": false,
   "deviations": [
     {
       "token": "BTC",
-      "binance": 66850.89,
-      "coingecko": 66824,
-      "deviation_pct": 0.04,
+      "binance": 66857.98,
+      "coingecko": 66823,
+      "deviation_pct": 0.052,
       "status": "OK"
     },
     {
       "token": "ETH",
-      "binance": 1960.37,
-      "coingecko": 1959.02,
-      "deviation_pct": 0.069,
+      "binance": 1960.45,
+      "coingecko": 1959.35,
+      "deviation_pct": 0.056,
       "status": "OK"
     },
     {
       "token": "SOL",
       "binance": 81.6,
-      "coingecko": 81.48,
-      "deviation_pct": 0.147,
+      "coingecko": 81.51,
+      "deviation_pct": 0.11,
       "status": "OK"
     },
     {
       "token": "BNB",
-      "binance": 605.85,
-      "coingecko": 605.59,
-      "deviation_pct": 0.043,
+      "binance": 606.04,
+      "coingecko": 605.64,
+      "deviation_pct": 0.066,
       "status": "OK"
     },
     {
       "token": "DOGE",
-      "binance": 0.0977,
-      "coingecko": 0.097664,
+      "binance": 0.09761,
+      "coingecko": 0.097646,
       "deviation_pct": 0.037,
       "status": "OK"
     },
@@ -49,30 +49,30 @@
     },
     {
       "token": "SHIB",
-      "binance": 6.22e-06,
+      "binance": 6.21e-06,
       "coingecko": 6.22e-06,
-      "deviation_pct": 0.0,
+      "deviation_pct": 0.161,
       "status": "OK"
     },
     {
       "token": "WIF",
       "binance": 0.22,
-      "coingecko": 0.219533,
-      "deviation_pct": 0.212,
+      "coingecko": 0.219592,
+      "deviation_pct": 0.185,
       "status": "OK"
     },
     {
       "token": "BONK",
-      "binance": 6.18e-06,
+      "binance": 6.17e-06,
       "coingecko": 6.17e-06,
-      "deviation_pct": 0.162,
+      "deviation_pct": 0.0,
       "status": "OK"
     },
     {
       "token": "FLOKI",
-      "binance": 3.016e-05,
+      "binance": 3.017e-05,
       "coingecko": 3.015e-05,
-      "deviation_pct": 0.033,
+      "deviation_pct": 0.066,
       "status": "OK"
     }
   ]

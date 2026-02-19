@@ -1,14 +1,7 @@
 {
-  "sent": 535,
+  "sent": 536,
   "failed": 7,
   "history": [
-    {
-      "level": 1,
-      "title": null,
-      "message": "\ud83d\udd27 WATCHDOG AUTO-FIX:\n\u2022 Problem: DexScreener signals stale (11min, threshold 10min)\n\u2022 Action: Force-ran dexscreener_client.py\n\u2022 Result: \u2705 Fresh signals generated (12.2s)",
-      "channel": "telegram",
-      "at": "2026-02-19T05:42:16.622263+00:00"
-    },
     {
       "level": 1,
       "title": null,
@@ -701,7 +694,14 @@
       "message": "TEST: special chars _ * [ ] ( ) ~ should not break",
       "channel": "telegram",
       "at": "2026-02-19T11:02:21.215934+00:00"
+    },
+    {
+      "level": 1,
+      "title": null,
+      "message": "\ud83d\udd27 WATCHDOG AUTO-FIX (attempt 1/4):\n\u2022 Problem: Router stalled (38min since last run)\n\u2022 Context: (stage=sanad)\n\u2022 Action: Killed process + cleared lock\n\u2022 Result: \u2705 Restarted (cron will pick up next cycle",
+      "channel": "telegram",
+      "at": "2026-02-19T11:06:03.548650+00:00"
     }
   ],
-  "last_sent": "2026-02-19T11:02:21.215950+00:00"
+  "last_sent": "2026-02-19T11:06:03.548667+00:00"
 }

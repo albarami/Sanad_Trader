@@ -135,3 +135,4 @@
 {"timestamp": "2026-02-19T10:58:14.781760Z", "component": "dexscreener", "problem": "stale_15min", "action": "force_rerun", "result": "success", "attempts": 1, "duration_sec": 12}
 {"timestamp": "2026-02-19T10:58:14.792834Z", "component": "signal_router", "problem": "stalled_30min (token=COPPERINU | stage=sanad | hints=timeout_detected,timeout_detected)", "action": "kill_process+clear_lock", "result": "success", "attempts": 1}
 {"timestamp": "2026-02-19T11:02:03.005186Z", "component": "signal_router", "problem": "stalled_34min (token=COPPERINU | stage=sanad | hints=timeout_detected,timeout_detected)", "action": "kill_process+clear_lock", "result": "success", "attempts": 1}
+{"timestamp": "2026-02-19T11:06:02.927803Z", "component": "signal_router", "problem": "stalled_38min (stage=sanad)", "action": "kill_process+clear_lock", "result": "success", "attempts": 1}

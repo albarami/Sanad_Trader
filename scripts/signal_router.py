@@ -834,7 +834,7 @@ def run_router():
     
     for idx, (s, sc) in enumerate(candidates):
         origin = s.get("_origin", "")
-        boost = s.get("boost_amount", 0)
+        boost = s.get("boost_amount") or 0
         
         # Only prefilter DexScreener boost signals
         if origin == "dexscreener" and boost > 0:
@@ -1199,4 +1199,6 @@ if __name__ == "__main__":
     except Exception as e:
         signal.alarm(0)  # Cancel alarm on error
         _log(f"FATAL: {e}")
+        import traceback
+        traceback.print_exc()
         sys.exit(1)
