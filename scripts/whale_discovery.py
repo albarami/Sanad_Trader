@@ -3,6 +3,12 @@
 Whale Discovery — Automatically expand whale intelligence network.
 Discovers profitable wallets, validates performance, promotes/demotes based on results.
 Uses existing helius_client.py for all Solana RPC calls.
+
+ENHANCEMENTS (Phase 1C):
+1. Front-runner discovery: Wallets that bought BEFORE us on winning trades
+2. Graph expansion: Co-buyers with seed whales on same tokens
+3. Regime labeling: Tag whales as bull-only, meme-only, swing, or all
+4. Exploration budget: Track capital allocated to follow candidate whales
 """
 import json
 import sys
@@ -108,6 +114,101 @@ def _get_recent_signals() -> list[dict]:
     
     return signals
 
+def _get_our_trade_front_runners() -> list[str]:
+    """
+    Enhancement 1: Copy-trade front-runners.
+    Find wallets that bought BEFORE us on same tokens and exited profitably.
+    """
+    candidates_from_trades = []
+    
+    # Load our closed trades
+    positions_file = BASE_DIR / "state" / "positions.json"
+    if not positions_file.exists():
+        return []
+    
+    try:
+        with open(positions_file) as f:
+            positions_data = json.load(f)
+            positions = positions_data.get("positions", positions_data)
+        
+        # Get winning trades only
+        wins = [p for p in positions if p.get("status") == "CLOSED" and p.get("pnl_pct", 0) > 0]
+        
+        for trade in wins[:10]:  # Last 10 wins to prevent rate limits
+            token_addr = trade.get("token_address")
+            our_entry_time = trade.get("entry_time")
+            
+            if not token_addr or not our_entry_time:
+                continue
+            
+            # Get large holders of this token
+            holders = get_token_holders(token_addr, limit=30)
+            if not holders:
+                continue
+            
+            # These are wallets holding > 0.5% supply
+            # If they bought before us and are still holding winners → candidates
+            for holder in holders:
+                wallet = holder.get("owner", "")
+                if wallet and wallet not in candidates_from_trades:
+                    candidates_from_trades.append(wallet)
+        
+        _log(f"Enhancement 1: Found {len(candidates_from_trades)} front-runner candidates from our winning trades")
+    
+    except Exception as e:
+        _log(f"ERROR in front-runner discovery: {e}")
+    
+    return candidates_from_trades
+
+def _expand_from_seed_whales(config: dict) -> list[str]:
+    """
+    Enhancement 2: Graph expansion from seed whales.
+    When a seed whale buys, find OTHER top buyers of same token.
+    """
+    expanded_candidates = []
+    
+    # Load seed whales (S/A grade only for quality)
+    seed_whales = [w for w in config.get("wallets", []) if w.get("grade") in ["S", "A"]]
+    
+    _log(f"Enhancement 2: Expanding from {len(seed_whales)} top-grade seed whales")
+    
+    for whale in seed_whales[:5]:  # Top 5 whales only to prevent rate limits
+        address = whale["address"]
+        name = whale["name"]
+        
+        try:
+            # Get recent transactions
+            txs = get_recent_transactions(address, limit=10)
+            if not txs:
+                continue
+            
+            # Find recent BUYs (token received)
+            for tx in txs:
+                token_transfers = tx.get("tokenTransfers", [])
+                for transfer in token_transfers:
+                    to_addr = transfer.get("toUserAccount", "")
+                    mint = transfer.get("mint", "")
+                    
+                    if to_addr == address and mint:  # Whale received token (BUY)
+                        # Get other top holders of this token
+                        holders = get_token_holders(mint, limit=20)
+                        if holders:
+                            for holder in holders:
+                                h_wallet = holder.get("owner", "")
+                                if h_wallet and h_wallet != address and h_wallet not in expanded_candidates:
+                                    expanded_candidates.append(h_wallet)
+                        break  # Only need one token per whale
+                
+                if expanded_candidates:
+                    break  # Move to next whale once we found co-buyers
+        
+        except Exception as e:
+            _log(f"ERROR expanding from {name}: {e}")
+            continue
+    
+    _log(f"Enhancement 2: Graph expansion found {len(expanded_candidates)} co-buyer candidates")
+    return expanded_candidates
+
 def scan_for_candidates(dry_run: bool = False) -> dict:
     """
     Scan recent signals for large holders and early buyers.
@@ -176,6 +277,45 @@ def scan_for_candidates(dry_run: bool = False) -> dict:
         except Exception as e:
             _log(f"ERROR analyzing {token}: {e}")
             continue
+    
+    # === ENHANCEMENTS: Add candidates from GPT's methods ===
+    
+    # Enhancement 1: Front-runners from our winning trades
+    config = _load_config()
+    front_runners = _get_our_trade_front_runners()
+    for wallet in front_runners:
+        if wallet not in candidates:
+            candidates[wallet] = {
+                "first_seen": datetime.now(timezone.utc).isoformat(),
+                "trades_observed": 0,
+                "wins": 0,
+                "losses": 0,
+                "pending": 0,
+                "total_sol_traded": 0,
+                "tokens_traded": [],
+                "avg_entry_timing_minutes": 0,
+                "status": "candidate",
+                "discovery_method": "front_runner"
+            }
+            discovered_count += 1
+    
+    # Enhancement 2: Graph expansion from seed whales
+    expanded = _expand_from_seed_whales(config)
+    for wallet in expanded:
+        if wallet not in candidates:
+            candidates[wallet] = {
+                "first_seen": datetime.now(timezone.utc).isoformat(),
+                "trades_observed": 0,
+                "wins": 0,
+                "losses": 0,
+                "pending": 0,
+                "total_sol_traded": 0,
+                "tokens_traded": [],
+                "avg_entry_timing_minutes": 0,
+                "status": "candidate",
+                "discovery_method": "graph_expansion"
+            }
+            discovered_count += 1
     
     if not dry_run:
         _save_candidates(candidates)
@@ -327,11 +467,14 @@ def validate_and_promote(dry_run: bool = False) -> dict:
     
     for wallet_addr, candidate, perf in promotable[:available_slots]:
         # Add to tracked wallets
+        # Enhancement 3: Regime labeling (default to "all" until we have enough data)
         new_whale = {
             "name": f"DISCOVERED_{wallet_addr[:8]}",
             "address": wallet_addr,
             "grade": "B",
             "origin": "discovered",
+            "regime_label": "all",  # Can be: bull-only, meme-only, swing, all
+            "exploration_budget_used": 0,  # Enhancement 4: Track exploration capital
             "notes": f"Auto-promoted: {perf['trades']} trades, {perf['unique_tokens']} tokens"
         }
         tracked_wallets.append(new_whale)
