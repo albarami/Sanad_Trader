@@ -48,19 +48,24 @@ def score_tradeability(signal: dict) -> int:
         elif abs(macd_hist) > 50:
             momentum_score += 5
     
-    # For Solana tokens with price change
+    # For tokens without indicators (CEX majors, Solana)
     else:
         price_1h = signal.get("price_change_1h", 0)
         price_24h = signal.get("price_change_24h", 0)
         
-        # Accelerating momentum = each window bigger
+        # Strong moves in either direction = tradeable (mean reversion or momentum)
         if abs(price_1h) > 5:
             momentum_score += 10
+        elif abs(price_1h) > 2:
+            momentum_score += 5
+            
         if abs(price_24h) > 10:
             momentum_score += 10
+        elif abs(price_24h) > 5:
+            momentum_score += 5
         
         # Bonus for acceleration (1h > 24h means speeding up)
-        if abs(price_1h) > abs(price_24h / 24):
+        if price_1h and price_24h and abs(price_1h) > abs(price_24h / 24):
             momentum_score += 5
     
     momentum_score = min(25, int(momentum_score))
@@ -70,19 +75,9 @@ def score_tradeability(signal: dict) -> int:
     # ===== 2. VOLUME (0-20) =====
     volume_score = 0
     
-    # Check volume ratio from indicators or direct value
+    # Check volume ratio from indicators or use absolute thresholds
     volume_ratio = indicators.get("volume_ratio", 0)
-    if not volume_ratio:
-        # Estimate from volume_24h (no baseline, use absolute threshold)
-        vol_24h = signal.get("volume_24h", 0)
-        if vol_24h > 10_000_000:  # > $10M
-            volume_ratio = 3.0
-        elif vol_24h > 5_000_000:  # > $5M
-            volume_ratio = 2.0
-        elif vol_24h > 1_000_000:  # > $1M
-            volume_ratio = 1.5
-        else:
-            volume_ratio = 1.0
+    vol_24h = signal.get("volume_24h", 0)
     
     if volume_ratio > 3:
         volume_score = 20
@@ -90,6 +85,15 @@ def score_tradeability(signal: dict) -> int:
         volume_score = 15
     elif volume_ratio > 1.5:
         volume_score = 10
+    # Absolute volume thresholds for majors (no baseline available)
+    elif vol_24h > 1_000_000_000:  # > $1B (top majors)
+        volume_score = 20
+    elif vol_24h > 100_000_000:  # > $100M (mid majors)
+        volume_score = 15
+    elif vol_24h > 10_000_000:  # > $10M (small caps)
+        volume_score = 10
+    elif vol_24h > 1_000_000:  # > $1M (micro)
+        volume_score = 5
     else:
         volume_score = 0
     
