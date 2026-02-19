@@ -702,7 +702,8 @@ def check_router_stall():
                     ALERT_LEVEL_INFO
                 )
                 
-                _reset_attempts("router_stall")
+                # DON'T reset attempts - let it accumulate if problem persists
+                # _reset_attempts("router_stall")  # REMOVED - was preventing escalation
                 return []
             
             elif attempts == 2:
@@ -730,7 +731,8 @@ def check_router_stall():
                         ALERT_LEVEL_INFO
                     )
                     
-                    _reset_attempts("router_stall")
+                    # DON'T reset - let it escalate if problem continues
+                    # _reset_attempts("router_stall")  # REMOVED
                     return []
                 else:
                     _log_action(
@@ -770,7 +772,8 @@ def check_router_stall():
                     ALERT_LEVEL_WARNING
                 )
                 
-                _reset_attempts("router_stall")
+                # DON'T reset - attempt 4 must escalate
+                # _reset_attempts("router_stall")  # REMOVED
                 return []
             
             elif attempts == 4:
@@ -861,6 +864,11 @@ def check_router_stall():
                 return [f"Router stalled (PAUSED - human needed)"]
             
             return [f"Router stalled {age_minutes:.0f}min (auto-fix attempt {attempts})"]
+        else:
+            # Router is healthy - reset attempts if they exist
+            if "router_stall" in _fix_attempts and _fix_attempts["router_stall"]["count"] > 0:
+                _log(f"Router healthy again - resetting {_fix_attempts['router_stall']['count']} attempt(s)")
+                _reset_attempts("router_stall")
     
     except Exception as e:
         _log(f"Router stall check failed: {e}", "ERROR")
