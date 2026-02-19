@@ -790,6 +790,18 @@ def run_router():
     except Exception as e:
         _log(f"Strategy pre-filter failed (proceeding without): {e}")
 
+    # --- Tradeability scoring (Phase 3) ---
+    # Add tradeability score as ranking boost
+    try:
+        from tradeability_scorer import score_tradeability
+        for idx, (s, sc) in enumerate(candidates):
+            t_score = score_tradeability(s)
+            s["_tradeability_score"] = t_score
+            # Add (tradeability_score // 10) to ranking score
+            candidates[idx] = (s, sc + (t_score // 10))
+    except Exception as e:
+        _log(f"Tradeability scoring failed (proceeding without): {e}")
+
     # --- Rank ---
     candidates.sort(key=lambda x: x[1], reverse=True)
     _log(f"Scoring {len(candidates)} candidates...")
@@ -958,6 +970,20 @@ def run_router():
 
         selected_token = selected.get("token", "?")
         _log(f"[{batch_idx+1}/{len(batch)}] Selected: {selected_token} (score {selected_score}) → feeding to pipeline")
+
+        # --- Tradeability Gate (Phase 3) ---
+        try:
+            from tradeability_scorer import score_tradeability
+            t_score = score_tradeability(selected)
+            selected['tradeability_score'] = t_score
+            _log(f"  Tradeability: {t_score}/100")
+            
+            if t_score < 55:
+                _log(f"  SKIP {selected_token}: tradeability={t_score} (below 55)")
+                continue
+        except Exception as e:
+            _log(f"  Tradeability scoring failed: {e}")
+            # Continue without tradeability score (don't block on error)
 
         # --- Record signal in UCB1 ---
         try:
