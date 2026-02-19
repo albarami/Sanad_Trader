@@ -200,6 +200,67 @@ STRATEGIES = {
         },
         "active": True,
     },
+    "mean-reversion": {
+        "name": "Mean Reversion",
+        "description": "BB + RSI oversold reversals on majors",
+        "chain": ["binance"],
+        "direction": "LONG",
+        "entry_conditions": {
+            "min_sanad_score": 60,
+            "rsi_below": 30,
+            "price_below_bb_lower": True,
+            "min_volume_24h_usd": 1000000,
+        },
+        "exit_conditions": {
+            "stop_loss_pct": 2,
+            "take_profit_pct": 4,
+            "trailing_stop_pct": 1.5,
+            "max_hold_hours": 24,
+        },
+        "sizing": {"base_pct": 5, "max_pct": 10},
+        "active": True,
+        "instruments": ["BTCUSDT", "ETHUSDT", "SOLUSDT"],
+    },
+    "trend-following": {
+        "name": "Trend Following",
+        "description": "EMA crossover + ATR stops on majors",
+        "chain": ["binance"],
+        "direction": "LONG",
+        "entry_conditions": {
+            "min_sanad_score": 50,
+            "ema20_above_ema50": True,
+            "min_volume_24h_usd": 500000,
+        },
+        "exit_conditions": {
+            "stop_loss_pct": 3,
+            "take_profit_pct": 6,
+            "trailing_stop_pct": 2,
+            "max_hold_hours": 48,
+        },
+        "sizing": {"base_pct": 5, "max_pct": 10},
+        "active": True,
+        "instruments": ["BTCUSDT", "ETHUSDT", "SOLUSDT"],
+    },
+    "scalping": {
+        "name": "Scalping",
+        "description": "MACD crossover micro-moves on high-volume majors",
+        "chain": ["binance"],
+        "direction": "LONG",
+        "entry_conditions": {
+            "min_sanad_score": 40,
+            "macd_bullish_cross": True,
+            "min_volume_24h_usd": 5000000,
+        },
+        "exit_conditions": {
+            "stop_loss_pct": 0.5,
+            "take_profit_pct": 1,
+            "trailing_stop_pct": 0.3,
+            "max_hold_hours": 4,
+        },
+        "sizing": {"base_pct": 3, "max_pct": 7},
+        "active": True,
+        "instruments": ["BTCUSDT", "ETHUSDT", "SOLUSDT"],
+    },
 }
 
 
@@ -260,6 +321,28 @@ def match_signal_to_strategies(signal: dict) -> list:
                 val = signal.get("holder_count")
                 if val is not None and val < threshold:
                     met = False; unmet.append(f"{key}: {val} < {threshold}")
+            elif key == "rsi_below":
+                indicators = signal.get("indicators", {})
+                val = indicators.get("rsi", 50)
+                if val >= threshold:
+                    met = False; unmet.append(f"{key}: RSI {val} >= {threshold}")
+            elif key == "price_below_bb_lower":
+                indicators = signal.get("indicators", {})
+                price = indicators.get("current_price", 0)
+                bb_lower = indicators.get("bb_lower", 0)
+                if threshold and price >= bb_lower:
+                    met = False; unmet.append(f"{key}: price {price} >= bb_lower {bb_lower}")
+            elif key == "ema20_above_ema50":
+                indicators = signal.get("indicators", {})
+                ema20 = indicators.get("ema20", 0)
+                ema50 = indicators.get("ema50", 0)
+                if threshold and ema20 <= ema50:
+                    met = False; unmet.append(f"{key}: EMA20 {ema20} <= EMA50 {ema50}")
+            elif key == "macd_bullish_cross":
+                indicators = signal.get("indicators", {})
+                macd_hist = indicators.get("macd_hist", 0)
+                if threshold and macd_hist <= 0:
+                    met = False; unmet.append(f"{key}: MACD histogram {macd_hist} <= 0")
 
         matches.append({
             "strategy": name,
