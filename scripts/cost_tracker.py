@@ -43,11 +43,14 @@ STATE_DIR = BASE_DIR / "state"
 COSTS_LOG = STATE_DIR / "api_costs.jsonl"
 DAILY_COST_FILE = STATE_DIR / "daily_cost.json"
 
-# Pricing (per million tokens)
+# Pricing (per million tokens) — VERIFIED 2026-02-19 against Anthropic dashboard
+# Anthropic pricing as of Feb 2026:
+# - Opus 4.6: $15 input / $75 output (3x what we had)
+# - Haiku 4.5: $0.80 input / $4.00 output (was $1/$5)
 PRICING = {
-    "claude-opus-4-6": {"input": 5.0, "output": 25.0},
+    "claude-opus-4-6": {"input": 15.0, "output": 75.0},  # CORRECTED from $5/$25
     "claude-sonnet-4-6": {"input": 3.0, "output": 15.0},
-    "claude-haiku-4-5-20251001": {"input": 1.0, "output": 5.0},
+    "claude-haiku-4-5-20251001": {"input": 0.8, "output": 4.0},  # CORRECTED from $1/$5
     "gpt-5.2": {"flat": 0.03},  # flat per call
     "perplexity/sonar-pro": {"flat": 0.02},
     "perplexity/sonar-deep-research": {"flat": 0.15},

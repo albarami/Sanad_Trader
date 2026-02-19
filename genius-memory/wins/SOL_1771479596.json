@@ -1,0 +1,15 @@
+{
+  "token": "SOL",
+  "entry_price": 81.52,
+  "exit_price": 81.72,
+  "pnl_pct": 0.002453,
+  "strategy": "unknown",
+  "source": "unknown",
+  "trust_score": 0,
+  "corroboration": 1,
+  "exit_reason": "TIME_EXIT",
+  "entry_time": null,
+  "exit_time": null,
+  "hold_duration_hours": 0,
+  "analyzed_at": "2026-02-19T05:39:56.343742Z"
+}

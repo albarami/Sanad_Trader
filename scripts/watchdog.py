@@ -1082,28 +1082,51 @@ def check_zombie_processes():
 
 
 def check_cost_runaway():
-    """Check if daily cost > 80% of limit."""
+    """Check actual daily spend from api_costs.jsonl (not just daily_cost.json)."""
     try:
-        daily_cost_file = STATE_DIR / "daily_cost.json"
-        if not daily_cost_file.exists():
+        costs_log = STATE_DIR / "api_costs.jsonl"
+        if not costs_log.exists():
             return []
         
-        cost_data = json.load(open(daily_cost_file))
-        total_usd = cost_data.get("total_usd", 0)
+        # Calculate actual 24h spend from api_costs.jsonl
+        now = datetime.utcnow()
+        last_24h = now - timedelta(hours=24)
+        total_24h = 0.0
         
-        # Daily LLM spend limit (paper mode)
-        DAILY_LIMIT = 65.0
-        pct = total_usd / DAILY_LIMIT
+        with open(costs_log) as f:
+            for line in f:
+                if not line.strip():
+                    continue
+                entry = json.loads(line)
+                ts = datetime.fromisoformat(entry["timestamp"].replace("Z", "+00:00"))
+                if ts >= last_24h.replace(tzinfo=None):
+                    total_24h += entry["cost_usd"]
         
-        if pct > COST_WARNING_PCT:
-            _log(f"Cost runaway: ${total_usd:.2f} / ${DAILY_LIMIT} ({pct*100:.0f}%)", "WARNING")
+        # Thresholds for paper mode
+        WARNING_THRESHOLD = 15.0
+        CRITICAL_THRESHOLD = 30.0
+        
+        if total_24h >= CRITICAL_THRESHOLD:
+            _log(f"CRITICAL: 24h cost ${total_24h:.2f} >= ${CRITICAL_THRESHOLD}", "CRITICAL")
             _alert(
-                f"⚠️ WATCHDOG: Daily cost warning\n"
-                f"• Cost: ${total_usd:.2f} / ${DAILY_LIMIT} ({pct*100:.0f}%)\n"
-                f"• Note: Approaching daily limit",
+                f"🚨 WATCHDOG CRITICAL: Daily cost overrun\n"
+                f"• 24h spend: ${total_24h:.2f}\n"
+                f"• Threshold: ${CRITICAL_THRESHOLD}\n"
+                f"• Action: Review api_costs.jsonl for untracked calls",
+                ALERT_LEVEL_CRITICAL
+            )
+            return [f"CRITICAL: ${total_24h:.2f} >= ${CRITICAL_THRESHOLD}"]
+        
+        elif total_24h >= WARNING_THRESHOLD:
+            _log(f"WARNING: 24h cost ${total_24h:.2f} >= ${WARNING_THRESHOLD}", "WARNING")
+            _alert(
+                f"⚠️ WATCHDOG WARNING: Daily cost high\n"
+                f"• 24h spend: ${total_24h:.2f}\n"
+                f"• Warning threshold: ${WARNING_THRESHOLD}\n"
+                f"• Critical threshold: ${CRITICAL_THRESHOLD}",
                 ALERT_LEVEL_WARNING
             )
-            return [f"${total_usd:.2f} / ${DAILY_LIMIT} ({pct*100:.0f}%)"]
+            return [f"WARNING: ${total_24h:.2f} >= ${WARNING_THRESHOLD}"]
     
     except Exception as e:
         _log(f"Cost check failed: {e}", "ERROR")

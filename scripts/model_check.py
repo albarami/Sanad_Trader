@@ -92,6 +92,19 @@ def check():
                     "checked_at": _now().isoformat(),
                 }
                 _log(f"  {name} ({model_id}): {status}")
+                # Track cost (minimal ping)
+                if resp.status_code == 200:
+                    resp_data = resp.json()
+                    usage = resp_data.get("usage", {})
+                    if usage:
+                        from cost_tracker import log_api_call
+                        log_api_call(
+                            model=model_id,
+                            input_tokens=usage.get("input_tokens", 0),
+                            output_tokens=usage.get("output_tokens", 0),
+                            stage="model_health_check",
+                            extra={"script": "model_check"}
+                        )
         except Exception as e:
             _log(f"  Anthropic check failed: {e}")
 

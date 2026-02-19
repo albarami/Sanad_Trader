@@ -166,6 +166,20 @@
       "source": "CoinGecko trending #14",
       "strategy": "meme-momentum",
       "regime_at_entry": "BEAR_HIGH_VOL"
+    },
+    {
+      "token": "SOL",
+      "symbol": "SOLUSDT",
+      "timestamp": "2026-02-19T05:39:54.184063+00:00",
+      "side": "SELL",
+      "reason": "TIME_EXIT",
+      "entry_price": 81.52,
+      "exit_price": 81.72,
+      "pnl_pct": 0.002453385672227709,
+      "pnl_usd": 0.2019407556427919,
+      "source": "CoinGecko trending #7",
+      "strategy": "meme-momentum",
+      "regime_at_entry": "BEAR_HIGH_VOL"
     }
   ]
 }

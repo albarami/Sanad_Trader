@@ -108,8 +108,8 @@ def load_trade_history() -> list:
 # API Calls
 # ─────────────────────────────────────────────
 
-def call_claude(system_prompt: str, user_message: str, model: str = "claude-opus-4-6-20250515", test_mode: bool = False) -> str:
-    """Call Claude API (direct or via OpenRouter fallback)."""
+def call_claude(system_prompt: str, user_message: str, model: str = "claude-haiku-4-5-20251001", test_mode: bool = False) -> str:
+    """Call Claude API (direct or via OpenRouter fallback). Uses Haiku for cost efficiency."""
     if test_mode:
         print(f"    [TEST MODE] Would call Claude {model}")
         return json.dumps({
@@ -143,6 +143,17 @@ def call_claude(system_prompt: str, user_message: str, model: str = "claude-opus
             with urllib.request.urlopen(req, timeout=120) as resp:
                 result = json.loads(resp.read().decode("utf-8"))
                 if result.get("content") and len(result["content"]) > 0:
+                    # Track cost
+                    usage = result.get("usage", {})
+                    if usage:
+                        from cost_tracker import log_api_call
+                        log_api_call(
+                            model=model,
+                            input_tokens=usage.get("input_tokens", 0),
+                            output_tokens=usage.get("output_tokens", 0),
+                            stage="pattern_extraction",
+                            extra={"script": "pattern_extractor"}
+                        )
                     return result["content"][0].get("text", "")
         except Exception as e:
             print(f"    [Claude direct failed: {e}]")

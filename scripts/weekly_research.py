@@ -90,15 +90,27 @@ Focus on actionable intelligence for an autonomous trading system."""
                         "content-type": "application/json",
                     },
                     json={
-                        "model": "claude-sonnet-4-5-20250929",
+                        "model": "claude-haiku-4-5-20251001",
                         "max_tokens": 3000,
                         "messages": [{"role": "user", "content": prompt}],
                     },
                     timeout=60,
                 )
                 if resp.status_code == 200:
-                    result = resp.json()["content"][0]["text"]
-                    _log("Research via Anthropic OK")
+                    resp_data = resp.json()
+                    result = resp_data["content"][0]["text"]
+                    # Track cost
+                    usage = resp_data.get("usage", {})
+                    if usage:
+                        from cost_tracker import log_api_call
+                        log_api_call(
+                            model="claude-haiku-4-5-20251001",
+                            input_tokens=usage.get("input_tokens", 0),
+                            output_tokens=usage.get("output_tokens", 0),
+                            stage="weekly_research",
+                            extra={"script": "weekly_research"}
+                        )
+                    _log("Research via Anthropic OK (Haiku)")
             except Exception as e:
                 _log(f"Anthropic failed: {e}")
 

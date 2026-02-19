@@ -312,15 +312,27 @@ def call_gpt(prompt: str) -> dict | None:
                     "content-type": "application/json",
                 },
                 json={
-                    "model": "claude-sonnet-4-5-20250929",
-                    "max_completion_tokens": 2048,
+                    "model": "claude-haiku-4-5-20251001",
+                    "max_tokens": 2048,
                     "messages": [{"role": "user", "content": prompt}],
                 },
                 timeout=90,
             )
 
             if resp.status_code == 200:
-                text = resp.json()["content"][0]["text"]
+                result = resp.json()
+                text = result["content"][0]["text"]
+                # Track cost
+                usage = result.get("usage", {})
+                if usage:
+                    from cost_tracker import log_api_call
+                    log_api_call(
+                        model="claude-haiku-4-5-20251001",
+                        input_tokens=usage.get("input_tokens", 0),
+                        output_tokens=usage.get("output_tokens", 0),
+                        stage="statistical_review",
+                        extra={"script": "statistical_review"}
+                    )
                 import re
                 json_match = re.search(r'\{[\s\S]*\}', text)
                 if json_match:
