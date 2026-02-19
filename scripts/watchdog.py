@@ -27,6 +27,7 @@ from datetime import datetime, timedelta
 
 # --- CONFIG ---
 BASE_DIR = Path(os.environ.get("SANAD_HOME", Path(__file__).resolve().parent.parent))
+SCRIPTS_DIR = BASE_DIR / "scripts"
 STATE_DIR = BASE_DIR / "state"
 LOGS_DIR = BASE_DIR / "logs"
 GENIUS_DIR = BASE_DIR / "genius-memory" / "watchdog-actions"
