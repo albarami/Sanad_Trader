@@ -142,7 +142,7 @@ tradeability:
     BULL: 55
     BEAR_HIGH_VOL: 35
     BEAR_LOW_VOL: 40
-    UNKNOWN: 40
+    UNKNOWN: 55  # Restored from 40 - pipeline fixed, XRP scores 73
   component_max:
     momentum: 25
     volume: 20
