@@ -1081,12 +1081,33 @@ def run_router():
         _log(f"Calling pipeline with 5min timeout...")
         pipeline_start = time.time()
         try:
-            result = subprocess.run(
+            # Use Popen with preexec_fn to set process group (allows killing entire subtree)
+            import os
+            proc = subprocess.Popen(
                 ["python3", str(PIPELINE_SCRIPT), str(signal_file)],
-                capture_output=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
                 text=True,
-                timeout=300,  # 5 minutes hard limit
+                preexec_fn=os.setpgrp  # Create new process group
             )
+            
+            # Wait with timeout, kill process group if exceeded
+            try:
+                stdout, stderr = proc.communicate(timeout=300)  # 5 minutes hard limit
+                result = type('obj', (object,), {
+                    'stdout': stdout,
+                    'stderr': stderr,
+                    'returncode': proc.returncode
+                })()
+            except subprocess.TimeoutExpired:
+                # Kill entire process group (catches hung child processes)
+                try:
+                    os.killpg(os.getpgid(proc.pid), signal.SIGKILL)
+                    _log("Pipeline TIMEOUT (>5min) — killed process group")
+                except Exception as kill_err:
+                    _log(f"Failed to kill process group: {kill_err}")
+                raise  # Re-raise to hit outer exception handler
+                
             pipeline_duration = time.time() - pipeline_start
             _log(f"Pipeline completed in {pipeline_duration:.1f}s")
             stdout = result.stdout.strip()
