@@ -106,6 +106,7 @@ def save_trailing_stops(data):
 TRAILING_ACTIVATION_PCT = 0.04   # Paper mode: activate at +4% (tighter for faster turnover)
 TRAILING_DROP_PCT = 0.03         # Paper mode: 3% trail from HWM (lock profits faster)
 _default_max_hold = 24
+_strategy_configs = {}
 try:
     import yaml as _yaml
     _thresholds = _yaml.safe_load(open(BASE_DIR / "config" / "thresholds.yaml"))
@@ -114,11 +115,22 @@ try:
         _default_max_hold = _thresholds["risk"]["paper_max_hold_hours"]
     elif "max_hold_hours" in _thresholds.get("risk", {}):
         _default_max_hold = _thresholds["risk"]["max_hold_hours"]
+    
+    # Load strategy-specific configs
+    _strategy_configs = _thresholds.get("strategies", {})
 except Exception:
     pass
 MAX_HOLD_HOURS = _default_max_hold  # Paper: 12h, Live: 24h (Al-Muhasbi approved)
 FLASH_CRASH_PCT = 0.10           # 10% drop in 15 minutes
 FLASH_CRASH_WINDOW_MIN = 15      # 15-minute window
+
+
+def _get_strategy_config(position):
+    """Get strategy-specific exit parameters, fallback to defaults."""
+    strategy_name = position.get("strategy_name", "")
+    if strategy_name and strategy_name in _strategy_configs:
+        return _strategy_configs[strategy_name]
+    return None
 
 
 def check_stop_loss(position, current_price):
@@ -133,9 +145,16 @@ def check_stop_loss(position, current_price):
 
 
 def check_take_profit(position, current_price):
-    """Exit Condition B: Take-profit."""
+    """Exit Condition B: Take-profit (strategy-aware)."""
     entry = position["entry_price"]
-    tp_pct = position.get("take_profit_pct", 0.30)
+    
+    # Check for strategy-specific target, fallback to position default, then global default
+    strategy_cfg = _get_strategy_config(position)
+    if strategy_cfg and "take_profit_pct" in strategy_cfg:
+        tp_pct = strategy_cfg["take_profit_pct"]
+    else:
+        tp_pct = position.get("take_profit_pct", 0.30)
+    
     tp_price = entry * (1.0 + tp_pct)
 
     if current_price >= tp_price:
@@ -172,16 +191,27 @@ def check_breakeven_stop(position, current_price):
 
 
 def check_trailing_stop(position, current_price, trailing_stops):
-    """Exit Condition C: Trailing stop (activate at 15% profit, 8% drop from high-water)."""
+    """Exit Condition C: Trailing stop (strategy-aware activation and drop)."""
     symbol = position["symbol"]
     entry = position["entry_price"]
     unrealized_pct = (current_price - entry) / entry
+
+    # Get strategy-specific trailing parameters
+    strategy_cfg = _get_strategy_config(position)
+    activation_pct = TRAILING_ACTIVATION_PCT
+    drop_pct = TRAILING_DROP_PCT
+    
+    if strategy_cfg:
+        # Use strategy trailing_stop_pct as drop percentage
+        # Activation stays at default unless strategy specifies it
+        if "trailing_stop_pct" in strategy_cfg:
+            drop_pct = strategy_cfg["trailing_stop_pct"]
 
     ts_data = trailing_stops.get(symbol, {})
 
     # Check if trailing stop should activate
     if not ts_data.get("activated", False):
-        if unrealized_pct >= TRAILING_ACTIVATION_PCT:
+        if unrealized_pct >= activation_pct:
             # Activate trailing stop
             ts_data = {
                 "high_water_mark": current_price,
@@ -199,38 +229,43 @@ def check_trailing_stop(position, current_price, trailing_stops):
         hwm = current_price
         trailing_stops[symbol] = ts_data
 
-    # Check if price dropped 8% below high-water mark
+    # Check if price dropped below threshold from high-water mark
     drop_from_hwm = (hwm - current_price) / hwm
-    if drop_from_hwm >= TRAILING_DROP_PCT:
+    if drop_from_hwm >= drop_pct:
         return True, "TRAILING_STOP", (
             f"Price ${current_price:,.4f} dropped {drop_from_hwm*100:.1f}% from HWM ${hwm:,.4f} "
-            f"(threshold: {TRAILING_DROP_PCT*100:.0f}%)"
+            f"(threshold: {drop_pct*100:.0f}%)"
         )
 
     return False, None, None
 
 
 def check_time_exit(position):
-    """Exit Condition D: Time-based exit using Bull's timeframe or tier defaults."""
+    """Exit Condition D: Time-based exit using strategy > Bull's timeframe > tier defaults."""
     opened_at = parse_dt(position["opened_at"])
     hold_hours = (now_utc() - opened_at).total_seconds() / 3600
     
-    # Use Bull's timeframe if available
-    bull_timeframe = position.get("bull_timeframe", "")
-    asset_tier = position.get("asset_tier", "TIER_3_MICRO")
-    
-    try:
-        from exit_time_parser import extract_max_hold_hours
-        max_hold = extract_max_hold_hours(bull_timeframe, asset_tier)
-    except Exception:
-        # Fallback to tier-based defaults
-        tier_defaults = {
-            "TIER_1_MACRO": 168,        # 7 days
-            "TIER_2_ALT_LARGE": 120,    # 5 days
-            "TIER_3_MEME_CEX": 72,      # 3 days
-            "TIER_3_MICRO": 24,         # 1 day
-        }
-        max_hold = tier_defaults.get(asset_tier, MAX_HOLD_HOURS)
+    # Priority 1: Strategy-specific max_hold_hours
+    strategy_cfg = _get_strategy_config(position)
+    if strategy_cfg and "max_hold_hours" in strategy_cfg:
+        max_hold = strategy_cfg["max_hold_hours"]
+    else:
+        # Priority 2: Bull's timeframe if available
+        bull_timeframe = position.get("bull_timeframe", "")
+        asset_tier = position.get("asset_tier", "TIER_3_MICRO")
+        
+        try:
+            from exit_time_parser import extract_max_hold_hours
+            max_hold = extract_max_hold_hours(bull_timeframe, asset_tier)
+        except Exception:
+            # Priority 3: Fallback to tier-based defaults
+            tier_defaults = {
+                "TIER_1_MACRO": 168,        # 7 days
+                "TIER_2_ALT_LARGE": 120,    # 5 days
+                "TIER_3_MEME_CEX": 72,      # 3 days
+                "TIER_3_MICRO": 24,         # 1 day
+            }
+            max_hold = tier_defaults.get(asset_tier, MAX_HOLD_HOURS)
     
     if hold_hours > max_hold:
         return True, "TIME_EXIT", f"Position open {hold_hours:.1f}h > {max_hold}h (from Bull: '{bull_timeframe}')"

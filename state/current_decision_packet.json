@@ -1,21 +1,21 @@
 {
   "token": {
-    "symbol": "TOTO",
-    "deployment_timestamp": "2026-01-08T19:30:56.966481+00:00"
+    "symbol": "COPPERINU",
+    "deployment_timestamp": "2026-01-08T19:35:36.470380+00:00"
   },
-  "symbol": "TOTOUSDT",
+  "symbol": "COPPERINUUSDT",
   "venue": "DEX",
   "exchange": "raydium",
   "strategy_name": "whale-following",
   "data_timestamps": {
-    "price_timestamp": "2026-02-19T10:30:56.966509+00:00",
-    "onchain_timestamp": "2026-02-19T10:30:56.966511+00:00"
+    "price_timestamp": "2026-02-19T10:35:36.470417+00:00",
+    "onchain_timestamp": "2026-02-19T10:35:36.470420+00:00"
   },
   "current_price": null,
   "sanad_verification": {
-    "sanad_trust_score": 60,
-    "grade": "Tawatur",
-    "recommendation": "BLOCK",
+    "sanad_trust_score": 82,
+    "grade": "Mashhur",
+    "recommendation": "PROCEED",
     "rugpull_flags": []
   },
   "market_data": {
@@ -28,9 +28,9 @@
     "position_size_pct": 0.013999999999999999,
     "position_usd": 139.16
   },
-  "trade_confidence_score": 0,
-  "almuhasbi_verdict": "REJECT",
-  "almuhasbi_confidence": 58,
+  "trade_confidence_score": 52,
+  "almuhasbi_verdict": "APPROVE",
+  "almuhasbi_confidence": 52,
   "dex_sim_result": null,
   "volatility_30min_pct": 0,
   "has_verified_catalyst": false
