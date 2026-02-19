@@ -482,7 +482,7 @@ def close_position(position, current_price, reason, detail=""):
             "exit_price": current_price,
             "pnl_pct": pnl_pct,
             "pnl_usd": net_pnl_usd,
-            "source": position.get("signal_source", "unknown"),
+            "source": position.get("signal_source_canonical", position.get("signal_source", "unknown")),
             "strategy": position.get("strategy_name", "unknown"),
             "regime_at_entry": position.get("regime_tag", "UNKNOWN"),
         })
@@ -494,10 +494,28 @@ def close_position(position, current_price, reason, detail=""):
     # ── Post-trade analysis (Genius Memory) ──
     try:
         import post_trade_analyzer
-        post_trade_analyzer.analyze_trade(position)
+        # Convert position to trade format for analyzer
+        trade_record = {
+            "trade_id": position["id"],
+            "token": position["token"],
+            "entry_price": entry,
+            "exit_price": current_price,
+            "pnl_pct": pnl_pct,
+            "source": position.get("signal_source_canonical", position.get("signal_source", "unknown")),
+            "strategy": position.get("strategy_name", "unknown"),
+            "exit_reason": reason,
+            "entry_time": position.get("opened_at"),
+            "exit_time": now.isoformat(),
+            "hold_duration_hours": (now - parse_dt(position["opened_at"])).total_seconds() / 3600,
+            "trust_score": position.get("sanad_score", 0),
+            "cross_source_count": 1,  # TODO: track corroboration in positions
+        }
+        post_trade_analyzer.analyze_trade(trade_record)
         print(f"    Genius Memory: post-trade analysis complete")
     except Exception as e:
         print(f"    WARNING: Post-trade analysis failed: {e}")
+        import traceback
+        traceback.print_exc()
 
     return net_pnl_usd
 

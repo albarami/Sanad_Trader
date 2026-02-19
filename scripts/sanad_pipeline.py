@@ -705,6 +705,19 @@ HARD GATES (deterministic, override LLM):
 
 
 # ─────────────────────────────────────────────
+# HELPER: CANONICALIZE SOURCE
+# ─────────────────────────────────────────────
+
+def _canonicalize_source(raw_source: str) -> str:
+    """Convert raw source string to canonical source_key for UCB1."""
+    try:
+        from signal_normalizer import canonical_source
+        return canonical_source(raw_source)["source_key"]
+    except Exception:
+        return raw_source.lower().replace(" ", "_")
+
+
+# ─────────────────────────────────────────────
 # STAGE 2: SANAD VERIFICATION
 # ─────────────────────────────────────────────
 
@@ -2077,6 +2090,7 @@ def _add_position(signal, strategy_result, order, sanad_result, bull_result=None
             "bull_timeframe": bull_result.get("timeframe", "N/A") if bull_result else "N/A",
             "strategy_name": strategy_result.get("strategy_name", ""),
             "signal_source": signal.get("source", "unknown"),
+            "signal_source_canonical": _canonicalize_source(signal.get("source", "unknown")),
             "sanad_score": sanad_result.get("trust_score", 0),
             "regime_tag": strategy_result.get("regime_tag", "UNKNOWN"),
             "regime_size_modifier": strategy_result.get("regime_size_modifier", 1.0),

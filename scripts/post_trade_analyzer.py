@@ -134,15 +134,24 @@ def analyze_trade(trade):
     exit_price = trade.get("exit_price", 0)
     pnl_pct = trade.get("pnl_pct", 0)
     strategy = trade.get("strategy", "unknown")
-    source = trade.get("source", "unknown")
+    raw_source = trade.get("source", "unknown")
     trust_score = trade.get("trust_score", 0)
     corroboration = trade.get("cross_source_count", 1)
     exit_reason = trade.get("exit_reason", "unknown")
     
+    # Canonicalize source for UCB1 learning
+    try:
+        from signal_normalizer import canonical_source
+        source_info = canonical_source(raw_source)
+        source_key = source_info["source_key"]
+    except Exception as e:
+        _log(f"Warning: canonical_source failed: {e}, using raw source")
+        source_key = raw_source
+    
     is_win = pnl_pct > 0
     
-    # Update UCB1 source grade
-    _update_ucb1_score(source, is_win)
+    # Update UCB1 source grade with canonical key
+    _update_ucb1_score(source_key, is_win)
     
     # Save to genius memory
     category = "wins" if is_win else "losses"
@@ -156,7 +165,8 @@ def analyze_trade(trade):
         "exit_price": exit_price,
         "pnl_pct": pnl_pct,
         "strategy": strategy,
-        "source": source,
+        "source": source_key,  # Use canonical source key
+        "source_raw": raw_source,  # Keep raw for reference
         "trust_score": trust_score,
         "corroboration": corroboration,
         "exit_reason": exit_reason,
