@@ -91,7 +91,7 @@ def _get_telegram_config() -> dict:
 # ─────────────────────────────────────────────────────────
 
 def send(message: str, level: str = AlertLevel.NORMAL, title: str = None,
-         parse_mode: str = "Markdown") -> bool:
+         parse_mode: str = None) -> bool:
     """Send a notification through available channels.
 
     Args:
@@ -137,7 +137,7 @@ def send(message: str, level: str = AlertLevel.NORMAL, title: str = None,
     return sent
 
 
-def _send_telegram(message: str, parse_mode: str = "Markdown") -> bool:
+def _send_telegram(message: str, parse_mode: str = None) -> bool:
     """Send message via Telegram Bot API."""
     config = _get_telegram_config()
     token = config.get("token")
