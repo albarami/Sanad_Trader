@@ -828,6 +828,45 @@ def run_router():
         cross_tag = " ← CROSS-SOURCE" if is_cross else ""
         _log(f"  {i}. {token} — score {score} ({origin} {stype}, {detail}){cross_tag}")
 
+    # --- PREFILTER: DexScreener boost signals (100% block rate = waste) ---
+    prefiltered = []
+    dex_prefilter_skipped = 0
+    
+    for idx, (s, sc) in enumerate(candidates):
+        origin = s.get("_origin", "")
+        boost = s.get("boost_amount", 0)
+        
+        # Only prefilter DexScreener boost signals
+        if origin == "dexscreener" and boost > 0:
+            token_name = s.get("token", "?")
+            liquidity = s.get("liquidity", 0)
+            token_age_h = s.get("token_age_hours", 0)
+            holder_count = s.get("holder_count", 0)
+            rugcheck_score = s.get("rugcheck_score", 0)
+            
+            # REQUIRE ALL: liquidity $200K+, age 24h+, holders 1000+, rugcheck 50+
+            reasons = []
+            if liquidity < 200000:
+                reasons.append(f"liquidity ${liquidity/1000:.0f}K < $200K")
+            if token_age_h < 24:
+                reasons.append(f"age {token_age_h:.1f}h < 24h")
+            if holder_count < 1000:
+                reasons.append(f"holders {holder_count} < 1000")
+            if rugcheck_score > 0 and rugcheck_score < 50:
+                reasons.append(f"rugcheck {rugcheck_score} < 50")
+            
+            if reasons:
+                dex_prefilter_skipped += 1
+                _log(f"Prefiltered: {token_name} (DexScreener boost failed: {', '.join(reasons)})")
+                continue
+        
+        prefiltered.append((s, sc))
+    
+    if dex_prefilter_skipped > 0:
+        _log(f"DexScreener prefilter: {dex_prefilter_skipped} signals skipped (low quality)")
+    
+    candidates = prefiltered
+    
     # --- RugCheck safety gate (top 3 Solana candidates) ---
     try:
         from rugcheck_client import check_token_safety
