@@ -1,28 +1,7 @@
 {
-  "sent": 529,
+  "sent": 532,
   "failed": 7,
   "history": [
-    {
-      "level": "L1",
-      "title": "Signal Rejected",
-      "message": "\ud83d\udd34 *Signal Rejected*\n\nToken: TROLL\nReason: {\n  \"result\": \"BLOCK\",\n  \"gates_passed\": [\n    1,\n    2,\n    3,\n    4,\n    5,\n    6,\n    7,\n    8,\n    9,\n    10\n  ],\n  \"gate_failed\": 11,\n  \"gate_failed_name",
-      "channel": "log_only",
-      "at": "2026-02-19T05:28:13.932422+00:00"
-    },
-    {
-      "level": 1,
-      "title": null,
-      "message": "\ud83d\udd27 WATCHDOG AUTO-FIX:\n\u2022 Problem: Reconciliation stale (18min, threshold 15min)\n\u2022 Action: Cleared lock + re-ran reconciliation.py\n\u2022 Result: \u2705 Fresh (completed in 0.0s)",
-      "channel": "telegram",
-      "at": "2026-02-19T05:30:03.726324+00:00"
-    },
-    {
-      "level": 1,
-      "title": null,
-      "message": "\ud83d\udd27 WATCHDOG AUTO-FIX:\n\u2022 Problem: DexScreener signals stale (13min, threshold 10min)\n\u2022 Action: Force-ran dexscreener_client.py\n\u2022 Result: \u2705 Fresh signals generated (12.7s)",
-      "channel": "telegram",
-      "at": "2026-02-19T05:30:17.605967+00:00"
-    },
     {
       "level": "L1",
       "title": "Signal Rejected",
@@ -701,7 +680,28 @@
       "message": "\u26a0\ufe0f WATCHDOG: Stale data sources detected\n\u2022 Sources: onchain (680min old), coingecko (39min old)\n\u2022 Note: This usually means scanners haven't run or are failing",
       "channel": "telegram",
       "at": "2026-02-19T10:46:18.367232+00:00"
+    },
+    {
+      "level": 2,
+      "title": null,
+      "message": "\u26a0\ufe0f WATCHDOG: Stale data sources detected\n\u2022 Sources: onchain (681min old), coingecko (40min old)\n\u2022 Note: This usually means scanners haven't run or are failing",
+      "channel": "telegram",
+      "at": "2026-02-19T10:46:54.998797+00:00"
+    },
+    {
+      "level": 2,
+      "title": null,
+      "message": "\u26a0\ufe0f WATCHDOG: Stale data sources detected\n\u2022 Sources: onchain (682min old)\n\u2022 Note: This usually means scanners haven't run or are failing",
+      "channel": "telegram",
+      "at": "2026-02-19T10:48:08.153045+00:00"
+    },
+    {
+      "level": 2,
+      "title": null,
+      "message": "\u26a0\ufe0f WATCHDOG: Stale data sources detected\n\u2022 Sources: onchain (684min old)\n\u2022 Note: This usually means scanners haven't run or are failing",
+      "channel": "telegram",
+      "at": "2026-02-19T10:50:06.638917+00:00"
     }
   ],
-  "last_sent": "2026-02-19T10:46:18.367244+00:00"
+  "last_sent": "2026-02-19T10:50:06.638934+00:00"
 }

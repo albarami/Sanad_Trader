@@ -23,7 +23,7 @@ import psutil
 import shutil
 import subprocess
 from pathlib import Path
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 # --- CONFIG ---
 BASE_DIR = Path(os.environ.get("SANAD_HOME", Path(__file__).resolve().parent.parent))
@@ -942,32 +942,47 @@ def check_data_freshness():
     """Check if scanners have fresh data (<15 min)."""
     issues = []
     try:
-        # Check onchain signals explicitly (often goes stale)
-        onchain_dir = BASE_DIR / "signals" / "onchain"
-        if onchain_dir.exists():
-            onchain_files = list(onchain_dir.glob("*.json"))
-            if onchain_files:
-                newest_onchain = max(onchain_files, key=lambda p: p.stat().st_mtime)
-                age_min = (time.time() - newest_onchain.stat().st_mtime) / 60
-                if age_min > 30:  # Onchain should run every 15min
-                    issues.append(f"onchain ({age_min:.0f}min old)")
-                    _log(f"Onchain signals STALE: {age_min:.0f}min", "WARNING")
-                    
-                    # Tier 2 intervention: force rerun
-                    _log("Tier 2: Force rerunning onchain_analytics.py...")
-                    try:
-                        result = subprocess.run(
-                            ["python3", str(SCRIPTS_DIR / "onchain_analytics.py")],
-                            timeout=120,
-                            capture_output=True
-                        )
-                        if result.returncode == 0:
-                            _log("Onchain analytics rerun: SUCCESS")
-                            _log_action("onchain", f"stale_{age_min:.0f}min", "force_rerun", "success", attempts=1)
-                        else:
-                            _log(f"Onchain analytics rerun FAILED: {result.stderr[:200]}")
-                    except Exception as e:
-                        _log(f"Onchain rerun failed: {e}")
+        # Check onchain heartbeat (scanner writes this EVERY run, even if 0 signals)
+        onchain_heartbeat = BASE_DIR / "signals" / "onchain" / "_heartbeat.json"
+        if onchain_heartbeat.exists():
+            heartbeat_data = json.load(open(onchain_heartbeat))
+            last_run_str = heartbeat_data.get("last_run", "")
+            if last_run_str:
+                try:
+                    last_run = datetime.fromisoformat(last_run_str.replace("Z", "+00:00"))
+                    age_min = (datetime.now(timezone.utc) - last_run).total_seconds() / 60
+                    if age_min > 30:  # Onchain should run every 15min
+                        issues.append(f"onchain ({age_min:.0f}min old)")
+                        _log(f"Onchain heartbeat STALE: {age_min:.0f}min", "WARNING")
+                        
+                        # Tier 2 intervention: force rerun
+                        _log("Tier 2: Force rerunning onchain_analytics.py...")
+                        try:
+                            result = subprocess.run(
+                                ["python3", str(SCRIPTS_DIR / "onchain_analytics.py")],
+                                timeout=120,
+                                capture_output=True
+                            )
+                            if result.returncode == 0:
+                                _log("Onchain analytics rerun: SUCCESS")
+                                _log_action("onchain", f"stale_{age_min:.0f}min", "force_rerun", "success", attempts=1)
+                            else:
+                                _log(f"Onchain analytics rerun FAILED: {result.stderr[:200]}")
+                        except Exception as e:
+                            _log(f"Onchain rerun failed: {e}")
+                except Exception as e:
+                    _log(f"Onchain heartbeat parse error: {e}", "ERROR")
+        else:
+            # No heartbeat file yet - force initial run
+            _log("Onchain heartbeat missing - forcing initial run", "WARNING")
+            try:
+                subprocess.run(
+                    ["python3", str(SCRIPTS_DIR / "onchain_analytics.py")],
+                    timeout=120,
+                    capture_output=True
+                )
+            except Exception as e:
+                _log(f"Onchain initial run failed: {e}")
         
         signal_window = STATE_DIR / "signal_window.json"
         if not signal_window.exists():

@@ -313,6 +313,16 @@ def run():
     state["whale_alerts_count"] = len(whale_alerts)
     _save_json(STATE_PATH, state)
 
+    # Write heartbeat file so watchdog knows we ran (even if 0 signals)
+    heartbeat_file = SIGNALS_DIR / "_heartbeat.json"
+    _save_json(heartbeat_file, {
+        "last_run": _now().isoformat(),
+        "signals_generated": len(signals),
+        "btc_checked": btc_data is not None,
+        "sol_checked": sol_data is not None,
+        "whale_alerts": len(whale_alerts)
+    })
+
     _log(f"=== SCAN COMPLETE: {len(signals)} signals ===")
     return signals
 
