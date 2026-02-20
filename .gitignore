@@ -27,3 +27,4 @@ repo/
 
 # Junk directory from early setup
 {signals,strategies,execution-logs,genius-memory,source-accuracy,config,red-team,audit-hashes,stress-tests,replay,paper-portfolio}
+genius-memory/
