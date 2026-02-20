@@ -137,16 +137,25 @@ def check_stop_loss(position, current_price):
     """Exit Condition A: Hard stop-loss."""
     entry = position["entry_price"]
     stop_pct = position.get("stop_loss_pct", 0.15)
-    stop_price = entry * (1.0 - stop_pct)
-
-    if current_price <= stop_price:
-        return True, "STOP_LOSS", f"Price ${current_price:,.4f} <= stop ${stop_price:,.4f} (-{stop_pct*100:.0f}%)"
+    side = position.get("side", "LONG").upper()
+    
+    if side == "SHORT":
+        # SHORT: stop loss triggers when price goes UP
+        stop_price = entry * (1.0 + stop_pct)
+        if current_price >= stop_price:
+            return True, "STOP_LOSS", f"Price ${current_price:,.4f} >= stop ${stop_price:,.4f} (+{stop_pct*100:.0f}%)"
+    else:
+        # LONG: stop loss triggers when price goes DOWN
+        stop_price = entry * (1.0 - stop_pct)
+        if current_price <= stop_price:
+            return True, "STOP_LOSS", f"Price ${current_price:,.4f} <= stop ${stop_price:,.4f} (-{stop_pct*100:.0f}%)"
     return False, None, None
 
 
 def check_take_profit(position, current_price):
     """Exit Condition B: Take-profit (strategy-aware)."""
     entry = position["entry_price"]
+    side = position.get("side", "LONG").upper()
     
     # Check for strategy-specific target, fallback to position default, then global default
     strategy_cfg = _get_strategy_config(position)
@@ -155,10 +164,16 @@ def check_take_profit(position, current_price):
     else:
         tp_pct = position.get("take_profit_pct", 0.30)
     
-    tp_price = entry * (1.0 + tp_pct)
-
-    if current_price >= tp_price:
-        return True, "TAKE_PROFIT", f"Price ${current_price:,.4f} >= target ${tp_price:,.4f} (+{tp_pct*100:.0f}%)"
+    if side == "SHORT":
+        # SHORT: take profit when price goes DOWN
+        tp_price = entry * (1.0 - tp_pct)
+        if current_price <= tp_price:
+            return True, "TAKE_PROFIT", f"Price ${current_price:,.4f} <= target ${tp_price:,.4f} (-{tp_pct*100:.0f}%)"
+    else:
+        # LONG: take profit when price goes UP
+        tp_price = entry * (1.0 + tp_pct)
+        if current_price >= tp_price:
+            return True, "TAKE_PROFIT", f"Price ${current_price:,.4f} >= target ${tp_price:,.4f} (+{tp_pct*100:.0f}%)"
     return False, None, None
 
 
@@ -194,7 +209,13 @@ def check_trailing_stop(position, current_price, trailing_stops):
     """Exit Condition C: Trailing stop (strategy-aware activation and drop)."""
     symbol = position["symbol"]
     entry = position["entry_price"]
-    unrealized_pct = (current_price - entry) / entry
+    side = position.get("side", "LONG").upper()
+    
+    # Calculate unrealized P&L based on side
+    if side == "SHORT":
+        unrealized_pct = (entry - current_price) / entry  # Profit when price drops
+    else:
+        unrealized_pct = (current_price - entry) / entry  # Profit when price rises
 
     # Get strategy-specific trailing parameters
     strategy_cfg = _get_strategy_config(position)
@@ -213,29 +234,55 @@ def check_trailing_stop(position, current_price, trailing_stops):
     if not ts_data.get("activated", False):
         if unrealized_pct >= activation_pct:
             # Activate trailing stop
-            ts_data = {
-                "high_water_mark": current_price,
-                "activated": True,
-                "activated_at": now_iso(),
-            }
+            if side == "SHORT":
+                # For SHORT, track low-water mark (price LOW)
+                ts_data = {
+                    "low_water_mark": current_price,
+                    "activated": True,
+                    "activated_at": now_iso(),
+                }
+            else:
+                # For LONG, track high-water mark (price HIGH)
+                ts_data = {
+                    "high_water_mark": current_price,
+                    "activated": True,
+                    "activated_at": now_iso(),
+                }
             trailing_stops[symbol] = ts_data
-            print(f"    [TRAILING] Activated for {symbol} at +{unrealized_pct*100:.1f}% | HWM: ${current_price:,.4f}")
+            print(f"    [TRAILING] Activated for {symbol} at +{unrealized_pct*100:.1f}% | Mark: ${current_price:,.4f}")
         return False, None, None
 
-    # Trailing stop is active — update high-water mark
-    hwm = ts_data.get("high_water_mark", current_price)
-    if current_price > hwm:
-        ts_data["high_water_mark"] = current_price
-        hwm = current_price
-        trailing_stops[symbol] = ts_data
+    # Trailing stop is active — update water mark
+    if side == "SHORT":
+        # SHORT: Track lowest price reached, exit if price rises from LWM
+        lwm = ts_data.get("low_water_mark", current_price)
+        if current_price < lwm:
+            ts_data["low_water_mark"] = current_price
+            lwm = current_price
+            trailing_stops[symbol] = ts_data
+        
+        # Check if price rose above threshold from low-water mark
+        rise_from_lwm = (current_price - lwm) / lwm
+        if rise_from_lwm >= drop_pct:
+            return True, "TRAILING_STOP", (
+                f"Price ${current_price:,.4f} rose {rise_from_lwm*100:.1f}% from LWM ${lwm:,.4f} "
+                f"(threshold: {drop_pct*100:.0f}%)"
+            )
+    else:
+        # LONG: Track highest price reached, exit if price drops from HWM
+        hwm = ts_data.get("high_water_mark", current_price)
+        if current_price > hwm:
+            ts_data["high_water_mark"] = current_price
+            hwm = current_price
+            trailing_stops[symbol] = ts_data
 
-    # Check if price dropped below threshold from high-water mark
-    drop_from_hwm = (hwm - current_price) / hwm
-    if drop_from_hwm >= drop_pct:
-        return True, "TRAILING_STOP", (
-            f"Price ${current_price:,.4f} dropped {drop_from_hwm*100:.1f}% from HWM ${hwm:,.4f} "
-            f"(threshold: {drop_pct*100:.0f}%)"
-        )
+        # Check if price dropped below threshold from high-water mark
+        drop_from_hwm = (hwm - current_price) / hwm
+        if drop_from_hwm >= drop_pct:
+            return True, "TRAILING_STOP", (
+                f"Price ${current_price:,.4f} dropped {drop_from_hwm*100:.1f}% from HWM ${hwm:,.4f} "
+                f"(threshold: {drop_pct*100:.0f}%)"
+            )
 
     return False, None, None
 
@@ -387,9 +434,18 @@ def close_position(position, current_price, reason, detail=""):
     now = now_utc()
     entry = position["entry_price"]
     qty = position["quantity"]
+    side = position.get("side", "LONG").upper()
 
-    pnl_pct = (current_price - entry) / entry
-    pnl_usd = (current_price - entry) * qty
+    # Calculate P&L based on position side
+    if side == "SHORT":
+        # SHORT: profit when price drops
+        pnl_pct = (entry - current_price) / entry
+        pnl_usd = (entry - current_price) * qty
+    else:
+        # LONG: profit when price rises
+        pnl_pct = (current_price - entry) / entry
+        pnl_usd = (current_price - entry) * qty
+    
     fee_usd = current_price * qty * 0.001  # 0.1% paper fee
     net_pnl_usd = pnl_usd - fee_usd
     hold_hours = (now - parse_dt(position["opened_at"])).total_seconds() / 3600

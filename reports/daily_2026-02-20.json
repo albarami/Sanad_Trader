@@ -1,0 +1,13 @@
+{
+  "date": "2026-02-20",
+  "balance": 9942.37,
+  "cumulative_pnl": -57.6299999999992,
+  "cumulative_pct": -0.576299999999992,
+  "open_positions": 3,
+  "trades_24h": 5,
+  "total_closed_trades": 18,
+  "win_rate": 55.55555555555556,
+  "unrealized_pnl": 0.6500838639772605,
+  "daily_runs": 24,
+  "generated_at": "2026-02-20T04:00:13.997907+00:00"
+}

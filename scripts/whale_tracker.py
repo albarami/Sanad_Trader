@@ -370,14 +370,44 @@ def run_tracker(test_mode: bool = False):
     for signal in signals:
         _write_signal(signal)
     
-    # Detect distribution warnings
+    # Detect distribution warnings AND generate SHORT signals
     alerts = _detect_distribution(state)
     if alerts:
         ALERT_FILE.parent.mkdir(parents=True, exist_ok=True)
         with open(ALERT_FILE, "w") as f:
             json.dump(alerts, f, indent=2)
+        
+        # Generate SHORT signals from distribution alerts (2+ whales selling)
+        for alert in alerts:
+            mint = alert["mint"]
+            whale_count = alert["wallets_selling"]
+            whale_names = [d["name"] for d in alert["details"][:3]]  # First 3 names
+            
+            # Only generate SHORT signal if 2+ whales (distribution confirmed)
+            if whale_count >= 2:
+                short_signal = {
+                    "token": mint[:8],  # Truncated mint for readability
+                    "symbol": f"{mint[:8]}USDT",
+                    "source": "whale_distribution",
+                    "chain": "solana",
+                    "direction": "SHORT",  # ← SHORT signal
+                    "signal_strength": min(80, 50 + whale_count * 10),  # 60-80 based on whale count
+                    "score": min(80, 50 + whale_count * 10),
+                    "thesis": f"{whale_count} tracked whales distributing ({', '.join(whale_names[:2])}{'...' if len(whale_names) > 2 else ''}). Fade strength on distribution.",
+                    "strategy_hint": "whale-distribution-fade",
+                    "token_address": mint,
+                    "volume_24h": 0,  # Will be enriched by router
+                    "price_change_24h_pct": 0,
+                    "distribution_whale_count": whale_count,
+                    "distribution_alerts": len(alert["details"]),
+                    "confidence": min(80, 50 + whale_count * 10),
+                    "timestamp": datetime.now(timezone.utc).isoformat()
+                }
+                _write_signal(short_signal)
+                signals.append(short_signal)
+                _log(f"  → Generated SHORT signal for {mint[:8]} ({whale_count} whales distributing)")
     
-    _log(f"Generated {len(signals)} signals, {len(alerts)} distribution alerts")
+    _log(f"Generated {len(signals)} signals ({len([s for s in signals if s.get('direction')=='SHORT'])} SHORT), {len(alerts)} distribution alerts")
     _update_cron_health("ok")
     _log("=== WHALE TRACKER END ===")
 

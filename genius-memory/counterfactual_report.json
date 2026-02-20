@@ -1,47 +1,12 @@
 {
-  "total_checked": 14,
+  "total_checked": 9,
   "missed_winners": 0,
   "correct_rejections": 0,
-  "neutral": 14,
+  "neutral": 9,
   "gate_accuracy_pct": 100.0,
   "avg_missed_pnl": 0.0,
   "avg_correct_rejection_loss": 0.0,
   "by_reason": {
-    "{\\n  \\\"result\\\": \\\"BLOCK\\\",\\n  \\\"gates_passed\\\": [\\n    1,\\n    2,\\n    3,\\n    4,\\n    5,\\n    6,\\n    7,\\n    8,\\n    9,\\n    10,\\n    11,\\n    12,\\n    13,\\n    14\\n  ],\\n  \\\"gate_failed\\\": 15,\\n  \\\"gate_failed_name\\\": \\\"Sanad + Audit\\\",\\n  \\\"gate_evidence\\\": \\\"Confidence score too low: 37 < 45\\\",\\n  \\\"all_evidence\\\": {\\n    \\\"CB\\\": \\\"All circuit breakers closed\\\",\\n    \\\"1\\\": \\\"Kill switch not active\\\",\\n    \\\"2\\\": \\\"Daily PnL: 0.0000, Drawdown: 0.0064\\\",\\n    \\\"3\\\": \\\"Price age: 0s, all data fresh\\\",\\n    \\\"4\\\": \\\"Token age: 999.0h (minimum 1h)\\\",\\n    \\\"5\\\": \\\"All rugpull safety checks passed\\\",\\n    \\\"6\\\": \\\"Slippage: 2.0bps (max 300bps)\\\",\\n    \\\"7\\\": \\\"Spread gate skipped \\\\u2014 DEX trade (no order book spread)\\\",\\n    \\\"8\\\": \\\"DEX paper mode: pre-flight simulation skipped (no on-chain access)\\\",\\n    \\\"9\\\": \\\"Price change: 0.00% in 30min\\\",\\n    \\\"10\\\": \\\"Exchange binance healthy (error rate: 0.00%)\\\",\\n    \\\"11\\\": \\\"Reconciliation clean, 898s ago\\\",\\n    \\\"12\\\": \\\"Token: 1.40%/10%, Meme: 2.80%/30%, Positions: 1/5\\\",\\n    \\\"13\\\": \\\"No cooldown active for DOGE\\\",\\n    \\\"14\\\": \\\"Budget OK: daily $0.00/$65.00, monthly $0.00/$300.00\\\",\\n    \\\"15\\\": \\\"Confidence score too low: 37 < 45\\\"\\n  },\\n  \\\"timestamp\\\": \\\"2026-02-19T00:01:01.072038+00:00\\\",\\n  \\\"correlation_id\\\": \\\"UNKNOWN\\\"\\n}": {
-      "total": 1,
-      "missed": 0,
-      "correct": 0
-    },
-    "{\\n  \\\"result\\\": \\\"BLOCK\\\",\\n  \\\"gates_passed\\\": [\\n    1,\\n    2,\\n    3,\\n    4,\\n    5,\\n    6,\\n    7,\\n    8,\\n    9,\\n    10,\\n    11,\\n    12,\\n    13,\\n    14\\n  ],\\n  \\\"gate_failed\\\": 15,\\n  \\\"gate_failed_name\\\": \\\"Sanad + Audit\\\",\\n  \\\"gate_evidence\\\": \\\"Confidence score too low: 0 < 45\\\",\\n  \\\"all_evidence\\\": {\\n    \\\"CB\\\": \\\"All circuit breakers closed\\\",\\n    \\\"1\\\": \\\"Kill switch not active\\\",\\n    \\\"2\\\": \\\"Daily PnL: 0.0000, Drawdown: 0.0064\\\",\\n    \\\"3\\\": \\\"Price age: 0s, all data fresh\\\",\\n    \\\"4\\\": \\\"Token age: 999.0h (minimum 1h)\\\",\\n    \\\"5\\\": \\\"All rugpull safety checks passed\\\",\\n    \\\"6\\\": \\\"Slippage: 0.0bps (max 300bps)\\\",\\n    \\\"7\\\": \\\"Spread gate skipped \\\\u2014 DEX trade (no order book spread)\\\",\\n    \\\"8\\\": \\\"DEX paper mode: pre-flight simulation skipped (no on-chain access)\\\",\\n    \\\"9\\\": \\\"Price change: 0.00% in 30min\\\",\\n    \\\"10\\\": \\\"Exchange binance healthy (error rate: 0.00%)\\\",\\n    \\\"11\\\": \\\"Reconciliation clean, 187s ago\\\",\\n    \\\"12\\\": \\\"Token: 1.40%/10%, Meme: 2.80%/30%, Positions: 1/5\\\",\\n    \\\"13\\\": \\\"No cooldown active for DOGE\\\",\\n    \\\"14\\\": \\\"Budget OK: daily $0.00/$65.00, monthly $0.00/$300.00\\\",\\n    \\\"15\\\": \\\"Confidence score too low: 0 < 45\\\"\\n  },\\n  \\\"timestamp\\\": \\\"2026-02-19T00:09:10.567645+00:00\\\",\\n  \\\"correlation_id\\\": \\\"UNKNOWN\\\"\\n}": {
-      "total": 1,
-      "missed": 0,
-      "correct": 0
-    },
-    "{\\n  \\\"result\\\": \\\"BLOCK\\\",\\n  \\\"gates_passed\\\": [\\n    1,\\n    2,\\n    3,\\n    4,\\n    5,\\n    6,\\n    7,\\n    8,\\n    9,\\n    10,\\n    11,\\n    12,\\n    13,\\n    14\\n  ],\\n  \\\"gate_failed\\\": 15,\\n  \\\"gate_failed_name\\\": \\\"Sanad + Audit\\\",\\n  \\\"gate_evidence\\\": \\\"Confidence score too low: 33 < 45\\\",\\n  \\\"all_evidence\\\": {\\n    \\\"CB\\\": \\\"All circuit breakers closed\\\",\\n    \\\"1\\\": \\\"Kill switch not active\\\",\\n    \\\"2\\\": \\\"Daily PnL: 0.0000, Drawdown: 0.0064\\\",\\n    \\\"3\\\": \\\"Price age: 0s, all data fresh\\\",\\n    \\\"4\\\": \\\"Token age: 999.0h (minimum 1h)\\\",\\n    \\\"5\\\": \\\"All rugpull safety checks passed\\\",\\n    \\\"6\\\": \\\"Slippage: 0.0bps (max 300bps)\\\",\\n    \\\"7\\\": \\\"Spread gate skipped \\\\u2014 DEX trade (no order book spread)\\\",\\n    \\\"8\\\": \\\"DEX paper mode: pre-flight simulation skipped (no on-chain access)\\\",\\n    \\\"9\\\": \\\"Price change: 0.00% in 30min\\\",\\n    \\\"10\\\": \\\"Exchange binance healthy (error rate: 0.00%)\\\",\\n    \\\"11\\\": \\\"Reconciliation clean, 487s ago\\\",\\n    \\\"12\\\": \\\"Token: 1.40%/10%, Meme: 2.80%/30%, Positions: 1/5\\\",\\n    \\\"13\\\": \\\"No cooldown active for BTC\\\",\\n    \\\"14\\\": \\\"Budget OK: daily $0.00/$65.00, monthly $0.00/$300.00\\\",\\n    \\\"15\\\": \\\"Confidence score too low: 33 < 45\\\"\\n  },\\n  \\\"timestamp\\\": \\\"2026-02-19T00:30:10.430439+00:00\\\",\\n  \\\"correlation_id\\\": \\\"UNKNOWN\\\"\\n}": {
-      "total": 1,
-      "missed": 0,
-      "correct": 0
-    },
-    "{\\n  \\\"result\\\": \\\"BLOCK\\\",\\n  \\\"gates_passed\\\": [\\n    1,\\n    2,\\n    3,\\n    4,\\n    5,\\n    6,\\n    7,\\n    8,\\n    9,\\n    10,\\n    11,\\n    12,\\n    13,\\n    14\\n  ],\\n  \\\"gate_failed\\\": 15,\\n  \\\"gate_failed_name\\\": \\\"Sanad + Audit\\\",\\n  \\\"gate_evidence\\\": \\\"Confidence score too low: 35 < 45\\\",\\n  \\\"all_evidence\\\": {\\n    \\\"CB\\\": \\\"All circuit breakers closed\\\",\\n    \\\"1\\\": \\\"Kill switch not active\\\",\\n    \\\"2\\\": \\\"Daily PnL: 0.0000, Drawdown: 0.0064\\\",\\n    \\\"3\\\": \\\"Price age: 0s, all data fresh\\\",\\n    \\\"4\\\": \\\"Token age: 999.0h (minimum 1h)\\\",\\n    \\\"5\\\": \\\"All rugpull safety checks passed\\\",\\n    \\\"6\\\": \\\"Slippage: 0.0bps (max 300bps)\\\",\\n    \\\"7\\\": \\\"Spread gate skipped \\\\u2014 DEX trade (no order book spread)\\\",\\n    \\\"8\\\": \\\"DEX paper mode: pre-flight simulation skipped (no on-chain access)\\\",\\n    \\\"9\\\": \\\"Price change: 0.00% in 30min\\\",\\n    \\\"10\\\": \\\"Exchange binance healthy (error rate: 0.00%)\\\",\\n    \\\"11\\\": \\\"Reconciliation clean, 636s ago\\\",\\n    \\\"12\\\": \\\"Token: 1.40%/10%, Meme: 4.20%/30%, Positions: 3/5\\\",\\n    \\\"13\\\": \\\"No cooldown active for BTC\\\",\\n    \\\"14\\\": \\\"Budget OK: daily $0.00/$65.00, monthly $0.00/$300.00\\\",\\n    \\\"15\\\": \\\"Confidence score too low: 35 < 45\\\"\\n  },\\n  \\\"timestamp\\\": \\\"2026-02-19T00:48:39.869467+00:00\\\",\\n  \\\"correlation_id\\\": \\\"UNKNOWN\\\"\\n}": {
-      "total": 1,
-      "missed": 0,
-      "correct": 0
-    },
-    "null": {
-      "total": 1,
-      "missed": 0,
-      "correct": 0
-    },
-    "{\\n  \\\"result\\\": \\\"BLOCK\\\",\\n  \\\"gates_passed\\\": [\\n    1,\\n    2,\\n    3,\\n    4,\\n    5,\\n    6,\\n    7,\\n    8,\\n    9,\\n    10,\\n    11,\\n    12,\\n    13,\\n    14\\n  ],\\n  \\\"gate_failed\\\": 15,\\n  \\\"gate_failed_name\\\": \\\"Sanad + Audit\\\",\\n  \\\"gate_evidence\\\": \\\"Confidence score too low: 35 < 45\\\",\\n  \\\"all_evidence\\\": {\\n    \\\"CB\\\": \\\"All circuit breakers closed\\\",\\n    \\\"1\\\": \\\"Kill switch not active\\\",\\n    \\\"2\\\": \\\"Daily PnL: 0.0000, Drawdown: 0.0061\\\",\\n    \\\"3\\\": \\\"Price age: 0s, all data fresh\\\",\\n    \\\"4\\\": \\\"Token age: 999.0h (minimum 1h)\\\",\\n    \\\"5\\\": \\\"All rugpull safety checks passed\\\",\\n    \\\"6\\\": \\\"Slippage: 3.7bps (max 300bps)\\\",\\n    \\\"7\\\": \\\"Spread gate skipped \\\\u2014 DEX trade (no order book spread)\\\",\\n    \\\"8\\\": \\\"DEX paper mode: pre-flight simulation skipped (no on-chain access)\\\",\\n    \\\"9\\\": \\\"Price change: 0.00% in 30min\\\",\\n    \\\"10\\\": \\\"Exchange binance healthy (error rate: 0.00%)\\\",\\n    \\\"11\\\": \\\"Reconciliation clean, 541s ago\\\",\\n    \\\"12\\\": \\\"Token: 1.40%/10%, Meme: 7.00%/30%, Positions: 4/5\\\",\\n    \\\"13\\\": \\\"No cooldown active for ADA\\\",\\n    \\\"14\\\": \\\"Budget OK: daily $0.00/$65.00, monthly $0.00/$300.00\\\",\\n    \\\"15\\\": \\\"Confidence score too low: 35 < 45\\\"\\n  },\\n  \\\"timestamp\\\": \\\"2026-02-19T01:19:03.965977+00:00\\\",\\n  \\\"correlation_id\\\": \\\"UNKNOWN\\\"\\n}": {
-      "total": 1,
-      "missed": 0,
-      "correct": 0
-    },
-    "{\\n  \\\"result\\\": \\\"BLOCK\\\",\\n  \\\"gates_passed\\\": [\\n    1,\\n    2,\\n    3,\\n    4,\\n    5,\\n    6,\\n    7,\\n    8,\\n    9,\\n    10,\\n    11,\\n    12,\\n    13,\\n    14\\n  ],\\n  \\\"gate_failed\\\": 15,\\n  \\\"gate_failed_name\\\": \\\"Sanad + Audit\\\",\\n  \\\"gate_evidence\\\": \\\"Confidence score too low: 44 < 45\\\",\\n  \\\"all_evidence\\\": {\\n    \\\"CB\\\": \\\"All circuit breakers closed\\\",\\n    \\\"1\\\": \\\"Kill switch not active\\\",\\n    \\\"2\\\": \\\"Daily PnL: 0.0000, Drawdown: 0.0061\\\",\\n    \\\"3\\\": \\\"Price age: 0s, all data fresh\\\",\\n    \\\"4\\\": \\\"Token age: 999.0h (minimum 1h)\\\",\\n    \\\"5\\\": \\\"All rugpull safety checks passed\\\",\\n    \\\"6\\\": \\\"Slippage: 0.0bps (max 300bps)\\\",\\n    \\\"7\\\": \\\"Spread gate skipped \\\\u2014 DEX trade (no order book spread)\\\",\\n    \\\"8\\\": \\\"DEX paper mode: pre-flight simulation skipped (no on-chain access)\\\",\\n    \\\"9\\\": \\\"Price change: 0.00% in 30min\\\",\\n    \\\"10\\\": \\\"Exchange binance healthy (error rate: 0.00%)\\\",\\n    \\\"11\\\": \\\"Reconciliation clean, 568s ago\\\",\\n    \\\"12\\\": \\\"Token: 1.40%/10%, Meme: 7.00%/30%, Positions: 4/5\\\",\\n    \\\"13\\\": \\\"No cooldown active for XRP\\\",\\n    \\\"14\\\": \\\"Budget OK: daily $0.00/$65.00, monthly $0.00/$300.00\\\",\\n    \\\"15\\\": \\\"Confidence score too low: 44 < 45\\\"\\n  },\\n  \\\"timestamp\\\": \\\"2026-02-19T01:55:30.538903+00:00\\\",\\n  \\\"correlation_id\\\": \\\"UNKNOWN\\\"\\n}": {
-      "total": 1,
-      "missed": 0,
-      "correct": 0
-    },
     "{\\n  \\\"result\\\": \\\"BLOCK\\\",\\n  \\\"gates_passed\\\": [\\n    1,\\n    2,\\n    3,\\n    4,\\n    5,\\n    6,\\n    7,\\n    8,\\n    9,\\n    10,\\n    11,\\n    12,\\n    13,\\n    14\\n  ],\\n  \\\"gate_failed\\\": 15,\\n  \\\"gate_failed_name\\\": \\\"Sanad + Audit\\\",\\n  \\\"gate_evidence\\\": \\\"Confidence score too low: 0 < 45\\\",\\n  \\\"all_evidence\\\": {\\n    \\\"CB\\\": \\\"All circuit breakers closed\\\",\\n    \\\"1\\\": \\\"Kill switch not active\\\",\\n    \\\"2\\\": \\\"Daily PnL: 0.0000, Drawdown: 0.0063\\\",\\n    \\\"3\\\": \\\"Price age: 0s, all data fresh\\\",\\n    \\\"4\\\": \\\"Token age: 999.0h (minimum 1h)\\\",\\n    \\\"5\\\": \\\"All rugpull safety checks passed\\\",\\n    \\\"6\\\": \\\"Slippage: 0.0bps (max 300bps)\\\",\\n    \\\"7\\\": \\\"Spread gate skipped \\\\u2014 DEX trade (no order book spread)\\\",\\n    \\\"8\\\": \\\"DEX paper mode: pre-flight simulation skipped (no on-chain access)\\\",\\n    \\\"9\\\": \\\"Price change: 0.00% in 30min\\\",\\n    \\\"10\\\": \\\"Exchange binance healthy (error rate: 0.00%)\\\",\\n    \\\"11\\\": \\\"Reconciliation clean, 624s ago\\\",\\n    \\\"12\\\": \\\"Token: 1.40%/10%, Meme: 7.00%/30%, Positions: 4/5\\\",\\n    \\\"13\\\": \\\"No cooldown active for DOGE\\\",\\n    \\\"14\\\": \\\"Budget OK: daily $0.00/$65.00, monthly $0.00/$300.00\\\",\\n    \\\"15\\\": \\\"Confidence score too low: 0 < 45\\\"\\n  },\\n  \\\"timestamp\\\": \\\"2026-02-19T05:56:27.263210+00:00\\\",\\n  \\\"correlation_id\\\": \\\"UNKNOWN\\\"\\n}": {
       "total": 1,
       "missed": 0,
@@ -61,7 +26,17 @@
       "total": 1,
       "missed": 0,
       "correct": 0
+    },
+    "REJECT": {
+      "total": 1,
+      "missed": 0,
+      "correct": 0
+    },
+    "{\\n  \\\"result\\\": \\\"BLOCK\\\",\\n  \\\"gates_passed\\\": [\\n    1,\\n    2,\\n    3,\\n    4,\\n    5,\\n    6,\\n    7,\\n    8,\\n    9,\\n    10,\\n    11,\\n    12,\\n    13,\\n    14\\n  ],\\n  \\\"gate_failed\\\": 15,\\n  \\\"gate_failed_name\\\": \\\"Sanad + Audit\\\",\\n  \\\"gate_evidence\\\": \\\"Confidence score too low: 38 < 45\\\",\\n  \\\"all_evidence\\\": {\\n    \\\"CB\\\": \\\"All circuit breakers closed\\\",\\n    \\\"1\\\": \\\"Kill switch not active\\\",\\n    \\\"2\\\": \\\"Daily PnL: 0.0001, Drawdown: 0.0066\\\",\\n    \\\"3\\\": \\\"Price age: 0s, all data fresh\\\",\\n    \\\"4\\\": \\\"Token age: 999.0h (minimum 1h)\\\",\\n    \\\"5\\\": \\\"All rugpull safety checks passed\\\",\\n    \\\"6\\\": \\\"Slippage: 0.0bps (max 300bps)\\\",\\n    \\\"7\\\": \\\"Spread gate skipped \\\\u2014 DEX trade (no order book spread)\\\",\\n    \\\"8\\\": \\\"DEX paper mode: pre-flight simulation skipped (no on-chain access)\\\",\\n    \\\"9\\\": \\\"Price change: 0.00% in 30min\\\",\\n    \\\"10\\\": \\\"Exchange binance healthy (error rate: 0.00%)\\\",\\n    \\\"11\\\": \\\"Reconciliation clean, 352s ago\\\",\\n    \\\"12\\\": \\\"Token: 1.40%/10%, Meme: 5.60%/30%, Positions: 3/5\\\",\\n    \\\"13\\\": \\\"No cooldown active for XRP\\\",\\n    \\\"14\\\": \\\"Budget OK: daily $0.00/$65.00, monthly $0.00/$300.00\\\",\\n    \\\"15\\\": \\\"Confidence score too low: 38 < 45\\\"\\n  },\\n  \\\"timestamp\\\": \\\"2026-02-19T21:40:38.201156+00:00\\\",\\n  \\\"correlation_id\\\": \\\"UNKNOWN\\\"\\n}": {
+      "total": 1,
+      "missed": 0,
+      "correct": 0
     }
   },
-  "updated_at": "2026-02-19T23:55:21.868352+00:00"
+  "updated_at": "2026-02-20T05:55:24.675701+00:00"
 }

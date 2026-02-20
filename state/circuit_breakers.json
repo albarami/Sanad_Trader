@@ -1,9 +1,32 @@
 {
-  "binance_api": {"state": "closed", "failure_count": 0},
-  "mexc_api": {"state": "closed", "failure_count": 0},
-  "helius_rpc": {"state": "closed", "failure_count": 0},
-  "bubblemaps_api": {"state": "closed", "failure_count": 0},
-  "perplexity_api": {"state": "closed", "failure_count": 0},
-  "debate_agents": {"state": "closed", "failure_count": 0},
-  "anthropic_api": {"state": "closed", "failure_count": 0}
+  "binance_api": {
+    "state": "open",
+    "failure_count": 5,
+    "last_failure_at": "2026-02-20T05:55:25.392896+00:00",
+    "cooldown_until": "2026-02-20T06:00:25.392738+00:00"
+  },
+  "mexc_api": {
+    "state": "closed",
+    "failure_count": 0
+  },
+  "helius_rpc": {
+    "state": "closed",
+    "failure_count": 0
+  },
+  "bubblemaps_api": {
+    "state": "closed",
+    "failure_count": 0
+  },
+  "perplexity_api": {
+    "state": "closed",
+    "failure_count": 0
+  },
+  "debate_agents": {
+    "state": "closed",
+    "failure_count": 0
+  },
+  "anthropic_api": {
+    "state": "closed",
+    "failure_count": 0
+  }
 }

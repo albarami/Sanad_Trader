@@ -1,203 +1,7 @@
 {
-  "sent": 633,
+  "sent": 661,
   "failed": 7,
   "history": [
-    {
-      "level": 1,
-      "title": null,
-      "message": "\ud83d\udd27 WATCHDOG AUTO-FIX (attempt 1/4):\n\u2022 Problem: Router stalled (34min since last run)\n\u2022 Context: (token=COPPERINU | stage=sanad | hints=timeout_detected,timeout_detected)\n\u2022 Action: Killed process + clea",
-      "channel": "telegram",
-      "at": "2026-02-19T11:02:03.643919+00:00"
-    },
-    {
-      "level": "L2",
-      "title": null,
-      "message": "TEST: special chars _ * [ ] ( ) ~ should not break",
-      "channel": "telegram",
-      "at": "2026-02-19T11:02:21.215934+00:00"
-    },
-    {
-      "level": 1,
-      "title": null,
-      "message": "\ud83d\udd27 WATCHDOG AUTO-FIX (attempt 1/4):\n\u2022 Problem: Router stalled (38min since last run)\n\u2022 Context: (stage=sanad)\n\u2022 Action: Killed process + cleared lock\n\u2022 Result: \u2705 Restarted (cron will pick up next cycle",
-      "channel": "telegram",
-      "at": "2026-02-19T11:06:03.548650+00:00"
-    },
-    {
-      "level": 1,
-      "title": null,
-      "message": "\ud83d\udd27 WATCHDOG AUTO-FIX (attempt 1/4):\n\u2022 Problem: Router stalled (40min since last run)\n\u2022 Context: (token=DOGE | stage=sanad | hints=timeout_detected,timeout_detected)\n\u2022 Action: Killed process + cleared l",
-      "channel": "telegram",
-      "at": "2026-02-19T11:08:03.895345+00:00"
-    },
-    {
-      "level": 1,
-      "title": null,
-      "message": "\ud83d\udd27 WATCHDOG AUTO-FIX (attempt 1/4):\n\u2022 Problem: Router stalled (42min since last run)\n\u2022 Context: (token=DOGE | stage=sanad | hints=timeout_detected,timeout_detected)\n\u2022 Action: Killed process + cleared l",
-      "channel": "telegram",
-      "at": "2026-02-19T11:10:04.138658+00:00"
-    },
-    {
-      "level": 1,
-      "title": null,
-      "message": "\ud83d\udd27 WATCHDOG AUTO-FIX (attempt 1/4):\n\u2022 Problem: Router stalled (44min since last run)\n\u2022 Context: (token=DOGE | stage=sanad | hints=timeout_detected,timeout_detected)\n\u2022 Action: Killed process + cleared l",
-      "channel": "telegram",
-      "at": "2026-02-19T11:12:04.238105+00:00"
-    },
-    {
-      "level": 1,
-      "title": null,
-      "message": "\ud83d\udd27 WATCHDOG AUTO-FIX (attempt 1/4):\n\u2022 Problem: Router stalled (46min since last run)\n\u2022 Context: (token=TOTO | stage=sanad | hints=timeout_detected,timeout_detected,timeout_detected)\n\u2022 Action: Killed pr",
-      "channel": "telegram",
-      "at": "2026-02-19T11:14:16.320360+00:00"
-    },
-    {
-      "level": 1,
-      "title": null,
-      "message": "\ud83d\udd27 WATCHDOG AUTO-FIX (attempt 1/4):\n\u2022 Problem: Router stalled (48min since last run)\n\u2022 Context: (token=TOTO | stage=sanad | hints=timeout_detected,timeout_detected,timeout_detected)\n\u2022 Action: Killed pr",
-      "channel": "telegram",
-      "at": "2026-02-19T11:16:03.401125+00:00"
-    },
-    {
-      "level": 1,
-      "title": null,
-      "message": "\ud83d\udd27 WATCHDOG AUTO-FIX (attempt 1/4):\n\u2022 Problem: Router stalled (52min since last run)\n\u2022 Context: (token=OPENCLAW | stage=sanad | hints=timeout_detected,timeout_detected,timeout_detected,timeout_detected",
-      "channel": "telegram",
-      "at": "2026-02-19T11:20:04.161617+00:00"
-    },
-    {
-      "level": 1,
-      "title": null,
-      "message": "\ud83d\udd27 WATCHDOG AUTO-FIX (attempt 1/4):\n\u2022 Problem: Router stalled (54min since last run)\n\u2022 Context: (token=OPENCLAW | stage=sanad | hints=timeout_detected,timeout_detected,timeout_detected,timeout_detected",
-      "channel": "telegram",
-      "at": "2026-02-19T11:22:03.694107+00:00"
-    },
-    {
-      "level": "L1",
-      "title": "Signal Rejected",
-      "message": "\ud83d\udd34 *Signal Rejected*\n\nToken: TOTO\nReason: {\n  \"result\": \"BLOCK\",\n  \"gates_passed\": [\n    1,\n    2,\n    3,\n    4,\n    5,\n    6,\n    7,\n    8,\n    9,\n    10,\n    11,\n    12,\n    13,\n    14\n  ],\n  \"gate_f",
-      "channel": "log_only",
-      "at": "2026-02-19T11:26:03.180277+00:00"
-    },
-    {
-      "level": "L1",
-      "title": "Signal Rejected",
-      "message": "\ud83d\udd34 *Signal Rejected*\n\nToken: OPENCLAW\nReason: {\n  \"result\": \"BLOCK\",\n  \"gates_passed\": [\n    1,\n    2,\n    3,\n    4,\n    5,\n    6,\n    7,\n    8,\n    9,\n    10,\n    11,\n    12,\n    13,\n    14\n  ],\n  \"ga",
-      "channel": "log_only",
-      "at": "2026-02-19T11:30:08.542476+00:00"
-    },
-    {
-      "level": "L2",
-      "title": null,
-      "message": "\u2696\ufe0f HOURLY STATUS\n\ud83d\udcb0 Balance: $9,939.82 (unrealized: $-2.09)\n\ud83d\udcc8 Positions (3/10):\n  SOL @ $82.39 -> $81.76 (-0.8%)\n  ETH @ $1,973.50 -> $1,963.09 (-0.5%)\n  BTC @ $67,042.81 -> $66,900.83 (-0.2%)\n\ud83d\udcca Today:",
-      "channel": "telegram",
-      "at": "2026-02-19T11:31:15.335409+00:00"
-    },
-    {
-      "level": "L1",
-      "title": "Signal Rejected",
-      "message": "\ud83d\udd34 *Signal Rejected*\n\nToken: TOTO\nReason: {\n  \"result\": \"BLOCK\",\n  \"gates_passed\": [\n    1,\n    2,\n    3,\n    4,\n    5,\n    6,\n    7,\n    8,\n    9,\n    10,\n    11,\n    12,\n    13,\n    14\n  ],\n  \"gate_f",
-      "channel": "log_only",
-      "at": "2026-02-19T12:16:19.471274+00:00"
-    },
-    {
-      "level": "L1",
-      "title": "Signal Rejected",
-      "message": "\ud83d\udd34 *Signal Rejected*\n\nToken: OPENCLAW\nReason: {\n  \"result\": \"BLOCK\",\n  \"gates_passed\": [\n    1,\n    2,\n    3,\n    4,\n    5,\n    6,\n    7,\n    8,\n    9,\n    10,\n    11,\n    12,\n    13,\n    14\n  ],\n  \"ga",
-      "channel": "log_only",
-      "at": "2026-02-19T12:21:19.140375+00:00"
-    },
-    {
-      "level": 2,
-      "title": null,
-      "message": "\u26a0\ufe0f WATCHDOG: Stale data sources detected\n\u2022 Sources: coingecko (16min old), dexscreener (16min old), birdeye (16min old)\n\u2022 Note: This usually means scanners haven't run or are failing",
-      "channel": "telegram",
-      "at": "2026-02-19T12:28:03.778021+00:00"
-    },
-    {
-      "level": 2,
-      "title": null,
-      "message": "\u26a0\ufe0f WATCHDOG: Stale data sources detected\n\u2022 Sources: coingecko (20min old), dexscreener (20min old), birdeye (20min old)\n\u2022 Note: This usually means scanners haven't run or are failing",
-      "channel": "telegram",
-      "at": "2026-02-19T12:32:04.368997+00:00"
-    },
-    {
-      "level": "L2",
-      "title": null,
-      "message": "\u2696\ufe0f HOURLY STATUS\n\ud83d\udcb0 Balance: $9,937.32 (unrealized: $-4.59)\n\ud83d\udcc8 Positions (3/10):\n  SOL @ $82.39 -> $81.10 (-1.6%)\n  ETH @ $1,973.50 -> $1,951.67 (-1.1%)\n  BTC @ $67,042.81 -> $66,622.46 (-0.6%)\n\ud83d\udcca Today:",
-      "channel": "telegram",
-      "at": "2026-02-19T12:34:44.185626+00:00"
-    },
-    {
-      "level": 2,
-      "title": null,
-      "message": "\u26a0\ufe0f WATCHDOG: Stale data sources detected\n\u2022 Sources: coingecko (24min old), dexscreener (24min old), birdeye (24min old)\n\u2022 Note: This usually means scanners haven't run or are failing",
-      "channel": "telegram",
-      "at": "2026-02-19T12:36:03.854533+00:00"
-    },
-    {
-      "level": 2,
-      "title": null,
-      "message": "\u26a0\ufe0f WATCHDOG: Stale data sources detected\n\u2022 Sources: coingecko (26min old), dexscreener (26min old), birdeye (26min old)\n\u2022 Note: This usually means scanners haven't run or are failing",
-      "channel": "telegram",
-      "at": "2026-02-19T12:38:15.790253+00:00"
-    },
-    {
-      "level": 2,
-      "title": null,
-      "message": "\u26a0\ufe0f WATCHDOG: Stale data sources detected\n\u2022 Sources: coingecko (28min old), dexscreener (28min old), birdeye (28min old)\n\u2022 Note: This usually means scanners haven't run or are failing",
-      "channel": "telegram",
-      "at": "2026-02-19T12:40:03.936336+00:00"
-    },
-    {
-      "level": 1,
-      "title": null,
-      "message": "\ud83d\udd27 WATCHDOG AUTO-FIX (attempt 1/4):\n\u2022 Problem: Router stalled (31min since last run)\n\u2022 Context: (token=OPENCLAW | stage=sanad | hints=timeout_detected,timeout_detected,timeout_detected,timeout_detected",
-      "channel": "telegram",
-      "at": "2026-02-19T12:44:03.842679+00:00"
-    },
-    {
-      "level": 2,
-      "title": null,
-      "message": "\u26a0\ufe0f WATCHDOG: Stale data sources detected\n\u2022 Sources: coingecko (32min old), dexscreener (32min old), birdeye (32min old)\n\u2022 Note: This usually means scanners haven't run or are failing",
-      "channel": "telegram",
-      "at": "2026-02-19T12:44:04.408313+00:00"
-    },
-    {
-      "level": 1,
-      "title": null,
-      "message": "\ud83d\udd27 WATCHDOG AUTO-FIX (attempt 1/4):\n\u2022 Problem: Router stalled (33min since last run)\n\u2022 Context: (token=OPENCLAW | stage=sanad | hints=timeout_detected,timeout_detected,timeout_detected,timeout_detected",
-      "channel": "telegram",
-      "at": "2026-02-19T12:46:03.374747+00:00"
-    },
-    {
-      "level": 2,
-      "title": null,
-      "message": "\u26a0\ufe0f WATCHDOG: Stale data sources detected\n\u2022 Sources: coingecko (34min old), dexscreener (34min old), birdeye (34min old)\n\u2022 Note: This usually means scanners haven't run or are failing",
-      "channel": "telegram",
-      "at": "2026-02-19T12:46:03.967506+00:00"
-    },
-    {
-      "level": 1,
-      "title": null,
-      "message": "\ud83d\udd27 WATCHDOG AUTO-FIX (attempt 1/4):\n\u2022 Problem: Router stalled (35min since last run)\n\u2022 Context: (token=OPENCLAW | stage=sanad | hints=timeout_detected,timeout_detected,timeout_detected,timeout_detected",
-      "channel": "telegram",
-      "at": "2026-02-19T12:48:03.607325+00:00"
-    },
-    {
-      "level": 2,
-      "title": null,
-      "message": "\u26a0\ufe0f WATCHDOG: Stale data sources detected\n\u2022 Sources: coingecko (36min old), dexscreener (36min old), birdeye (36min old)\n\u2022 Note: This usually means scanners haven't run or are failing",
-      "channel": "telegram",
-      "at": "2026-02-19T12:48:04.191672+00:00"
-    },
-    {
-      "level": 1,
-      "title": null,
-      "message": "\ud83d\udd27 WATCHDOG AUTO-FIX (attempt 1/4):\n\u2022 Problem: Router stalled (37min since last run)\n\u2022 Context: (token=OPENCLAW | stage=sanad | hints=timeout_detected,timeout_detected,timeout_detected,timeout_detected",
-      "channel": "telegram",
-      "at": "2026-02-19T12:50:03.349883+00:00"
-    },
     {
       "level": 2,
       "title": null,
@@ -701,7 +505,203 @@
       "message": "\ud83d\udd34 *Signal Rejected*\n\nToken: PUNCH\nReason: {\n  \"result\": \"BLOCK\",\n  \"gates_passed\": [\n    1,\n    2,\n    3,\n    4,\n    5,\n    6,\n    7,\n    8,\n    9,\n    10,\n    11,\n    12,\n    13,\n    14\n  ],\n  \"gate_",
       "channel": "log_only",
       "at": "2026-02-20T00:11:44.544038+00:00"
+    },
+    {
+      "level": "L1",
+      "title": "Signal Rejected",
+      "message": "\ud83d\udd34 *Signal Rejected*\n\nToken: PUNCH\nReason: {\n  \"result\": \"BLOCK\",\n  \"gates_passed\": [\n    1,\n    2,\n    3,\n    4,\n    5,\n    6,\n    7,\n    8,\n    9,\n    10,\n    11,\n    12,\n    13,\n    14\n  ],\n  \"gate_",
+      "channel": "log_only",
+      "at": "2026-02-20T00:21:23.360220+00:00"
+    },
+    {
+      "level": "L1",
+      "title": "Signal Rejected",
+      "message": "\ud83d\udd34 *Signal Rejected*\n\nToken: TESTICLE\nReason: {\n  \"result\": \"BLOCK\",\n  \"gates_passed\": [\n    1,\n    2,\n    3,\n    4,\n    5,\n    6,\n    7,\n    8,\n    9,\n    10,\n    11,\n    12,\n    13,\n    14\n  ],\n  \"ga",
+      "channel": "log_only",
+      "at": "2026-02-20T00:24:55.982167+00:00"
+    },
+    {
+      "level": "L1",
+      "title": "Signal Rejected",
+      "message": "\ud83d\udd34 *Signal Rejected*\n\nToken: PUNCH\nReason: {\n  \"result\": \"BLOCK\",\n  \"gates_passed\": [\n    1,\n    2,\n    3,\n    4,\n    5,\n    6,\n    7,\n    8,\n    9,\n    10\n  ],\n  \"gate_failed\": 11,\n  \"gate_failed_name",
+      "channel": "log_only",
+      "at": "2026-02-20T00:31:24.301298+00:00"
+    },
+    {
+      "level": "L1",
+      "title": "Signal Rejected",
+      "message": "\ud83d\udd34 *Signal Rejected*\n\nToken: DOGE\nReason: {\n  \"result\": \"BLOCK\",\n  \"gates_passed\": [\n    1,\n    2,\n    3,\n    4,\n    5,\n    6,\n    7,\n    8,\n    9,\n    10\n  ],\n  \"gate_failed\": 11,\n  \"gate_failed_name\"",
+      "channel": "log_only",
+      "at": "2026-02-20T00:40:59.931141+00:00"
+    },
+    {
+      "level": "L1",
+      "title": "Signal Rejected",
+      "message": "\ud83d\udd34 *Signal Rejected*\n\nToken: PUNCH\nReason: {\n  \"result\": \"BLOCK\",\n  \"gates_passed\": [\n    1,\n    2,\n    3,\n    4,\n    5,\n    6,\n    7,\n    8,\n    9,\n    10\n  ],\n  \"gate_failed\": 11,\n  \"gate_failed_name",
+      "channel": "log_only",
+      "at": "2026-02-20T00:44:59.629749+00:00"
+    },
+    {
+      "level": "L2",
+      "title": "Heartbeat Alert",
+      "message": "Heartbeat ALERT: cron_health: reconciliation: last ran 31min ago (max 30min)",
+      "channel": "telegram",
+      "at": "2026-02-20T00:45:08.806253+00:00"
+    },
+    {
+      "level": "L1",
+      "title": "Signal Rejected",
+      "message": "\ud83d\udd34 *Signal Rejected*\n\nToken: DOGE\nReason: {\n  \"result\": \"BLOCK\",\n  \"gates_passed\": [\n    1,\n    2,\n    3,\n    4,\n    5,\n    6,\n    7,\n    8,\n    9,\n    10,\n    11,\n    12,\n    13,\n    14\n  ],\n  \"gate_f",
+      "channel": "log_only",
+      "at": "2026-02-20T00:51:12.967305+00:00"
+    },
+    {
+      "level": "L2",
+      "title": null,
+      "message": "\u2696\ufe0f HOURLY STATUS\n\ud83d\udcb0 Balance: $9,939.96 (unrealized: $-1.95)\n\ud83d\udcc8 Positions (3/10):\n  SOL @ $82.39 -> $82.42 (+0.0%)\n  ETH @ $1,973.50 -> $1,947.59 (-1.3%)\n  BTC @ $67,042.81 -> $66,959.55 (-0.1%)\n\ud83d\udcca Today:",
+      "channel": "telegram",
+      "at": "2026-02-20T01:02:38.728875+00:00"
+    },
+    {
+      "level": "L1",
+      "title": "Signal Rejected",
+      "message": "\ud83d\udd34 *Signal Rejected*\n\nToken: WOJAK\nReason: {\n  \"result\": \"BLOCK\",\n  \"gates_passed\": [\n    1,\n    2,\n    3,\n    4,\n    5,\n    6,\n    7,\n    8,\n    9,\n    10,\n    11,\n    12,\n    13,\n    14\n  ],\n  \"gate_",
+      "channel": "log_only",
+      "at": "2026-02-20T01:31:27.973418+00:00"
+    },
+    {
+      "level": "L1",
+      "title": "Signal Rejected",
+      "message": "\ud83d\udd34 *Signal Rejected*\n\nToken: MET\nReason: {\n  \"result\": \"BLOCK\",\n  \"gates_passed\": [\n    1,\n    2,\n    3,\n    4,\n    5,\n    6,\n    7,\n    8,\n    9,\n    10,\n    11,\n    12,\n    13,\n    14\n  ],\n  \"gate_fa",
+      "channel": "log_only",
+      "at": "2026-02-20T01:35:36.515971+00:00"
+    },
+    {
+      "level": "L1",
+      "title": "Signal Rejected",
+      "message": "\ud83d\udd34 *Signal Rejected*\n\nToken: WOJAK\nReason: {\n  \"result\": \"BLOCK\",\n  \"gates_passed\": [\n    1,\n    2,\n    3,\n    4,\n    5,\n    6,\n    7,\n    8,\n    9,\n    10,\n    11,\n    12,\n    13,\n    14\n  ],\n  \"gate_",
+      "channel": "log_only",
+      "at": "2026-02-20T01:52:48.989540+00:00"
+    },
+    {
+      "level": "L1",
+      "title": "Signal Rejected",
+      "message": "\ud83d\udd34 *Signal Rejected*\n\nToken: XRP\nReason: {\n  \"result\": \"BLOCK\",\n  \"gates_passed\": [\n    1,\n    2,\n    3,\n    4,\n    5,\n    6,\n    7,\n    8,\n    9,\n    10\n  ],\n  \"gate_failed\": 11,\n  \"gate_failed_name\":",
+      "channel": "log_only",
+      "at": "2026-02-20T02:01:16.773503+00:00"
+    },
+    {
+      "level": "L1",
+      "title": "Signal Rejected",
+      "message": "\ud83d\udd34 *Signal Rejected*\n\nToken: JETBLUE\nReason: {\n  \"result\": \"BLOCK\",\n  \"gates_passed\": [\n    1,\n    2,\n    3,\n    4,\n    5,\n    6,\n    7,\n    8,\n    9,\n    10\n  ],\n  \"gate_failed\": 11,\n  \"gate_failed_na",
+      "channel": "log_only",
+      "at": "2026-02-20T02:04:34.994191+00:00"
+    },
+    {
+      "level": "L2",
+      "title": null,
+      "message": "\u2696\ufe0f HOURLY STATUS\n\ud83d\udcb0 Balance: $9,939.96 (unrealized: $-1.95)\n\ud83d\udcc8 Positions (3/10):\n  SOL @ $82.39 -> $82.42 (+0.0%)\n  ETH @ $1,973.50 -> $1,947.59 (-1.3%)\n  BTC @ $67,042.81 -> $66,959.55 (-0.1%)\n\ud83d\udcca Today:",
+      "channel": "telegram",
+      "at": "2026-02-20T02:04:44.623270+00:00"
+    },
+    {
+      "level": "L1",
+      "title": "Signal Rejected",
+      "message": "\ud83d\udd34 *Signal Rejected*\n\nToken: XRP\nReason: {\n  \"result\": \"BLOCK\",\n  \"gates_passed\": [\n    1,\n    2,\n    3,\n    4,\n    5,\n    6,\n    7,\n    8,\n    9,\n    10\n  ],\n  \"gate_failed\": 11,\n  \"gate_failed_name\":",
+      "channel": "log_only",
+      "at": "2026-02-20T02:11:18.350890+00:00"
+    },
+    {
+      "level": "L2",
+      "title": "Heartbeat Alert",
+      "message": "Heartbeat ALERT: cron_health: reconciliation: last ran 31min ago (max 30min)",
+      "channel": "telegram",
+      "at": "2026-02-20T02:11:58.946146+00:00"
+    },
+    {
+      "level": "L2",
+      "title": "Heartbeat Alert",
+      "message": "Heartbeat ALERT: cron_health: reconciliation: last ran 31min ago (max 30min)",
+      "channel": "telegram",
+      "at": "2026-02-20T02:12:26.119316+00:00"
+    },
+    {
+      "level": "L1",
+      "title": "Signal Rejected",
+      "message": "\ud83d\udd34 *Signal Rejected*\n\nToken: BFS\nReason: {\n  \"result\": \"BLOCK\",\n  \"gates_passed\": [\n    1,\n    2,\n    3,\n    4,\n    5,\n    6,\n    7,\n    8,\n    9,\n    10,\n    11,\n    12,\n    13,\n    14\n  ],\n  \"gate_fa",
+      "channel": "log_only",
+      "at": "2026-02-20T02:31:18.720892+00:00"
+    },
+    {
+      "level": "L1",
+      "title": "Signal Rejected",
+      "message": "\ud83d\udd34 *Signal Rejected*\n\nToken: TENGU\nReason: {\n  \"result\": \"BLOCK\",\n  \"gates_passed\": [\n    1,\n    2,\n    3,\n    4,\n    5,\n    6,\n    7,\n    8,\n    9,\n    10,\n    11,\n    12,\n    13,\n    14\n  ],\n  \"gate_",
+      "channel": "log_only",
+      "at": "2026-02-20T02:34:53.913404+00:00"
+    },
+    {
+      "level": "L1",
+      "title": "Signal Rejected",
+      "message": "\ud83d\udd34 *Signal Rejected*\n\nToken: MAXXING\nReason: {\n  \"result\": \"BLOCK\",\n  \"gates_passed\": [\n    1,\n    2,\n    3,\n    4,\n    5,\n    6,\n    7,\n    8,\n    9,\n    10,\n    11,\n    12,\n    13,\n    14\n  ],\n  \"gat",
+      "channel": "log_only",
+      "at": "2026-02-20T03:00:43.746369+00:00"
+    },
+    {
+      "level": "L2",
+      "title": null,
+      "message": "\u2696\ufe0f HOURLY STATUS\n\ud83d\udcb0 Balance: $9,941.49 (unrealized: $-0.42)\n\ud83d\udcc8 Positions (3/10):\n  SOL @ $82.39 -> $82.85 (+0.6%)\n  ETH @ $1,973.50 -> $1,950.36 (-1.2%)\n  BTC @ $67,042.81 -> $67,251.53 (+0.3%)\n\ud83d\udcca Today:",
+      "channel": "telegram",
+      "at": "2026-02-20T03:07:36.166076+00:00"
+    },
+    {
+      "level": "L1",
+      "title": "Signal Rejected",
+      "message": "\ud83d\udd34 *Signal Rejected*\n\nToken: PENGUIN\nReason: {\n  \"result\": \"BLOCK\",\n  \"gates_passed\": [\n    1,\n    2,\n    3,\n    4,\n    5,\n    6,\n    7,\n    8,\n    9,\n    10,\n    11,\n    12,\n    13,\n    14\n  ],\n  \"gat",
+      "channel": "log_only",
+      "at": "2026-02-20T03:41:32.493780+00:00"
+    },
+    {
+      "level": "L1",
+      "title": "Signal Rejected",
+      "message": "\ud83d\udd34 *Signal Rejected*\n\nToken: COPPERINU\nReason: {\n  \"result\": \"BLOCK\",\n  \"gates_passed\": [\n    1,\n    2,\n    3,\n    4,\n    5,\n    6,\n    7,\n    8,\n    9,\n    10\n  ],\n  \"gate_failed\": 11,\n  \"gate_failed_",
+      "channel": "log_only",
+      "at": "2026-02-20T03:51:14.038854+00:00"
+    },
+    {
+      "level": "L2",
+      "title": "Daily Report",
+      "message": "\u2696\ufe0f *SANAD TRADER \u2014 DAILY REPORT*\n\ud83d\udcc5 Friday, February 20 2026\n\n\ud83d\udcb0 *Portfolio:* $9,942.37\n\ud83d\udd34 Cumulative P&L: $-57.63 (-0.58%)\n\ud83d\udcc8 Peak: $10,005.31 | Drawdown: 0.01%\n\ud83d\udcb5 Unrealized: $+0.65\n\n\ud83d\udcca *Open Positions (3",
+      "channel": "telegram",
+      "at": "2026-02-20T04:00:14.999287+00:00"
+    },
+    {
+      "level": "L2",
+      "title": null,
+      "message": "\u2696\ufe0f HOURLY STATUS\n\ud83d\udcb0 Balance: $9,941.90 (unrealized: $-0.01)\n\ud83d\udcc8 Positions (3/10):\n  SOL @ $82.39 -> $82.97 (+0.7%)\n  ETH @ $1,973.50 -> $1,950.38 (-1.2%)\n  BTC @ $67,042.81 -> $67,351.20 (+0.5%)\n\ud83d\udcca Today:",
+      "channel": "telegram",
+      "at": "2026-02-20T04:11:17.208237+00:00"
+    },
+    {
+      "level": "L2",
+      "title": null,
+      "message": "*Daily Deep Research Complete*\n\n\u2705 Alpha Discovery:\n# Cryptocurrency Trading Strategies Generating High Returns in February 2026: Momentum, Mean Reversion, and Institutional Flows  This comprehensive a",
+      "channel": "telegram",
+      "at": "2026-02-20T05:03:43.542515+00:00"
+    },
+    {
+      "level": "L2",
+      "title": null,
+      "message": "\u2696\ufe0f HOURLY STATUS\n\ud83d\udcb0 Balance: $9,940.17 (unrealized: $-1.75)\n\ud83d\udcc8 Positions (3/10):\n  SOL @ $82.39 -> $82.57 (+0.2%)\n  ETH @ $1,973.50 -> $1,938.34 (-1.8%)\n  BTC @ $67,042.81 -> $67,249.82 (+0.3%)\n\ud83d\udcca Today:",
+      "channel": "telegram",
+      "at": "2026-02-20T05:20:46.460765+00:00"
+    },
+    {
+      "level": "L1",
+      "title": "Signal Rejected",
+      "message": "\ud83d\udd34 *Signal Rejected*\n\nToken: HYPE\nReason: {\n  \"result\": \"BLOCK\",\n  \"gates_passed\": [\n    1,\n    2,\n    3,\n    4,\n    5,\n    6,\n    7,\n    8,\n    9,\n    10,\n    11,\n    12,\n    13,\n    14\n  ],\n  \"gate_f",
+      "channel": "log_only",
+      "at": "2026-02-20T05:41:49.843933+00:00"
     }
   ],
-  "last_sent": "2026-02-20T00:11:44.544046+00:00"
+  "last_sent": "2026-02-20T05:41:49.843942+00:00"
 }

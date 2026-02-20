@@ -261,6 +261,82 @@ STRATEGIES = {
         "active": True,
         "instruments": ["BTCUSDT", "ETHUSDT", "SOLUSDT"],
     },
+    "whale-distribution-fade": {
+        "name": "Whale Distribution Fade",
+        "description": "Short tokens when 2+ tracked whales are distributing (selling)",
+        "chain": ["solana", "binance"],
+        "direction": "SHORT",
+        "entry_conditions": {
+            "min_distribution_whale_count": 2,
+            "min_distribution_alerts": 3,
+            "max_price_change_1h_pct": 5,
+            "min_volume_24h_usd": 100000,
+            "min_sanad_score": 50,
+        },
+        "exit_conditions": {
+            "stop_loss_pct": 5,
+            "take_profit_pct": 10,
+            "trailing_stop_pct": 3,
+            "max_hold_hours": 48,
+        },
+        "sizing": {
+            "base_pct": 5,
+            "max_pct": 10,
+            "kelly_override": None,
+        },
+        "active": True,
+    },
+    "bear-momentum": {
+        "name": "Bear Momentum",
+        "description": "Short tokens showing sustained weakness in bear regime",
+        "chain": ["binance"],
+        "direction": "SHORT",
+        "entry_conditions": {
+            "min_price_drop_24h_pct": -5,
+            "max_price_drop_24h_pct": -30,
+            "min_volume_24h_usd": 500000,
+            "fear_greed_max": 25,
+            "min_sanad_score": 60,
+        },
+        "exit_conditions": {
+            "stop_loss_pct": 4,
+            "take_profit_pct": 8,
+            "trailing_stop_pct": 2,
+            "max_hold_hours": 24,
+        },
+        "sizing": {
+            "base_pct": 5,
+            "max_pct": 10,
+            "kelly_override": None,
+        },
+        "active": True,
+        "instruments": ["BTCUSDT", "ETHUSDT", "SOLUSDT"],
+    },
+    "mean-reversion-short": {
+        "name": "Mean Reversion Short",
+        "description": "Short overbought bounces in bear regime (RSI > 70 + BB upper)",
+        "chain": ["binance"],
+        "direction": "SHORT",
+        "entry_conditions": {
+            "min_sanad_score": 60,
+            "rsi_above": 70,
+            "price_above_bb_upper": True,
+            "min_volume_24h_usd": 1000000,
+            "fear_greed_max": 40,
+        },
+        "exit_conditions": {
+            "stop_loss_pct": 3,
+            "take_profit_pct": 5,
+            "trailing_stop_pct": 1.5,
+            "max_hold_hours": 24,
+        },
+        "sizing": {
+            "base_pct": 3,
+            "max_pct": 7,
+        },
+        "active": True,
+        "instruments": ["BTCUSDT", "ETHUSDT", "SOLUSDT"],
+    },
 }
 
 

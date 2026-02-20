@@ -4,10 +4,10 @@
   "volatility": "HIGH_VOL",
   "confidence": 0.95,
   "metrics": {
-    "btc_price": 66986.41,
-    "sma_slope_pct_per_day": -1.228,
-    "atr_14d_pct": 4.1295,
-    "drawdown_from_30d_high": 0.2524,
+    "btc_price": 67376.13,
+    "sma_slope_pct_per_day": -1.2245,
+    "atr_14d_pct": 4.1543,
+    "drawdown_from_30d_high": 0.248,
     "volatility_trend": "decreasing",
     "fear_greed_value": 7,
     "fear_greed_trend": "stable"
@@ -24,10 +24,10 @@
     ],
     "notes": [
       "Bear market \u2014 reduce exposure, tighten stops",
-      "Deep drawdown (25.2%) \u2014 capital preservation mode",
+      "Deep drawdown (24.8%) \u2014 capital preservation mode",
       "Extreme fear \u2014 contrarian opportunities possible but risky"
     ]
   },
-  "timestamp": "2026-02-20T00:08:55.218684+00:00",
+  "timestamp": "2026-02-20T05:28:38.948417+00:00",
   "data_points": 31
 }

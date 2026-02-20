@@ -1,19 +1,37 @@
 {
-  "last_run": "2026-02-20T00:07:49.230904+00:00",
+  "last_run": "2026-02-20T05:47:33.756651+00:00",
   "processed_hashes": [
-    "658a0779dcd2"
+    "aba9203a7d4f",
+    "50f76f17565a",
+    "67cbdfec35b0",
+    "809b98d8993a",
+    "f681e492f1a3",
+    "8918b133c7df",
+    "02100349782a",
+    "311401b7f686",
+    "c41f8b42ffe9",
+    "eb84778fede0",
+    "848d851a3e5c",
+    "1b24ef9f3148",
+    "b3847320ed7e",
+    "085ff4dee50c",
+    "4f41066721a4",
+    "840eca17999a",
+    "b76fa69ede3e",
+    "658a0779dcd2",
+    "4e81e01f3b14"
   ],
-  "daily_pipeline_runs": 2,
+  "daily_pipeline_runs": 28,
   "daily_reset_date": "2026-02-20",
-  "signals_scanned": 59,
-  "signals_filtered": 3,
+  "signals_scanned": 61,
+  "signals_filtered": 17,
   "signal_selected": {
-    "token": "GROKIUS",
-    "score": 121,
+    "token": "SOLCEX",
+    "score": 65,
     "source": "birdeye_meme_radar",
-    "signal_type": "MEME_GAINER"
+    "signal_type": "TRENDING"
   },
   "pipeline_result": "REJECT",
-  "pipeline_reason": "Sanad BLOCK (rugpull_flags=['extreme_infancy', 'honeypot_cannot_verify', 'liquidity_market_cap_ratio_excessive', 'suspicious_volume_velocity'])",
+  "pipeline_reason": "Sanad BLOCK (rugpull_flags=['mutable_metadata', 'single_holder_concentration_risk', 'unverified_token', 'thin_liquidity_to_mcap_ratio', 'honeypot_unknown_status'])",
   "data_quality_block": false
 }
