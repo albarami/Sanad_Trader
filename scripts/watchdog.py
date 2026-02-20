@@ -1311,7 +1311,7 @@ def check_cost_runaway():
                     continue
                 entry = json.loads(line)
                 ts = datetime.fromisoformat(entry["timestamp"].replace("Z", "+00:00"))
-                if ts >= last_24h.replace(tzinfo=None):
+                if ts >= last_24h:  # Both are now timezone-aware
                     total_24h += entry["cost_usd"]
         
         # Thresholds for paper mode
@@ -1489,46 +1489,38 @@ def check_stuck_openclaw_jobs():
                 attempts = _track_attempts(attempt_key)
                 
                 if attempts <= 2:
-                    # Auto-fix: disable→enable to clear runningAtMs
+                    # Write reset request for Reset Daemon to process
                     try:
-                        _log(f"Auto-fixing {job_name}: disable→enable (attempt {attempts+1}/2)", "INFO")
+                        _log(f"Queueing reset for {job_name} (attempt {attempts+1}/2)", "INFO")
                         
-                        # Disable
-                        subprocess.run(
-                            ["openclaw", "cron", "update", "--id", job_id, "--enabled", "false"],
-                            capture_output=True,
-                            timeout=15,
-                            check=True
-                        )
+                        reset_request = {
+                            "job_id": job_id,
+                            "job_name": job_name,
+                            "requested_at": datetime.now(timezone.utc).isoformat(),
+                            "reason": f"stuck in runningAtMs for {stuck_age_sec:.0f}s (max {timeout+grace}s)",
+                            "attempt": attempts + 1
+                        }
                         
-                        time.sleep(1)
+                        # Append to reset queue
+                        reset_queue = STATE_DIR / "reset_requests.jsonl"
+                        with open(reset_queue, "a") as f:
+                            f.write(json.dumps(reset_request) + "\n")
                         
-                        # Enable
-                        subprocess.run(
-                            ["openclaw", "cron", "update", "--id", job_id, "--enabled", "true"],
-                            capture_output=True,
-                            timeout=15,
-                            check=True
-                        )
-                        
-                        fixed.append(f"{job_name} (stuck {stuck_age_sec:.0f}s)")
+                        fixed.append(f"{job_name} (queued reset)")
                         
                         _log_action(
                             component="openclaw_scheduler",
                             problem=f"{job_name}_stuck_{stuck_age_sec:.0f}s",
-                            action="disable_enable",
+                            action="queue_reset",
                             result="success",
                             attempts=attempts + 1
                         )
                         
-                        _log(f"Successfully cleared stuck state for {job_name}", "INFO")
+                        _log(f"Reset request queued for {job_name}", "INFO")
                         
-                    except subprocess.TimeoutExpired:
-                        _log(f"Timeout while fixing {job_name}", "ERROR")
-                        issues.append(f"{job_name} (fix timeout)")
-                    except subprocess.CalledProcessError as e:
-                        _log(f"Failed to fix {job_name}: {e}", "ERROR")
-                        issues.append(f"{job_name} (fix failed)")
+                    except Exception as e:
+                        _log(f"Failed to queue reset for {job_name}: {e}", "ERROR")
+                        issues.append(f"{job_name} (queue failed)")
                 else:
                     # Auto-fix failed twice, escalate
                     issues.append(f"{job_name} (stuck {stuck_age_sec:.0f}s, auto-fix failed 2x)")
