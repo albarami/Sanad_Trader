@@ -926,16 +926,17 @@ def _run_router_impl():
             holder_count = s.get("holder_count") or 0
             rugcheck_score = s.get("rugcheck_score") or 0
             
-            # REQUIRE ALL: liquidity $200K+, age 24h+, holders 1000+, rugcheck 50+
+            # REQUIRE ALL: liquidity $100K+, age 6h+, holders 500+, rugcheck 40+
+            # EXPERIMENT: Lowered thresholds to test borderline tokens
             reasons = []
-            if liquidity < 200000:
-                reasons.append(f"liquidity ${liquidity/1000:.0f}K < $200K")
-            if token_age_h < 24:
-                reasons.append(f"age {token_age_h:.1f}h < 24h")
-            if holder_count < 1000:
-                reasons.append(f"holders {holder_count} < 1000")
-            if rugcheck_score > 0 and rugcheck_score < 50:
-                reasons.append(f"rugcheck {rugcheck_score} < 50")
+            if liquidity < 100000:
+                reasons.append(f"liquidity ${liquidity/1000:.0f}K < $100K")
+            if token_age_h < 6:
+                reasons.append(f"age {token_age_h:.1f}h < 6h")
+            if holder_count < 500:
+                reasons.append(f"holders {holder_count} < 500")
+            if rugcheck_score > 0 and rugcheck_score < 40:
+                reasons.append(f"rugcheck {rugcheck_score} < 40")
             
             if reasons:
                 dex_prefilter_skipped += 1
