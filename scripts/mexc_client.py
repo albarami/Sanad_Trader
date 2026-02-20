@@ -113,6 +113,13 @@ class ErrorTracker:
         if not self._tripped or not self._cooldown_until:
             return 0
         return max(0, int(self._cooldown_until - time.time()))
+    
+    def reset_after_success(self):
+        """Explicitly reset breaker after successful request (handles post-cooldown close)."""
+        if self._tripped:
+            self._tripped = False
+            self._consecutive_failures = 0
+            _log(f"Circuit breaker CLOSED after successful request ({self.component})")
 
 
 _tracker = ErrorTracker()
@@ -206,6 +213,7 @@ def _request(method: str, endpoint: str, params=None, signed=False, timeout=10):
             return None
 
         _tracker.record_success()
+        _tracker.reset_after_success()  # Always close after success (handles post-cooldown)
         return data
 
     except requests.exceptions.Timeout:

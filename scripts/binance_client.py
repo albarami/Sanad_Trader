@@ -199,10 +199,7 @@ def _request(method, endpoint, params=None, signed=False, timeout=10):
             result = json.loads(body)
 
             _error_tracker.record_success()
-
-            # Reset circuit breaker if this was a half-open test
-            if _error_tracker._tripped:
-                _error_tracker.reset_after_success()
+            _error_tracker.reset_after_success()  # Always close after success (handles HALF_OPEN→CLOSED)
 
             return result
 

@@ -331,32 +331,79 @@ def check_cron_health():
     return {"status": status, "detail": f"{len(alerts)} cron issues", "alerts": alerts}
 
 
+def _binance_time_raw(timeout=5):
+    """
+    Raw Binance server time fetch (no breaker, no tracker).
+    Observational only - does not mutate circuit breaker state.
+    """
+    import json
+    import urllib.request
+    with urllib.request.urlopen("https://api.binance.com/api/v3/time", timeout=timeout) as r:
+        return json.loads(r.read().decode("utf-8"))
+
+
 def check_ntp_sync():
     """
     Check 6: Verify NTP clock sync.
-    System clock drift > 2 seconds = BLOCK trading.
+    Fallback: use Binance server time skew if timedatectl unavailable (container-safe).
+    PAPER: ≤2s=OK, >2s=WARNING, unmeasurable=WARNING
+    LIVE: ≤2s=OK, >2s=CRITICAL/HALTED, unmeasurable=CRITICAL/HALTED
     """
+    system_mode = os.getenv("SYSTEM_MODE", "PAPER").upper()
+    
     try:
         result = subprocess.run(
             ["timedatectl", "show", "--property=NTPSynchronized"],
             capture_output=True, text=True, timeout=10
         )
         output = result.stdout.strip()
+        
+        # Check if timedatectl actually worked (non-zero = systemd unavailable)
+        if result.returncode != 0 or not output:
+            # Fall through to Binance skew fallback
+            raise FileNotFoundError("timedatectl unavailable or failed")
 
         if "NTPSynchronized=yes" in output:
             return {"status": "OK", "detail": "NTP synchronized"}
         elif "NTPSynchronized=no" in output:
             log("WARNING: NTP not synchronized — time drift may affect trading")
-            return {"status": "WARNING", "detail": "NTP not synchronized"}
+            status = "CRITICAL" if system_mode == "LIVE" else "WARNING"
+            return {"status": status, "detail": "NTP not synchronized"}
         else:
-            return {"status": "WARNING", "detail": f"NTP status unknown: {output}"}
+            # Unknown output, fall through to fallback
+            raise FileNotFoundError("timedatectl output unrecognized")
     except FileNotFoundError:
-        # timedatectl not available (e.g., in Docker)
-        return {"status": "WARNING", "detail": "timedatectl not available — NTP check skipped"}
+        # timedatectl not available (e.g., in Docker) → fallback to Binance skew
+        pass
     except subprocess.TimeoutExpired:
-        return {"status": "WARNING", "detail": "NTP check timed out"}
+        status = "CRITICAL" if system_mode == "LIVE" else "WARNING"
+        return {"status": status, "detail": "NTP check timed out"}
+    except Exception:
+        pass
+    
+    # Fallback: measure skew via Binance server time (container-safe, observational)
+    try:
+        import time
+        r = _binance_time_raw(timeout=5)
+        if r and "serverTime" in r:
+            local_ms = int(time.time() * 1000)
+            server_ms = int(r["serverTime"])
+            skew_ms = abs(local_ms - server_ms)
+            
+            # Strict thresholds: ≤2s safe, >2s critical in LIVE
+            if skew_ms <= 2000:
+                if skew_ms <= 1000:
+                    return {"status": "OK", "detail": f"Binance skew: {skew_ms}ms (ideal)"}
+                else:
+                    return {"status": "OK", "detail": f"Binance skew: {skew_ms}ms (safe)"}
+            else:
+                # >2s drift
+                status = "CRITICAL" if system_mode == "LIVE" else "WARNING"
+                return {"status": status, "detail": f"Binance skew: {skew_ms}ms (UNSAFE for LIVE)"}
     except Exception as e:
-        return {"status": "WARNING", "detail": f"NTP check error: {e}"}
+        # Cannot measure skew at all
+        status = "CRITICAL" if system_mode == "LIVE" else "WARNING"
+        return {"status": status, "detail": f"NTP tools unavailable, Binance skew check failed: {e}"}
 
 
 def check_circuit_breakers():

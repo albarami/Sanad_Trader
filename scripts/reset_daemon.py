@@ -76,7 +76,7 @@ def execute_reset(request: dict) -> dict:
         # Step 1: Disable
         _log(f"  Disabling {job_name}...")
         disable_result = subprocess.run(
-            ["openclaw", "cron", "update", "--id", job_id, "--enabled", "false"],
+            ["openclaw", "cron", "disable", job_id],
             capture_output=True,
             text=True,
             timeout=30
@@ -95,7 +95,7 @@ def execute_reset(request: dict) -> dict:
         # Step 2: Enable
         _log(f"  Enabling {job_name}...")
         enable_result = subprocess.run(
-            ["openclaw", "cron", "update", "--id", job_id, "--enabled", "true"],
+            ["openclaw", "cron", "enable", job_id],
             capture_output=True,
             text=True,
             timeout=30
