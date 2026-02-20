@@ -42,6 +42,7 @@ POSITIONS_PATH = STATE_DIR / "positions.json"
 PORTFOLIO_PATH = STATE_DIR / "portfolio.json"
 TRADE_HISTORY_PATH = STATE_DIR / "trade_history.json"
 ROUTER_STATE_PATH = STATE_DIR / "signal_router_state.json"
+CRON_HEALTH_PATH = STATE_DIR / "cron_health.json"
 PIPELINE_SCRIPT = SCRIPT_DIR / "sanad_pipeline.py"
 
 # ---------------------------------------------------------------------------
@@ -480,6 +481,29 @@ def _to_pipeline_signal(signal: dict, cross_sources: list[str] | None = None) ->
         result["token_address"] = address
 
     return result
+
+
+# ---------------------------------------------------------------------------
+# Cron Health Update
+# ---------------------------------------------------------------------------
+def _update_cron_health(status: str = "ok"):
+    """Update cron health timestamp for signal_router."""
+    health = {}
+    if CRON_HEALTH_PATH.exists():
+        try:
+            with open(CRON_HEALTH_PATH) as f:
+                health = json.load(f)
+        except Exception:
+            pass
+    
+    health["signal_router"] = {
+        "last_run": datetime.now(timezone.utc).isoformat(),
+        "status": status
+    }
+    
+    CRON_HEALTH_PATH.parent.mkdir(parents=True, exist_ok=True)
+    with open(CRON_HEALTH_PATH, "w") as f:
+        json.dump(health, f, indent=2)
 
 
 # ---------------------------------------------------------------------------
@@ -1286,6 +1310,12 @@ def run_router():
                 _log(f"Counterfactual recording failed: {e}")
 
     _save_json_atomic(ROUTER_STATE_PATH, state)
+
+    # Update cron health
+    try:
+        _update_cron_health(status="ok")
+    except Exception as e:
+        _log(f"Failed to update cron_health: {e}")
 
     # Cleanup temp file
     try:
