@@ -1,84 +1,7 @@
 {
-  "sent": 621,
+  "sent": 632,
   "failed": 7,
   "history": [
-    {
-      "level": "L1",
-      "title": "Signal Rejected",
-      "message": "\ud83d\udd34 *Signal Rejected*\n\nToken: COPPERINU\nReason: {\n  \"result\": \"BLOCK\",\n  \"gates_passed\": [\n    1,\n    2,\n    3,\n    4,\n    5,\n    6,\n    7,\n    8,\n    9,\n    10\n  ],\n  \"gate_failed\": 11,\n  \"gate_failed_",
-      "channel": "log_only",
-      "at": "2026-02-19T10:35:36.517612+00:00"
-    },
-    {
-      "level": 2,
-      "title": null,
-      "message": "\u26a0\ufe0f WATCHDOG: Stale data sources detected\n\u2022 Sources: onchain (670min old), coingecko (29min old)\n\u2022 Note: This usually means scanners haven't run or are failing",
-      "channel": "telegram",
-      "at": "2026-02-19T10:36:03.519659+00:00"
-    },
-    {
-      "level": 2,
-      "title": null,
-      "message": "\u26a0\ufe0f WATCHDOG: Stale data sources detected\n\u2022 Sources: onchain (672min old), coingecko (31min old)\n\u2022 Note: This usually means scanners haven't run or are failing",
-      "channel": "telegram",
-      "at": "2026-02-19T10:38:03.877155+00:00"
-    },
-    {
-      "level": 2,
-      "title": null,
-      "message": "\u26a0\ufe0f WATCHDOG: Stale data sources detected\n\u2022 Sources: onchain (674min old), coingecko (33min old)\n\u2022 Note: This usually means scanners haven't run or are failing",
-      "channel": "telegram",
-      "at": "2026-02-19T10:40:04.130453+00:00"
-    },
-    {
-      "level": 2,
-      "title": null,
-      "message": "\u26a0\ufe0f WATCHDOG: Stale data sources detected\n\u2022 Sources: onchain (676min old), coingecko (35min old)\n\u2022 Note: This usually means scanners haven't run or are failing",
-      "channel": "telegram",
-      "at": "2026-02-19T10:42:14.975856+00:00"
-    },
-    {
-      "level": 2,
-      "title": null,
-      "message": "\u26a0\ufe0f WATCHDOG: Stale data sources detected\n\u2022 Sources: onchain (678min old), coingecko (37min old)\n\u2022 Note: This usually means scanners haven't run or are failing",
-      "channel": "telegram",
-      "at": "2026-02-19T10:44:03.625002+00:00"
-    },
-    {
-      "level": 2,
-      "title": null,
-      "message": "\u26a0\ufe0f WATCHDOG: Stale data sources detected\n\u2022 Sources: onchain (680min old), coingecko (39min old)\n\u2022 Note: This usually means scanners haven't run or are failing",
-      "channel": "telegram",
-      "at": "2026-02-19T10:46:05.682377+00:00"
-    },
-    {
-      "level": 2,
-      "title": null,
-      "message": "\u26a0\ufe0f WATCHDOG: Stale data sources detected\n\u2022 Sources: onchain (680min old), coingecko (39min old)\n\u2022 Note: This usually means scanners haven't run or are failing",
-      "channel": "telegram",
-      "at": "2026-02-19T10:46:18.367232+00:00"
-    },
-    {
-      "level": 2,
-      "title": null,
-      "message": "\u26a0\ufe0f WATCHDOG: Stale data sources detected\n\u2022 Sources: onchain (681min old), coingecko (40min old)\n\u2022 Note: This usually means scanners haven't run or are failing",
-      "channel": "telegram",
-      "at": "2026-02-19T10:46:54.998797+00:00"
-    },
-    {
-      "level": 2,
-      "title": null,
-      "message": "\u26a0\ufe0f WATCHDOG: Stale data sources detected\n\u2022 Sources: onchain (682min old)\n\u2022 Note: This usually means scanners haven't run or are failing",
-      "channel": "telegram",
-      "at": "2026-02-19T10:48:08.153045+00:00"
-    },
-    {
-      "level": 2,
-      "title": null,
-      "message": "\u26a0\ufe0f WATCHDOG: Stale data sources detected\n\u2022 Sources: onchain (684min old)\n\u2022 Note: This usually means scanners haven't run or are failing",
-      "channel": "telegram",
-      "at": "2026-02-19T10:50:06.638917+00:00"
-    },
     {
       "level": 1,
       "title": null,
@@ -701,7 +624,84 @@
       "message": "\ud83d\udd34 *Signal Rejected*\n\nToken: XRP\nReason: {\n  \"result\": \"BLOCK\",\n  \"gates_passed\": [\n    1,\n    2,\n    3,\n    4,\n    5,\n    6,\n    7,\n    8,\n    9,\n    10,\n    11,\n    12,\n    13,\n    14\n  ],\n  \"gate_fa",
       "channel": "log_only",
       "at": "2026-02-19T21:40:38.211902+00:00"
+    },
+    {
+      "level": "L1",
+      "title": "Signal Rejected",
+      "message": "\ud83d\udd34 *Signal Rejected*\n\nToken: TESTICLE\nReason: {\n  \"result\": \"BLOCK\",\n  \"gates_passed\": [\n    1,\n    2,\n    3,\n    4,\n    5,\n    6,\n    7,\n    8,\n    9,\n    10\n  ],\n  \"gate_failed\": 11,\n  \"gate_failed_n",
+      "channel": "log_only",
+      "at": "2026-02-19T21:43:47.465984+00:00"
+    },
+    {
+      "level": "L2",
+      "title": null,
+      "message": "\u2696\ufe0f HOURLY STATUS\n\ud83d\udcb0 Balance: $9,939.26 (unrealized: $-2.65)\n\ud83d\udcc8 Positions (3/10):\n  SOL @ $82.39 -> $82.06 (-0.4%)\n  ETH @ $1,973.50 -> $1,947.45 (-1.3%)\n  BTC @ $67,042.81 -> $66,918.09 (-0.2%)\n\ud83d\udcca Today:",
+      "channel": "telegram",
+      "at": "2026-02-19T21:59:23.121538+00:00"
+    },
+    {
+      "level": "L1",
+      "title": "Signal Rejected",
+      "message": "\ud83d\udd34 *Signal Rejected*\n\nToken: BFS\nReason: {\n  \"result\": \"BLOCK\",\n  \"gates_passed\": [\n    1,\n    2,\n    3,\n    4,\n    5,\n    6,\n    7,\n    8,\n    9,\n    10\n  ],\n  \"gate_failed\": 11,\n  \"gate_failed_name\":",
+      "channel": "log_only",
+      "at": "2026-02-19T22:11:14.276398+00:00"
+    },
+    {
+      "level": "L1",
+      "title": "Signal Rejected",
+      "message": "\ud83d\udd34 *Signal Rejected*\n\nToken: BFS\nReason: {\n  \"result\": \"BLOCK\",\n  \"gates_passed\": [\n    1,\n    2,\n    3,\n    4,\n    5,\n    6,\n    7,\n    8,\n    9,\n    10\n  ],\n  \"gate_failed\": 11,\n  \"gate_failed_name\":",
+      "channel": "log_only",
+      "at": "2026-02-19T22:20:49.756822+00:00"
+    },
+    {
+      "level": "L1",
+      "title": "Signal Rejected",
+      "message": "\ud83d\udd34 *Signal Rejected*\n\nToken: BFS\nReason: {\n  \"result\": \"BLOCK\",\n  \"gates_passed\": [\n    1,\n    2,\n    3,\n    4,\n    5,\n    6,\n    7,\n    8,\n    9,\n    10\n  ],\n  \"gate_failed\": 11,\n  \"gate_failed_name\":",
+      "channel": "log_only",
+      "at": "2026-02-19T22:32:11.778560+00:00"
+    },
+    {
+      "level": "L1",
+      "title": "Signal Rejected",
+      "message": "\ud83d\udd34 *Signal Rejected*\n\nToken: XRP\nReason: {\n  \"result\": \"BLOCK\",\n  \"gates_passed\": [\n    1,\n    2,\n    3,\n    4,\n    5,\n    6,\n    7,\n    8,\n    9,\n    10\n  ],\n  \"gate_failed\": 11,\n  \"gate_failed_name\":",
+      "channel": "log_only",
+      "at": "2026-02-19T22:40:43.119284+00:00"
+    },
+    {
+      "level": "L1",
+      "title": "Signal Rejected",
+      "message": "\ud83d\udd34 *Signal Rejected*\n\nToken: SHIB\nReason: {\n  \"result\": \"BLOCK\",\n  \"gates_passed\": [\n    1,\n    2,\n    3,\n    4,\n    5,\n    6,\n    7,\n    8,\n    9,\n    10\n  ],\n  \"gate_failed\": 11,\n  \"gate_failed_name\"",
+      "channel": "log_only",
+      "at": "2026-02-19T23:01:52.021754+00:00"
+    },
+    {
+      "level": "L2",
+      "title": null,
+      "message": "\u2696\ufe0f HOURLY STATUS\n\ud83d\udcb0 Balance: $9,939.39 (unrealized: $-2.52)\n\ud83d\udcc8 Positions (3/10):\n  SOL @ $82.39 -> $82.27 (-0.1%)\n  ETH @ $1,973.50 -> $1,944.19 (-1.5%)\n  BTC @ $67,042.81 -> $66,922.62 (-0.2%)\n\ud83d\udcca Today:",
+      "channel": "telegram",
+      "at": "2026-02-19T23:01:59.636882+00:00"
+    },
+    {
+      "level": "L1",
+      "title": "Signal Rejected",
+      "message": "\ud83d\udd34 *Signal Rejected*\n\nToken: PEPE\nReason: {\n  \"result\": \"BLOCK\",\n  \"gates_passed\": [\n    1,\n    2,\n    3,\n    4,\n    5,\n    6,\n    7,\n    8,\n    9,\n    10\n  ],\n  \"gate_failed\": 11,\n  \"gate_failed_name\"",
+      "channel": "log_only",
+      "at": "2026-02-19T23:20:30.740832+00:00"
+    },
+    {
+      "level": "L1",
+      "title": "Signal Rejected",
+      "message": "\ud83d\udd34 *Signal Rejected*\n\nToken: DJUNGELSKOG\nReason: {\n  \"result\": \"BLOCK\",\n  \"gates_passed\": [\n    1,\n    2,\n    3,\n    4,\n    5,\n    6,\n    7,\n    8,\n    9,\n    10\n  ],\n  \"gate_failed\": 11,\n  \"gate_faile",
+      "channel": "log_only",
+      "at": "2026-02-19T23:32:12.903072+00:00"
+    },
+    {
+      "level": "L2",
+      "title": null,
+      "message": "\u2696\ufe0f HOURLY STATUS\n\ud83d\udcb0 Balance: $9,939.96 (unrealized: $-1.95)\n\ud83d\udcc8 Positions (3/10):\n  SOL @ $82.39 -> $82.42 (+0.0%)\n  ETH @ $1,973.50 -> $1,947.59 (-1.3%)\n  BTC @ $67,042.81 -> $66,959.55 (-0.1%)\n\ud83d\udcca Today:",
+      "channel": "telegram",
+      "at": "2026-02-20T00:02:37.442892+00:00"
     }
   ],
-  "last_sent": "2026-02-19T21:40:38.211910+00:00"
+  "last_sent": "2026-02-20T00:02:37.442913+00:00"
 }

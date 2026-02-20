@@ -1,36 +1,36 @@
 {
   "token": {
-    "symbol": "XRP",
-    "deployment_timestamp": "2026-01-09T06:40:38.165917+00:00"
+    "symbol": "DJUNGELSKOG",
+    "deployment_timestamp": "2026-01-09T08:32:12.858815+00:00"
   },
-  "symbol": "XRPUSDT",
+  "symbol": "DJUNGELSKOGUSDT",
   "venue": "DEX",
-  "exchange": "binance",
-  "strategy_name": "sentiment-divergence",
+  "exchange": "raydium",
+  "strategy_name": "cex-listing-play",
   "data_timestamps": {
-    "price_timestamp": "2026-02-19T21:40:38.165956+00:00",
-    "onchain_timestamp": "2026-02-19T21:40:38.165960+00:00"
+    "price_timestamp": "2026-02-19T23:32:12.858844+00:00",
+    "onchain_timestamp": "2026-02-19T23:32:12.858846+00:00"
   },
-  "current_price": 1.4114,
+  "current_price": null,
   "sanad_verification": {
-    "sanad_trust_score": 82,
-    "grade": "Ahad",
-    "recommendation": "PROCEED",
+    "sanad_trust_score": 72,
+    "grade": "Mashhur",
+    "recommendation": "CAUTION",
     "rugpull_flags": []
   },
   "market_data": {
-    "estimated_slippage_bps": 0.0,
-    "spread_bps": 0.7,
-    "depth_sufficient": true,
+    "estimated_slippage_bps": 0,
+    "spread_bps": 0,
+    "depth_sufficient": false,
     "price_change_pct_window": 0
   },
   "trade_intent": {
     "position_size_pct": 0.013999999999999999,
-    "position_usd": 139.15
+    "position_usd": 139.16
   },
-  "trade_confidence_score": 38,
+  "trade_confidence_score": 35,
   "almuhasbi_verdict": "REVISE",
-  "almuhasbi_confidence": 38,
+  "almuhasbi_confidence": 35,
   "dex_sim_result": null,
   "volatility_30min_pct": 0,
   "has_verified_catalyst": false

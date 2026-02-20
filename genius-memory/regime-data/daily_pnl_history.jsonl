@@ -2,3 +2,4 @@
 {"date": "2026-02-17", "daily_pnl_pct": 0.0, "daily_pnl_usd": 0.0, "closing_balance": 10000, "archived_at": "2026-02-18T00:03:09.478271+00:00"}
 {"date": "2026-02-17", "daily_pnl_pct": 0.0, "daily_pnl_usd": 0, "closing_balance": 9944.31, "daily_reset_at": "2026-02-18T00:03:09.478271+00:00", "archived_at": "2026-02-18T16:00:11.844537+00:00"}
 {"date": "2026-02-18", "daily_pnl_pct": -0.000753, "daily_pnl_usd": -7.53, "closing_balance": 9941.52, "daily_reset_at": "2026-02-18T16:00:11.844537+00:00", "archived_at": "2026-02-19T00:00:01.798428+00:00"}
+{"date": "2026-02-19", "daily_pnl_pct": 5.7e-05, "daily_pnl_usd": 0.57, "closing_balance": 9940.39, "daily_reset_at": "2026-02-19T00:00:01.798428+00:00", "archived_at": "2026-02-20T00:00:01.566892+00:00"}

@@ -201,7 +201,10 @@ def reconcile_paper_mode(portfolio, internal_positions):
         )
 
     # Verify exposure calculations
-    total_exposure = sum(p.get("position_size_pct", 0) for p in open_positions)
+    # Calculate exposure from position_usd values
+    total_position_usd = sum(p.get("position_usd", 0) for p in open_positions)
+    portfolio_equity = portfolio.get("current_balance_usd", 10000.0)
+    total_exposure = total_position_usd / portfolio_equity if portfolio_equity > 0 else 0
     reported_exposure = portfolio.get("total_exposure_pct", 0)
 
     if abs(total_exposure - reported_exposure) > 0.001:
