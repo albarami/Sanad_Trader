@@ -125,24 +125,28 @@ def is_stale(job_name: str, grace_seconds: int = 60) -> bool:
     
     Returns:
         True if lease is stale or missing
+    
+    Note: TTL should be set to the schedule interval (time between runs),
+          NOT the maximum runtime. E.g., for a 5-min cron, ttl_seconds=300.
     """
     lease = check_lease(job_name)
     
     if not lease:
         return True
     
-    # If job completed, check completion freshness
+    ttl = lease.get("ttl_seconds", 300)
+    
+    # If job completed, check completion freshness against TTL + grace
     if lease.get("status") in ["ok", "error", "timeout"]:
         completed_at = lease.get("completed_at")
         if completed_at:
             completed_dt = datetime.fromisoformat(completed_at.replace("Z", "+00:00"))
             age = (datetime.now(timezone.utc) - completed_dt).total_seconds()
-            # Completed jobs are "fresh" if they finished recently
-            return age > grace_seconds
+            # FIXED: Use TTL + grace, not just grace
+            return age > (ttl + grace_seconds)
     
     # Job is running - check heartbeat + TTL
     heartbeat_at = lease.get("heartbeat_at", lease.get("started_at"))
-    ttl = lease.get("ttl_seconds", 300)
     
     heartbeat_dt = datetime.fromisoformat(heartbeat_at.replace("Z", "+00:00"))
     age = (datetime.now(timezone.utc) - heartbeat_dt).total_seconds()
