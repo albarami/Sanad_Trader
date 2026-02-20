@@ -150,3 +150,24 @@ tradeability:
     timing: 15
     catalyst: 10
     crowding: 10
+
+# Paper Mode Profiles (v1.1 - Learning Mode)
+paper_profiles:
+  LEARN:
+    min_trust_score: 30
+    min_tradeability_score: 20
+    min_confidence_score: 40
+    min_sanad_score: 30
+    allow_thesis_waiver: true
+    allow_revise_approval: true
+    allow_confidence_inference: true
+    max_trades_per_day: 10
+    size_multiplier_revise: 0.3
+  STRICT:
+    min_trust_score: 50
+    min_tradeability_score: 40
+    min_confidence_score: 60
+    min_sanad_score: 55
+    allow_thesis_waiver: false
+    allow_revise_approval: false
+    allow_confidence_inference: false

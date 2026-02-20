@@ -75,6 +75,45 @@ from tier_prompts import get_bull_prompt, get_bear_prompt
 with open(CONFIG_DIR / "thresholds.yaml", "r") as f:
     THRESHOLDS = yaml.safe_load(f)
 
+
+# ─────────────────────────────────────────────
+# PAPER_PROFILE THRESHOLD RESOLVER (v1.1)
+# ─────────────────────────────────────────────
+
+def get_threshold(key, category="scoring", default=None):
+    """
+    Resolve thresholds based on SYSTEM_MODE and PAPER_PROFILE.
+    
+    LIVE → scoring.* (strict)
+    PAPER+STRICT → scoring.* (strict)
+    PAPER+LEARN → paper_profiles.LEARN.* (relaxed)
+    
+    Backward-compatible: falls back to existing scalar keys.
+    """
+    mode = os.getenv("SYSTEM_MODE", "PAPER").upper()
+    profile = os.getenv("PAPER_PROFILE", "STRICT").upper()
+    
+    # LIVE: always use strict thresholds
+    if mode == "LIVE":
+        return THRESHOLDS.get(category, {}).get(key, default)
+    
+    # PAPER+LEARN: check profile-specific overrides
+    if mode == "PAPER" and profile == "LEARN":
+        paper_overrides = THRESHOLDS.get("paper_profiles", {}).get("LEARN", {})
+        if key in paper_overrides:
+            return paper_overrides[key]
+    
+    # PAPER+STRICT or fallback: use standard thresholds
+    return THRESHOLDS.get(category, {}).get(key, default)
+
+
+def is_paper_learn_mode():
+    """Check if currently in PAPER+LEARN mode."""
+    mode = os.getenv("SYSTEM_MODE", "PAPER").upper()
+    profile = os.getenv("PAPER_PROFILE", "STRICT").upper()
+    return mode == "PAPER" and profile == "LEARN"
+
+
 # Load agent prompts
 def _load_prompt(filename):
     path = PROMPTS_DIR / filename
