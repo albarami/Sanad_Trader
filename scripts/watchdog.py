@@ -1488,43 +1488,43 @@ def check_stuck_openclaw_jobs():
                 attempt_key = f"stuck_openclaw_{job_name.lower().replace(' ', '_')}"
                 attempts = _track_attempts(attempt_key)
                 
-                if attempts <= 2:
-                    # Write reset request for Reset Daemon to process
-                    try:
-                        _log(f"Queueing reset for {job_name} (attempt {attempts+1}/2)", "INFO")
-                        
-                        reset_request = {
-                            "job_id": job_id,
-                            "job_name": job_name,
-                            "requested_at": datetime.now(timezone.utc).isoformat(),
-                            "reason": f"stuck in runningAtMs for {stuck_age_sec:.0f}s (max {timeout+grace}s)",
-                            "attempt": attempts + 1
-                        }
-                        
-                        # Append to reset queue
-                        reset_queue = STATE_DIR / "reset_requests.jsonl"
-                        with open(reset_queue, "a") as f:
-                            f.write(json.dumps(reset_request) + "\n")
-                        
-                        fixed.append(f"{job_name} (queued reset)")
-                        
-                        _log_action(
-                            component="openclaw_scheduler",
-                            problem=f"{job_name}_stuck_{stuck_age_sec:.0f}s",
-                            action="queue_reset",
-                            result="success",
-                            attempts=attempts + 1
-                        )
-                        
-                        _log(f"Reset request queued for {job_name}", "INFO")
-                        
-                    except Exception as e:
-                        _log(f"Failed to queue reset for {job_name}: {e}", "ERROR")
-                        issues.append(f"{job_name} (queue failed)")
-                else:
-                    # Auto-fix failed twice, escalate
-                    issues.append(f"{job_name} (stuck {stuck_age_sec:.0f}s, auto-fix failed 2x)")
-                    _log(f"Escalating {job_name}: auto-fix failed twice", "ERROR")
+                # ALWAYS queue reset request for Reset Daemon (unlimited retries)
+                try:
+                    _log(f"Queueing reset for {job_name} (attempt {attempts+1})", "INFO")
+                    
+                    reset_request = {
+                        "job_id": job_id,
+                        "job_name": job_name,
+                        "requested_at": datetime.now(timezone.utc).isoformat(),
+                        "reason": f"stuck in runningAtMs for {stuck_age_sec:.0f}s (max {timeout+grace}s)",
+                        "attempt": attempts + 1
+                    }
+                    
+                    # Append to reset queue
+                    reset_queue = STATE_DIR / "reset_requests.jsonl"
+                    with open(reset_queue, "a") as f:
+                        f.write(json.dumps(reset_request) + "\n")
+                    
+                    fixed.append(f"{job_name} (queued reset)")
+                    
+                    _log_action(
+                        component="openclaw_scheduler",
+                        problem=f"{job_name}_stuck_{stuck_age_sec:.0f}s",
+                        action="queue_reset",
+                        result="success",
+                        attempts=attempts + 1
+                    )
+                    
+                    _log(f"Reset request queued for {job_name}", "INFO")
+                    
+                except Exception as e:
+                    _log(f"Failed to queue reset for {job_name}: {e}", "ERROR")
+                    issues.append(f"{job_name} (queue failed)")
+                
+                # Escalate ONLY after many attempts (but keep queueing resets)
+                if attempts > 5:
+                    issues.append(f"{job_name} (stuck {stuck_age_sec:.0f}s, 5+ reset attempts)")
+                    _log(f"Escalating {job_name}: 5+ reset attempts, still stuck", "ERROR")
         
         # Success notification
         if fixed:
@@ -1542,15 +1542,15 @@ def check_stuck_openclaw_jobs():
                 attempt_key = f"stuck_openclaw_{job_name.lower().replace(' ', '_')}"
                 _reset_attempts(attempt_key)
         
-        # Escalation for persistent failures
+        # Escalation for persistent failures (5+ attempts)
         if issues:
             _alert(
-                f"🚨 WATCHDOG NEEDS HELP:\n"
-                f"• Problem: OpenClaw jobs stuck despite auto-fix\n"
+                f"🚨 WATCHDOG CRITICAL:\n"
+                f"• Problem: OpenClaw jobs stuck despite Reset Daemon\n"
                 f"• Jobs: {', '.join(issues)}\n"
-                f"• Attempted: disable→enable (2x)\n"
+                f"• Attempted: Reset Daemon auto-fix (5+ attempts)\n"
                 f"• Impact: Jobs not dispatching, stale data\n"
-                f"• Next: Manual intervention needed",
+                f"• Next: Manual intervention or OpenClaw restart needed",
                 ALERT_LEVEL_CRITICAL
             )
     
