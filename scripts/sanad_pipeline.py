@@ -1786,24 +1786,20 @@ def stage_6_policy_engine(signal, sanad_result, strategy_result, bull_result, be
     # Build decision packet for Policy Engine
     symbol = signal.get("symbol", signal["token"] + "USDT")
     
-    # Determine venue (CEX vs DEX) from token profile or signal
+    # Determine venue (CEX vs DEX) using canonical detector
+    import venue_detector
     token_profile = strategy_result.get("token_profile", {}) if strategy_result else {}
-    chain = token_profile.get("chain", "").lower()
-    dex_only = token_profile.get("dex_only", False)
-    cex_names = token_profile.get("cex_names", [])
+    venue_info = venue_detector.detect_venue(token_profile, signal)
     
-    # Detect DEX token (note: cex_names is misnomer, includes DEXes like raydium)
-    # Check if it's a DEX by chain + exchange names
-    dex_exchanges = {"raydium", "orca", "jupiter", "uniswap", "pancakeswap", "sushiswap"}
-    has_dex_only = any(ex.lower() in dex_exchanges for ex in cex_names) and len(cex_names) == len([ex for ex in cex_names if ex.lower() in dex_exchanges])
+    is_dex = venue_info["is_dex"]
+    venue = venue_info["venue"]
+    exchange = venue_info["exchange"]
     
-    is_dex = dex_only or has_dex_only or (chain in ("solana", "ethereum", "base") and not cex_names)
+    print(f"  Venue detection: {venue} ({venue_info['detection_reason']})")
     
     if is_dex:
         # DEX: Use price from signal/strategy, don't call Binance
-        current_price = signal.get("price")
-        if not current_price and strategy_result:
-            current_price = strategy_result.get("current_price")
+        current_price = venue_detector.get_price_from_decision_data(signal, strategy_result)
         
         if not current_price or current_price <= 0:
             print(f"  ERROR: No valid price for DEX token {signal['token']}")
@@ -1833,15 +1829,13 @@ def stage_6_policy_engine(signal, sanad_result, strategy_result, bull_result, be
         
         # Fallback if Binance unavailable (circuit breaker)
         if not current_price or current_price <= 0:
-            current_price = signal.get("price")
-            if strategy_result:
-                current_price = strategy_result.get("current_price", current_price)
+            current_price = venue_detector.get_price_from_decision_data(signal, strategy_result)
             
             if not current_price or current_price <= 0:
                 print(f"  ERROR: Cannot get price for {symbol} (Binance unavailable, no signal price)")
                 return None, "Price unavailable (Binance circuit breaker + no signal price)"
             
-            print(f"  WARNING: Binance unavailable, using signal price ${current_price:,.4f}")
+            print(f"  WARNING: Binance unavailable, using fallback price ${current_price:,.4f}")
             # Use conservative estimates when API unavailable
             slippage = 50  # 0.5% conservative estimate
             spread = 20    # 0.2% conservative spread
@@ -2049,22 +2043,25 @@ def stage_7_execute(signal, sanad_result, strategy_result, bull_result, bear_res
         # Use exchange-agnostic paper execution (no live API calls)
         try:
             import paper_execution
+            import venue_detector
             
-            # Get execution parameters from decision record
-            exec_params = paper_execution.get_execution_parameters(decision_record)
+            # Get venue using canonical detector
+            token_profile = decision_record.get("token_profile", {})
+            venue_info = venue_detector.detect_venue(token_profile, signal)
+            venue = venue_info["venue"]
+            exchange = venue_info["exchange"]
             
-            # Get price from decision record (already validated)
-            current_price = exec_params.get("price")
-            if not current_price:
-                # Fallback to current_price_checked from earlier
-                current_price = decision_record.get("strategy", {}).get("current_price")
+            # Get price from decision record (already validated in Stage 6)
+            current_price = venue_detector.get_price_from_decision_data(
+                signal, 
+                strategy_result, 
+                decision_record
+            )
             
             if not current_price or current_price <= 0:
                 raise ValueError(f"No valid price available: {current_price}")
             
-            venue = exec_params.get("venue", "CEX")
-            exchange = exec_params.get("exchange", "binance")
-            liquidity_usd = exec_params.get("liquidity_usd")
+            liquidity_usd = token_profile.get("liquidity_usd")
             
             print(f"  EXECUTING PAPER TRADE: BUY {quantity:.6f} {symbol}")
             print(f"  Venue: {venue}, Exchange: {exchange}, Price: ${current_price:,.4f}")

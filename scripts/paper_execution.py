@@ -116,6 +116,7 @@ def execute_paper_trade(
 def get_execution_parameters(decision_record: dict) -> dict:
     """
     Extract execution parameters from decision record.
+    Uses canonical venue_detector for consistent venue detection.
     
     Returns dict with:
         - venue: 'CEX' or 'DEX'
@@ -124,29 +125,56 @@ def get_execution_parameters(decision_record: dict) -> dict:
         - liquidity_usd: optional liquidity for slippage
     """
     
-    # Determine venue from token profile
+    try:
+        import venue_detector
+        
+        # Use canonical venue detector
+        token_profile = decision_record.get("token_profile", {})
+        signal = decision_record.get("signal", {})
+        
+        venue_info = venue_detector.detect_venue(token_profile, signal)
+        venue = venue_info["venue"]
+        exchange = venue_info["exchange"]
+        
+        # Get price using canonical price extraction
+        price = venue_detector.get_price_from_decision_data(
+            signal=signal,
+            strategy_result=decision_record.get("strategy"),
+            decision_record=decision_record
+        )
+        
+        # Get liquidity for slippage calc
+        liquidity_usd = token_profile.get("liquidity_usd")
+        
+        return {
+            "venue": venue,
+            "exchange": exchange,
+            "price": price,
+            "liquidity_usd": liquidity_usd,
+        }
+    except ImportError:
+        # Fallback if venue_detector not available (shouldn't happen)
+        return _legacy_get_execution_parameters(decision_record)
+
+
+def _legacy_get_execution_parameters(decision_record: dict) -> dict:
+    """Legacy venue detection (kept as fallback only)."""
     token_profile = decision_record.get("token_profile", {})
     chain = token_profile.get("chain", "").lower()
     dex_only = token_profile.get("dex_only", False)
     cex_names = token_profile.get("cex_names", [])
     
-    # Detect DEX token (note: cex_names is misnomer, includes DEXes like raydium)
     dex_exchanges = {"raydium", "orca", "jupiter", "uniswap", "pancakeswap", "sushiswap"}
     has_dex_only = any(ex.lower() in dex_exchanges for ex in cex_names) and len(cex_names) == len([ex for ex in cex_names if ex.lower() in dex_exchanges])
     
     if dex_only or has_dex_only or (chain in ("solana", "ethereum", "base") and not cex_names):
         venue = "DEX"
-        # Use first DEX exchange from cex_names
         exchange = cex_names[0] if cex_names else "raydium"
     else:
         venue = "CEX"
-        # Try routing, fallback to binance
-        exchange = "binance"  # Will be enhanced by exchange_router
+        exchange = "binance"
     
-    # Get price from decision record (already validated in Stage 6/7)
-    # Priority: execution.price > strategy.current_price > signal.price
     price = None
-    
     if decision_record.get("execution", {}).get("current_price"):
         price = decision_record["execution"]["current_price"]
     elif decision_record.get("strategy", {}).get("current_price"):
@@ -154,7 +182,6 @@ def get_execution_parameters(decision_record: dict) -> dict:
     elif decision_record.get("signal", {}).get("price"):
         price = decision_record["signal"]["price"]
     
-    # Get liquidity for slippage calc
     liquidity_usd = token_profile.get("liquidity_usd")
     
     return {
