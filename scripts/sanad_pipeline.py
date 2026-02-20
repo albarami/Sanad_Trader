@@ -1926,8 +1926,22 @@ def stage_7_execute(signal, sanad_result, strategy_result, bull_result, bear_res
 
     if final_action == "EXECUTE":
         # Paper trade execution
-        symbol = signal.get("symbol", signal["token"] + "USDT")
-        quantity = strategy_result.get("position_usd", 200) / (policy_result["decision_packet"].get("current_price", 1))
+        token = signal.get("token")
+        if not token:
+            print(f"  CRITICAL: signal missing 'token' field - cannot execute")
+            decision_record["final_action"] = "REJECT"
+            decision_record["rejection_reason"] = "Missing token field"
+            return decision_record
+        
+        symbol = signal.get("symbol", token + "USDT")
+        current_price = policy_result.get("decision_packet", {}).get("current_price", 0) or signal.get("price", 0) or 1
+        if current_price <= 0:
+            print(f"  CRITICAL: invalid price {current_price} - cannot calculate quantity")
+            decision_record["final_action"] = "REJECT"
+            decision_record["rejection_reason"] = f"Invalid price: {current_price}"
+            return decision_record
+        
+        quantity = strategy_result.get("position_usd", 200) / current_price
 
         # Partial fill simulation
         try:

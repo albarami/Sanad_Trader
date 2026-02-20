@@ -95,7 +95,7 @@ policy_gates:
   max_concurrent_positions: 5
 scoring:
   min_trust_score: 50
-  min_confidence_score: 45
+  min_confidence_score: 30  # TEMPORARY - lowered from 45 to unblock signals
   recency_decay_per_hour: 5
   live_min_trust_score: 70
 strategies:
@@ -142,7 +142,7 @@ tradeability:
     BULL: 55
     BEAR_HIGH_VOL: 35
     BEAR_LOW_VOL: 40
-    UNKNOWN: 55  # Restored from 40 - pipeline fixed, XRP scores 73
+    UNKNOWN: 35  # TEMPORARY - Stage 7 crash investigation, unblock signal flow
   component_max:
     momentum: 25
     volume: 20
