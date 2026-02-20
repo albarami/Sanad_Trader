@@ -1664,6 +1664,17 @@ A paper loss of $50 that teaches the system a pattern is worth more than a paper
     verdict = judge_result.get("verdict", "REJECT")
     confidence = judge_result.get("confidence_score", 0) or 0
 
+    # Infer confidence from verdict if missing/zero (Judge API failure fallback)
+    if confidence <= 0 and verdict in ("APPROVE", "REVISE"):
+        if verdict == "APPROVE":
+            confidence = 65
+            print(f"  ⚠️ Inferred confidence 65 from APPROVE verdict (model returned {judge_result.get('confidence_score', 0)})")
+        elif verdict == "REVISE":
+            confidence = 45
+            print(f"  ⚠️ Inferred confidence 45 from REVISE verdict (model returned {judge_result.get('confidence_score', 0)})")
+        judge_result["confidence_score"] = confidence
+        judge_result["inferred_confidence"] = True
+
     # Paper mode deterministic override: confidence >= 60 = APPROVE (belt-and-suspenders)
     if _judge_paper and confidence >= 60 and verdict == "REJECT":
         rugpull_flags = sanad_result.get("rugpull_flags", [])
