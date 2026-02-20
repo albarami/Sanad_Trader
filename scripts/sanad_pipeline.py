@@ -503,6 +503,36 @@ def stage_1_signal_intake(signal):
     print(f"STAGE 1: SIGNAL INTAKE")
     print(f"{'='*60}")
 
+    # Auto-generate thesis for scanner/whale signals (Phase 1: Learning mode)
+    if "thesis" not in signal or not signal["thesis"]:
+        if signal.get("source") in ["whale_tracker", "birdeye", "dexscreener", "coingecko", "onchain"]:
+            thesis_parts = []
+            
+            # Token symbol
+            if "token_symbol" in signal:
+                thesis_parts.append(signal["token_symbol"])
+            elif "symbol" in signal:
+                thesis_parts.append(signal["symbol"])
+            
+            # Primary reason
+            if "primary_reason" in signal:
+                thesis_parts.append(signal["primary_reason"])
+            elif "reason" in signal:
+                thesis_parts.append(signal["reason"])
+            
+            # Volume/whale data
+            if "volume_24h" in signal and signal["volume_24h"]:
+                thesis_parts.append(f"Vol ${signal['volume_24h']:,.0f}")
+            if "whale_count" in signal:
+                thesis_parts.append(f"{signal['whale_count']} whales active")
+            if "price_change_24h_pct" in signal:
+                thesis_parts.append(f"{signal['price_change_24h_pct']:+.1f}%")
+            
+            if thesis_parts:
+                signal["thesis"] = " - ".join(thesis_parts)
+                signal["thesis_auto_generated"] = True
+                print(f"  [AUTO-THESIS] Generated: {signal['thesis'][:60]}...")
+    
     required = ["token", "source", "thesis"]
     for field in required:
         if field not in signal or not signal[field]:
