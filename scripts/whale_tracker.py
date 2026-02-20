@@ -16,6 +16,14 @@ sys.path.insert(0, str(Path(__file__).parent))
 # Import existing Helius client — DO NOT write new RPC code
 from helius_client import get_recent_transactions, get_token_metadata
 
+# Import Birdeye client for price/volume enrichment
+try:
+    from birdeye_client import get_token_overview
+    BIRDEYE_AVAILABLE = True
+except ImportError:
+    BIRDEYE_AVAILABLE = False
+    def get_token_overview(address): return {}
+
 BASE_DIR = Path(os.environ.get("SANAD_HOME", Path(__file__).resolve().parents[1]))
 CONFIG_FILE = BASE_DIR / "config" / "whale_wallets.json"
 STATE_FILE = BASE_DIR / "state" / "whale_activity.json"
@@ -47,6 +55,29 @@ def _load_state() -> dict:
         with open(STATE_FILE) as f:
             return json.load(f)
     return {}
+
+def _enrich_token_data(mint: str) -> dict:
+    """
+    Enrich token with price/volume data from Birdeye.
+    Returns dict with volume_24h, price_change_24h_pct, liquidity_usd.
+    """
+    if not BIRDEYE_AVAILABLE:
+        return {"volume_24h": 0, "price_change_24h_pct": 0, "liquidity_usd": 0}
+    
+    try:
+        overview = get_token_overview(mint)
+        if not overview or "data" not in overview:
+            return {"volume_24h": 0, "price_change_24h_pct": 0, "liquidity_usd": 0}
+        
+        data = overview["data"]
+        return {
+            "volume_24h": data.get("v24hUSD", 0) or 0,
+            "price_change_24h_pct": data.get("priceChange24hPercent", 0) or 0,
+            "liquidity_usd": data.get("liquidity", 0) or 0,
+        }
+    except Exception as e:
+        _log(f"Enrichment failed for {mint[:8]}: {e}")
+        return {"volume_24h": 0, "price_change_24h_pct": 0, "liquidity_usd": 0}
 
 def _save_state(state: dict):
     """Save whale activity state."""
@@ -176,6 +207,9 @@ def _detect_accumulation(state: dict, config: dict) -> list[dict]:
                 timestamps = [datetime.fromisoformat(b["timestamp"]) for b in buys]
                 window_hours = (max(timestamps) - min(timestamps)).total_seconds() / 3600
                 
+                # Enrich with Birdeye data
+                enrichment = _enrich_token_data(mint)
+                
                 signal = {
                     "token": symbol,
                     "symbol": f"{symbol}USDT",
@@ -187,9 +221,9 @@ def _detect_accumulation(state: dict, config: dict) -> list[dict]:
                     "thesis": f"{unique_wallets} tracked whales ({', '.join(b['name'] for b in buys[:3])}) accumulated ${symbol} in last {window_hours:.1f}h. Combined buy: {total_sol:.1f} SOL. Weighted score: {weighted_score:.1f}.",
                     "strategy_hint": "whale-following",
                     "token_address": mint,
-                    "volume_24h": 0,
-                    "price_change_1h": 0,
-                    "liquidity_usd": 0,
+                    "volume_24h": enrichment["volume_24h"],
+                    "price_change_24h_pct": enrichment["price_change_24h_pct"],
+                    "liquidity_usd": enrichment["liquidity_usd"],
                     "timestamp": datetime.now(timezone.utc).isoformat(),
                     "whale_details": [
                         {
@@ -391,6 +425,9 @@ def run_tracker(test_mode: bool = False):
             
             # Only generate SHORT signal if 2+ whales (distribution confirmed)
             if whale_count >= 2:
+                # Enrich with Birdeye data
+                enrichment = _enrich_token_data(mint)
+                
                 short_signal = {
                     "token": mint[:8],  # Truncated mint for readability
                     "symbol": f"{mint[:8]}USDT",
@@ -402,8 +439,9 @@ def run_tracker(test_mode: bool = False):
                     "thesis": f"{whale_count} tracked whales distributing ({', '.join(whale_names[:2])}{'...' if len(whale_names) > 2 else ''}). Fade strength on distribution.",
                     "strategy_hint": "whale-distribution-fade",
                     "token_address": mint,
-                    "volume_24h": 0,  # Will be enriched by router
-                    "price_change_24h_pct": 0,
+                    "volume_24h": enrichment["volume_24h"],
+                    "price_change_24h_pct": enrichment["price_change_24h_pct"],
+                    "liquidity_usd": enrichment["liquidity_usd"],
                     "distribution_whale_count": whale_count,
                     "distribution_alerts": len(alert["details"]),
                     "confidence": min(80, 50 + whale_count * 10),
@@ -411,7 +449,7 @@ def run_tracker(test_mode: bool = False):
                 }
                 _write_signal(short_signal)
                 signals.append(short_signal)
-                _log(f"  → Generated SHORT signal for {mint[:8]} ({whale_count} whales distributing)")
+                _log(f"  → Generated SHORT signal for {mint[:8]} ({whale_count} whales distributing, vol=${enrichment['volume_24h']/1000:.1f}K)")
     
     _log(f"Generated {len(signals)} signals ({len([s for s in signals if s.get('direction')=='SHORT'])} SHORT), {len(alerts)} distribution alerts")
     _update_cron_health("ok")
