@@ -871,20 +871,51 @@ Signal source: {signal['source']}"""
         print("  WARNING: Perplexity unavailable — proceeding with limited data")
         perplexity_intel = "Real-time data unavailable."
 
-    # Step 2: Get current price data from Binance
+    # Step 2: Get current price data (venue-aware)
+    # Skip Binance for DEX tokens to avoid "Invalid symbol" errors
     symbol = signal.get("symbol", signal["token"] + "USDT")
-    price_data = binance_client.get_ticker_24h(symbol)
+    
+    # Check if this is a DEX token
+    is_dex = False
+    try:
+        sys.path.insert(0, str(Path(__file__).resolve().parent))
+        from venue_detector import detect_venue
+        venue_info = detect_venue(
+            chain=signal.get("chain", ""),
+            exchanges=signal.get("cex_names", []),
+            token_profile=signal
+        )
+        is_dex = venue_info.get("venue") == "DEX"
+    except:
+        pass
+    
     price_context = ""
-    if price_data:
+    if is_dex:
+        # DEX token - use signal data, skip Binance
+        print(f"  [2a] DEX token detected - skipping Binance (symbol: {symbol})")
+        price = signal.get("current_price_usd") or signal.get("price") or signal.get("current_price")
+        volume_24h = signal.get("volume_24h_usd") or signal.get("volume_24h")
+        liquidity = signal.get("liquidity_usd")
+        
         price_context = f"""
+DEX Market Data (from signal):
+- Price: ${price if price else 'N/A'}
+- 24h Volume: ${volume_24h if volume_24h else 'N/A'}
+- Liquidity: ${liquidity if liquidity else 'N/A'}
+- Source: {signal.get('source', 'Unknown')}"""
+    else:
+        # CEX token - query Binance
+        price_data = binance_client.get_ticker_24h(symbol)
+        if price_data:
+            price_context = f"""
 Binance 24h data:
 - Price: ${price_data.get('lastPrice', 'N/A')}
 - 24h Change: {price_data.get('priceChangePercent', 'N/A')}%
 - 24h Volume (USDT): {price_data.get('quoteVolume', 'N/A')}
 - 24h High: ${price_data.get('highPrice', 'N/A')}
 - 24h Low: ${price_data.get('lowPrice', 'N/A')}"""
-    else:
-        price_context = f"Binance data unavailable for {symbol}."
+        else:
+            price_context = f"Binance data unavailable for {symbol}."
 
     # Step 3: Run Sanad Verifier (Claude Opus)
     print("  [2b] Running Sanad Verification (Claude Opus)...")

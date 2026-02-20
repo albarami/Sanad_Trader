@@ -65,7 +65,7 @@ TEST_AMOUNT_LAMPORTS = 100_000_000  # 0.1 SOL
 
 def _get_jupiter_quote(input_mint: str, output_mint: str,
                        amount: int, slippage_bps: int = 500) -> dict | None:
-    """Get a swap quote from Jupiter."""
+    """Get a swap quote from Jupiter with Helius fallback."""
     try:
         resp = requests.get(
             JUPITER_QUOTE_URL,
@@ -80,10 +80,44 @@ def _get_jupiter_quote(input_mint: str, output_mint: str,
         )
         if resp.status_code == 200:
             return resp.json()
-        return None
     except Exception as e:
         _log(f"Jupiter quote error: {e}")
-        return None
+    
+    # Fallback: Use Helius simulation heuristic
+    _log("Jupiter unavailable - using Helius simulation fallback")
+    return _helius_simulation_fallback(input_mint, output_mint, amount)
+
+
+def _helius_simulation_fallback(input_mint: str, output_mint: str, amount: int) -> dict | None:
+    """
+    Fallback honeypot check using Helius RPC simulation.
+    Returns a Jupiter-compatible dict structure for compatibility.
+    """
+    try:
+        from helius_client import simulate_swap
+        
+        # Simulate the swap using Helius
+        sim_result = simulate_swap(
+            input_mint=input_mint,
+            output_mint=output_mint,
+            amount_lamports=amount
+        )
+        
+        if sim_result and sim_result.get("success"):
+            # Convert to Jupiter-style response
+            out_amount = sim_result.get("output_amount", 0)
+            price_impact = sim_result.get("price_impact_pct", 0)
+            
+            return {
+                "outAmount": str(out_amount),
+                "priceImpactPct": price_impact,
+                "routePlan": [{"swapInfo": {"label": "helius_simulation"}}],
+                "fallback_source": "helius"
+            }
+    except Exception as e:
+        _log(f"Helius simulation fallback failed: {e}")
+    
+    return None
 
 
 # ─────────────────────────────────────────────────────────
