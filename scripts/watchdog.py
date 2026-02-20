@@ -79,7 +79,7 @@ def _save_attempts():
 # --- HELPERS ---
 def _log(msg, level="INFO"):
     """Log to watchdog.log with timestamp."""
-    ts = datetime.utcnow().isoformat() + "Z"
+    ts = datetime.now(timezone.utc).isoformat() + "Z"
     LOGS_DIR.mkdir(parents=True, exist_ok=True)
     with open(WATCHDOG_LOG, "a") as f:
         f.write(f"[{level}] {ts} {msg}\n")
@@ -91,7 +91,7 @@ def _log_action(component, problem, action, result, duration_sec=None, attempts=
     GENIUS_DIR.mkdir(parents=True, exist_ok=True)
     
     entry = {
-        "timestamp": datetime.utcnow().isoformat() + "Z",
+        "timestamp": datetime.now(timezone.utc).isoformat() + "Z",
         "component": component,
         "problem": problem,
         "action": action,
@@ -285,11 +285,11 @@ def _escalate_to_openclaw(diagnostic):
         # Write to a flag file so OpenClaw can detect it via heartbeat
         escalation_file = STATE_DIR / "openclaw_escalation.json"
         escalation_data = {
-            "timestamp": datetime.utcnow().isoformat() + "Z",
+            "timestamp": datetime.now(timezone.utc).isoformat() + "Z",
             "component": "signal_router",
             "tier": "3.5",
             "diagnostic": diagnostic,
-            "deadline": (datetime.utcnow() + timedelta(minutes=30)).isoformat() + "Z",
+            "deadline": (datetime.now(timezone.utc) + timedelta(minutes=30)).isoformat() + "Z",
             "status": "pending"
         }
         
@@ -432,6 +432,33 @@ def _reset_attempts(component):
         _save_attempts()  # PERSIST
 
 
+def _clear_escalation_artifacts(component):
+    """
+    Clear escalation artifacts when component recovers.
+    Called when lease/heartbeat shows component is healthy.
+    """
+    files_to_clear = [
+        STATE_DIR / "openclaw_escalation.json",
+        STATE_DIR / "router_paused.flag",
+        STATE_DIR / "router_fast_path.flag"
+    ]
+    
+    cleared = []
+    for f in files_to_clear:
+        if f.exists():
+            try:
+                f.unlink()
+                cleared.append(f.name)
+            except Exception as e:
+                _log(f"Failed to clear {f.name}: {e}", "WARNING")
+    
+    # Reset attempt counters
+    _reset_attempts(component)
+    
+    if cleared:
+        _log(f"Cleared escalation artifacts for {component}: {cleared}", "INFO")
+
+
 # --- CHECKS ---
 
 def check_reconciliation_staleness():
@@ -454,7 +481,7 @@ def check_reconciliation_staleness():
         
         # Parse ISO timestamp
         last_run = datetime.fromisoformat(last_run_str.replace("Z", "+00:00"))
-        age_sec = (datetime.utcnow().replace(tzinfo=last_run.tzinfo) - last_run).total_seconds()
+        age_sec = (datetime.now(timezone.utc).replace(tzinfo=last_run.tzinfo) - last_run).total_seconds()
         
         if age_sec > RECONCILIATION_STALE_SEC:
             age_min = int(age_sec / 60)
@@ -689,7 +716,7 @@ def check_stale_locks():
                 for token, timestamp_str in list(locks.items()):
                     try:
                         lock_time = datetime.fromisoformat(timestamp_str.replace("Z", "+00:00"))
-                        age_sec = (datetime.utcnow().replace(tzinfo=lock_time.tzinfo) - lock_time).total_seconds()
+                        age_sec = (datetime.now(timezone.utc).replace(tzinfo=lock_time.tzinfo) - lock_time).total_seconds()
                         age_min = age_sec / 60
                         
                         if age_min > lock_ttl_minutes:
@@ -717,7 +744,7 @@ def check_stale_locks():
 
 def check_router_stall():
     """
-    Check if signal router daily_pipeline_runs unchanged for 30+ min.
+    Check if signal router is stalled using LEASE AS TRUTH.
     ADAPTIVE ESCALATION (3-LAYER SELF-HEALING):
       Tier 1 (attempt 1): Kill + clear lock (standard restart)
       Tier 2 (attempt 2): Kill + force manual router run to verify it completes
@@ -726,8 +753,26 @@ def check_router_stall():
       Tier 4 (attempt 5+): ESCALATE to human - pause router + alert Salim
     """
     try:
-        # Use cron_health.json as authoritative source (not signal_router_state.json)
-        # This prevents false stall alerts when state updates but health doesn't
+        # PRIORITY 1: Check lease file (deterministic truth)
+        lease_path = STATE_DIR / "leases" / "signal_router.json"
+        if lease_path.exists():
+            try:
+                lease = json.load(open(lease_path))
+                heartbeat_at = lease.get("heartbeat_at", lease.get("started_at"))
+                ttl = lease.get("ttl_seconds", 720)
+                
+                heartbeat_dt = datetime.fromisoformat(heartbeat_at.replace("Z", "+00:00"))
+                now = datetime.now(timezone.utc)
+                age_sec = (now - heartbeat_dt).total_seconds()
+                
+                # If lease is fresh, router is HEALTHY - clear any escalations
+                if age_sec < ttl:
+                    _clear_escalation_artifacts("signal_router")
+                    return []  # No issues
+            except Exception as e:
+                _log(f"Lease check failed: {e}", "WARNING")
+        
+        # FALLBACK: Use cron_health.json if no lease
         health_file = STATE_DIR / "cron_health.json"
         if not health_file.exists():
             return []
@@ -751,7 +796,7 @@ def check_router_stall():
         
         # Parse ISO timestamp
         last_run = datetime.fromisoformat(last_run_str.replace("Z", "+00:00"))
-        age_minutes = (datetime.utcnow().replace(tzinfo=last_run.tzinfo) - last_run).total_seconds() / 60
+        age_minutes = (datetime.now(timezone.utc).replace(tzinfo=last_run.tzinfo) - last_run).total_seconds() / 60
         
         if age_minutes > ROUTER_STALL_MIN and daily_runs < 200:
             _log(f"Router stalled: last run {age_minutes:.0f}min ago, {daily_runs}/200 runs", "WARNING")
@@ -848,7 +893,7 @@ def check_router_stall():
                 
                 # Create flag file for fast-path mode
                 fast_path_flag = STATE_DIR / "router_fast_path.flag"
-                fast_path_flag.write_text(f"emergency_mode: watchdog attempt {attempts} at {datetime.utcnow().isoformat()}Z")
+                fast_path_flag.write_text(f"emergency_mode: watchdog attempt {attempts} at {datetime.now(timezone.utc).isoformat()}Z")
                 
                 _log_action(
                     component="signal_router",
@@ -916,7 +961,7 @@ def check_router_stall():
                 
                 # Create pause flag (router should check this and exit early)
                 pause_flag = STATE_DIR / "router_paused.flag"
-                pause_until = datetime.utcnow() + timedelta(minutes=30)
+                pause_until = datetime.now(timezone.utc) + timedelta(minutes=30)
                 pause_flag.write_text(f"paused_until: {pause_until.isoformat()}Z\nreason: watchdog_escalation_tier4_attempt_{attempts}")
                 
                 # Compile full history for human
@@ -987,7 +1032,7 @@ def check_position_freshness():
                 continue
             
             updated = datetime.fromisoformat(updated_str.replace("Z", "+00:00"))
-            age_minutes = (datetime.utcnow().replace(tzinfo=updated.tzinfo) - updated).total_seconds() / 60
+            age_minutes = (datetime.now(timezone.utc).replace(tzinfo=updated.tzinfo) - updated).total_seconds() / 60
             
             if age_minutes > POSITION_FRESHNESS_MIN:
                 stale.append(f"{token} ({age_minutes:.0f}min old)")
@@ -1227,7 +1272,7 @@ def check_cost_runaway():
             return []
         
         # Calculate actual 24h spend from api_costs.jsonl
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         last_24h = now - timedelta(hours=24)
         total_24h = 0.0
         
