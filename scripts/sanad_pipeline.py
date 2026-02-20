@@ -2007,7 +2007,13 @@ def stage_7_execute(signal, sanad_result, strategy_result, bull_result, bear_res
         
         # Check if this is a REVISE probe (paper mode learning trade)
         verdict = judge_result.get("verdict", "REJECT")
-        is_revise_probe = (verdict == "REVISE" and _load_json(STATE_DIR / "portfolio.json", {}).get("mode", "paper") == "paper")
+        try:
+            import json
+            portfolio = json.load(open(STATE_DIR / "portfolio.json"))
+            is_paper_mode = portfolio.get("mode", "paper") == "paper"
+        except:
+            is_paper_mode = True  # Default to paper mode if file missing
+        is_revise_probe = (verdict == "REVISE" and is_paper_mode)
         
         # Apply micro-sizing for REVISE probes
         base_position_usd = strategy_result.get("position_usd", 200)
