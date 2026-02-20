@@ -656,6 +656,65 @@ def check_cron_health():
     return issues
 
 
+def check_stale_locks():
+    """
+    Check for stale lock files and clean them up automatically.
+    Lock TTL: 15 minutes - any lock older than this is considered stale.
+    """
+    issues = []
+    lock_ttl_minutes = 15
+    
+    try:
+        # Check signal_window.lock
+        lock_file = STATE_DIR / "signal_window.lock"
+        if lock_file.exists():
+            age_sec = time.time() - lock_file.stat().st_mtime
+            age_min = age_sec / 60
+            if age_min > lock_ttl_minutes:
+                try:
+                    lock_file.unlink()
+                    _log(f"🔧 Cleared stale lock: signal_window.lock (age: {age_min:.1f}min)", "WARNING")
+                    issues.append(f"Cleared stale signal_window.lock ({age_min:.0f}min old)")
+                except Exception as e:
+                    _log(f"Failed to clear stale lock: {e}", "ERROR")
+        
+        # Check signal_mutex.json entries
+        mutex_file = STATE_DIR / "signal_mutex.json"
+        if mutex_file.exists():
+            try:
+                mutex_data = json.load(open(mutex_file))
+                locks = mutex_data.get("locks", {})
+                cleared = []
+                
+                for token, timestamp_str in list(locks.items()):
+                    try:
+                        lock_time = datetime.fromisoformat(timestamp_str.replace("Z", "+00:00"))
+                        age_sec = (datetime.utcnow().replace(tzinfo=lock_time.tzinfo) - lock_time).total_seconds()
+                        age_min = age_sec / 60
+                        
+                        if age_min > lock_ttl_minutes:
+                            del locks[token]
+                            cleared.append(f"{token}({age_min:.0f}min)")
+                    except:
+                        # Invalid timestamp - remove it
+                        del locks[token]
+                        cleared.append(f"{token}(invalid)")
+                
+                if cleared:
+                    mutex_data["locks"] = locks
+                    with open(mutex_file, "w") as f:
+                        json.dump(mutex_data, f, indent=2)
+                    _log(f"🔧 Cleared {len(cleared)} stale mutex locks: {', '.join(cleared)}", "WARNING")
+                    issues.append(f"Cleared {len(cleared)} stale mutex locks")
+            except Exception as e:
+                _log(f"Failed to check/clear mutex locks: {e}", "ERROR")
+    
+    except Exception as e:
+        _log(f"Stale lock check failed: {e}", "ERROR")
+    
+    return issues
+
+
 def check_router_stall():
     """
     Check if signal router daily_pipeline_runs unchanged for 30+ min.
@@ -667,16 +726,28 @@ def check_router_stall():
       Tier 4 (attempt 5+): ESCALATE to human - pause router + alert Salim
     """
     try:
-        state_file = STATE_DIR / "signal_router_state.json"
-        if not state_file.exists():
+        # Use cron_health.json as authoritative source (not signal_router_state.json)
+        # This prevents false stall alerts when state updates but health doesn't
+        health_file = STATE_DIR / "cron_health.json"
+        if not health_file.exists():
             return []
         
-        state = json.load(open(state_file))
-        last_run_str = state.get("last_run")
-        daily_runs = state.get("daily_pipeline_runs", 0)
+        health = json.load(open(health_file))
+        router_entry = health.get("signal_router", {})
+        last_run_str = router_entry.get("last_run")
         
         if not last_run_str:
             return []
+        
+        # Get daily run count from router state (for 200-run limit check)
+        state_file = STATE_DIR / "signal_router_state.json"
+        daily_runs = 0
+        if state_file.exists():
+            try:
+                state = json.load(open(state_file))
+                daily_runs = state.get("daily_pipeline_runs", 0)
+            except:
+                pass
         
         # Parse ISO timestamp
         last_run = datetime.fromisoformat(last_run_str.replace("Z", "+00:00"))
