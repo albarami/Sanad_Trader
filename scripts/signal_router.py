@@ -1052,6 +1052,24 @@ def run_router():
         pipeline_signal = _to_pipeline_signal(selected, cross_labels)
         pipeline_signal["router_score"] = selected_score  # Pass to pipeline for tier routing
 
+        # --- Validate required fields before sending to pipeline ---
+        required_fields = ["token", "source", "thesis", "venue", "exchange"]
+        missing_fields = [f for f in required_fields if not pipeline_signal.get(f)]
+        if missing_fields:
+            _log(f"  SKIP {selected_token}: missing required fields: {', '.join(missing_fields)}")
+            # Record as rejected counterfactual
+            try:
+                from counterfactual import record_rejection
+                record_rejection(
+                    token=selected_token,
+                    price_usd=selected.get("price_usd") or selected.get("price") or selected.get("current_price_usd", 0),
+                    reason=f"Missing required field: {missing_fields[0]}",
+                    gate="ROUTER_VALIDATION"
+                )
+            except Exception as e:
+                _log(f"Counterfactual record failed: {e}")
+            continue
+
         # --- Inject corroboration data for Sanad verifier ---
         tok_upper = selected_token.upper()
         if tok_upper in cross_source_data:

@@ -1,20 +1,20 @@
 {
   "token": {
-    "symbol": "DJUNGELSKOG",
-    "deployment_timestamp": "2026-01-09T08:32:12.858815+00:00"
+    "symbol": "PUNCH",
+    "deployment_timestamp": "2026-01-09T09:11:44.498011+00:00"
   },
-  "symbol": "DJUNGELSKOGUSDT",
+  "symbol": "PUNCHUSDT",
   "venue": "DEX",
   "exchange": "raydium",
-  "strategy_name": "cex-listing-play",
+  "strategy_name": "whale-following",
   "data_timestamps": {
-    "price_timestamp": "2026-02-19T23:32:12.858844+00:00",
-    "onchain_timestamp": "2026-02-19T23:32:12.858846+00:00"
+    "price_timestamp": "2026-02-20T00:11:44.498040+00:00",
+    "onchain_timestamp": "2026-02-20T00:11:44.498043+00:00"
   },
   "current_price": null,
   "sanad_verification": {
-    "sanad_trust_score": 72,
-    "grade": "Mashhur",
+    "sanad_trust_score": 65,
+    "grade": "Tawatur",
     "recommendation": "CAUTION",
     "rugpull_flags": []
   },
@@ -28,9 +28,9 @@
     "position_size_pct": 0.013999999999999999,
     "position_usd": 139.16
   },
-  "trade_confidence_score": 35,
-  "almuhasbi_verdict": "REVISE",
-  "almuhasbi_confidence": 35,
+  "trade_confidence_score": 0,
+  "almuhasbi_verdict": "REJECT",
+  "almuhasbi_confidence": 58,
   "dex_sim_result": null,
   "volatility_30min_pct": 0,
   "has_verified_catalyst": false

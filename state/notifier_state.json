@@ -1,14 +1,7 @@
 {
-  "sent": 632,
+  "sent": 633,
   "failed": 7,
   "history": [
-    {
-      "level": 1,
-      "title": null,
-      "message": "\ud83d\udd27 WATCHDOG AUTO-FIX (attempt 1/4):\n\u2022 Problem: Router stalled (30min since last run)\n\u2022 Context: (token=COPPERINU | stage=sanad | hints=timeout_detected,timeout_detected)\n\u2022 Action: Killed process + clea",
-      "channel": "telegram",
-      "at": "2026-02-19T10:58:15.425771+00:00"
-    },
     {
       "level": 1,
       "title": null,
@@ -701,7 +694,14 @@
       "message": "\u2696\ufe0f HOURLY STATUS\n\ud83d\udcb0 Balance: $9,939.96 (unrealized: $-1.95)\n\ud83d\udcc8 Positions (3/10):\n  SOL @ $82.39 -> $82.42 (+0.0%)\n  ETH @ $1,973.50 -> $1,947.59 (-1.3%)\n  BTC @ $67,042.81 -> $66,959.55 (-0.1%)\n\ud83d\udcca Today:",
       "channel": "telegram",
       "at": "2026-02-20T00:02:37.442892+00:00"
+    },
+    {
+      "level": "L1",
+      "title": "Signal Rejected",
+      "message": "\ud83d\udd34 *Signal Rejected*\n\nToken: PUNCH\nReason: {\n  \"result\": \"BLOCK\",\n  \"gates_passed\": [\n    1,\n    2,\n    3,\n    4,\n    5,\n    6,\n    7,\n    8,\n    9,\n    10,\n    11,\n    12,\n    13,\n    14\n  ],\n  \"gate_",
+      "channel": "log_only",
+      "at": "2026-02-20T00:11:44.544038+00:00"
     }
   ],
-  "last_sent": "2026-02-20T00:02:37.442913+00:00"
+  "last_sent": "2026-02-20T00:11:44.544046+00:00"
 }

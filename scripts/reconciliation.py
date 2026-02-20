@@ -207,10 +207,13 @@ def reconcile_paper_mode(portfolio, internal_positions):
     total_exposure = total_position_usd / portfolio_equity if portfolio_equity > 0 else 0
     reported_exposure = portfolio.get("total_exposure_pct", 0)
 
-    if abs(total_exposure - reported_exposure) > 0.001:
+    # Wider tolerance (0.5% = 0.005) for paper mode to account for price drift
+    # Live mode would need even wider tolerance (1-2%) due to exchange latency
+    tolerance = 0.005
+    if abs(total_exposure - reported_exposure) > tolerance:
         mismatches.append(
             f"Exposure mismatch: computed {total_exposure:.4f}, "
-            f"portfolio reports {reported_exposure:.4f}"
+            f"portfolio reports {reported_exposure:.4f} (tolerance {tolerance:.3f})"
         )
 
     result = {
