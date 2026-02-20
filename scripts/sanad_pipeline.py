@@ -1785,11 +1785,70 @@ def stage_6_policy_engine(signal, sanad_result, strategy_result, bull_result, be
 
     # Build decision packet for Policy Engine
     symbol = signal.get("symbol", signal["token"] + "USDT")
-    current_price = binance_client.get_price(symbol)
-
-    # Get real slippage and spread
-    slippage = binance_client.estimate_slippage_bps(symbol, "BUY", strategy_result.get("position_usd", 200))
-    spread = binance_client.get_spread_bps(symbol)
+    
+    # Determine venue (CEX vs DEX) from token profile or signal
+    token_profile = strategy_result.get("token_profile", {}) if strategy_result else {}
+    chain = token_profile.get("chain", "").lower()
+    dex_only = token_profile.get("dex_only", False)
+    cex_names = token_profile.get("cex_names", [])
+    
+    # Detect DEX token (note: cex_names is misnomer, includes DEXes like raydium)
+    # Check if it's a DEX by chain + exchange names
+    dex_exchanges = {"raydium", "orca", "jupiter", "uniswap", "pancakeswap", "sushiswap"}
+    has_dex_only = any(ex.lower() in dex_exchanges for ex in cex_names) and len(cex_names) == len([ex for ex in cex_names if ex.lower() in dex_exchanges])
+    
+    is_dex = dex_only or has_dex_only or (chain in ("solana", "ethereum", "base") and not cex_names)
+    
+    if is_dex:
+        # DEX: Use price from signal/strategy, don't call Binance
+        current_price = signal.get("price")
+        if not current_price and strategy_result:
+            current_price = strategy_result.get("current_price")
+        
+        if not current_price or current_price <= 0:
+            print(f"  ERROR: No valid price for DEX token {signal['token']}")
+            return None, "No valid price available for DEX token"
+        
+        # DEX: Estimate slippage from liquidity (not order book)
+        liquidity_usd = token_profile.get("liquidity_usd", 0)
+        position_usd = strategy_result.get("position_usd", 200)
+        
+        if liquidity_usd > 0:
+            # Slippage as % of liquidity, capped at 500 bps (5%)
+            impact_ratio = position_usd / liquidity_usd
+            slippage = min(impact_ratio * 10000, 500)  # Convert to bps
+        else:
+            # Unknown liquidity: assume 50 bps (0.5%) default
+            slippage = 50
+        
+        # DEX: No bid-ask spread (AMM pricing), use 0 or small fee estimate
+        spread = 10  # 0.1% typical AMM fee
+        
+        print(f"  DEX token detected: {signal['token']} on {chain}")
+        print(f"  Using signal price: ${current_price:,.6f}")
+        print(f"  Estimated slippage: {slippage:.1f} bps (liquidity ${liquidity_usd:,.0f})")
+    else:
+        # CEX: Use Binance API for price/slippage/spread
+        current_price = binance_client.get_price(symbol)
+        
+        # Fallback if Binance unavailable (circuit breaker)
+        if not current_price or current_price <= 0:
+            current_price = signal.get("price")
+            if strategy_result:
+                current_price = strategy_result.get("current_price", current_price)
+            
+            if not current_price or current_price <= 0:
+                print(f"  ERROR: Cannot get price for {symbol} (Binance unavailable, no signal price)")
+                return None, "Price unavailable (Binance circuit breaker + no signal price)"
+            
+            print(f"  WARNING: Binance unavailable, using signal price ${current_price:,.4f}")
+            # Use conservative estimates when API unavailable
+            slippage = 50  # 0.5% conservative estimate
+            spread = 20    # 0.2% conservative spread
+        else:
+            # Normal path: Binance API available
+            slippage = binance_client.estimate_slippage_bps(symbol, "BUY", strategy_result.get("position_usd", 200))
+            spread = binance_client.get_spread_bps(symbol)
 
     decision_packet = {
         "token": {

@@ -130,9 +130,13 @@ def get_execution_parameters(decision_record: dict) -> dict:
     dex_only = token_profile.get("dex_only", False)
     cex_names = token_profile.get("cex_names", [])
     
-    if dex_only or chain in ("solana", "ethereum", "base") and not cex_names:
+    # Detect DEX token (note: cex_names is misnomer, includes DEXes like raydium)
+    dex_exchanges = {"raydium", "orca", "jupiter", "uniswap", "pancakeswap", "sushiswap"}
+    has_dex_only = any(ex.lower() in dex_exchanges for ex in cex_names) and len(cex_names) == len([ex for ex in cex_names if ex.lower() in dex_exchanges])
+    
+    if dex_only or has_dex_only or (chain in ("solana", "ethereum", "base") and not cex_names):
         venue = "DEX"
-        # Use first DEX exchange from cex_names (misnomer - includes DEXes)
+        # Use first DEX exchange from cex_names
         exchange = cex_names[0] if cex_names else "raydium"
     else:
         venue = "CEX"
