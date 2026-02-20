@@ -1579,6 +1579,7 @@ def run():
     all_issues = {}
     
     checks = [
+        ("Lease + Output Staleness", check_lease_and_output_staleness),  # ENTERPRISE: catches "phantom OK"
         ("Stuck OpenClaw Jobs", check_stuck_openclaw_jobs),  # PRIORITY: auto-fix scheduler bugs
         ("Reconciliation Staleness", check_reconciliation_staleness),  # NEW: critical for Gate 11
         ("DexScreener Freshness", check_dexscreener_freshness),  # NEW: critical for 3-source corroboration
@@ -1607,6 +1608,108 @@ def run():
         _log(f"=== WATCHDOG: {len(all_issues)} CHECK(S) TRIGGERED ===")
         for check, issues in all_issues.items():
             _log(f"  {check}: {issues}")
+
+
+# ---------------------------------------------------------------------------
+# Enterprise Lease + Output Staleness Check
+# ---------------------------------------------------------------------------
+
+def _latest_mtime_seconds(glob_pattern: str) -> float | None:
+    """Get age in seconds of the newest file matching pattern."""
+    import glob
+    files = glob.glob(glob_pattern)
+    if not files:
+        return None
+    newest = max(files, key=os.path.getmtime)
+    return time.time() - os.path.getmtime(newest)
+
+
+def _lease_age_seconds(path: Path) -> float | None:
+    """Get age in seconds of the lease file."""
+    if not path.exists():
+        return None
+    try:
+        data = json.load(open(path))
+        # Prefer completed_at, fallback to heartbeat_at
+        ts = data.get("completed_at") or data.get("heartbeat_at")
+        if not ts:
+            return None
+        dt = datetime.fromisoformat(ts.replace("Z", "+00:00"))
+        return (datetime.now(timezone.utc) - dt).total_seconds()
+    except Exception as e:
+        _log(f"Lease age parse error for {path}: {e}", "WARNING")
+        return None
+
+
+def _queue_reset_for_stale_job(job_id: str, job_name: str, reason: str):
+    """Queue a reset request for Reset Daemon to process."""
+    req = {
+        "job_id": job_id,
+        "job_name": job_name,
+        "requested_at": datetime.now(timezone.utc).isoformat(),
+        "reason": reason,
+    }
+    q = STATE_DIR / "reset_requests.jsonl"
+    with open(q, "a") as f:
+        f.write(json.dumps(req) + "\n")
+    _log(f"Queued reset for {job_name}: {reason}", "INFO")
+
+
+def check_lease_and_output_staleness():
+    """
+    Enterprise truth: if BOTH lease AND outputs are stale → queue reset.
+    
+    This catches "phantom OK" where OpenClaw claims the job ran but
+    no lease or output files were actually created.
+    
+    Runs continuously - always queues resets when stale, no "give up" logic.
+    """
+    issues = []
+    
+    jobs = [
+        {
+            "name": "CoinGecko Scanner",
+            "id": "3a7f742b-889a-4c05-9697-f5f873fea02c",
+            "lease": STATE_DIR / "leases" / "coingecko_scanner.json",
+            "outputs": str(BASE_DIR / "signals" / "coingecko" / "*.json"),
+            "ttl_sec": 420,  # 7min for a 5min cron (2min grace)
+        },
+        {
+            "name": "On-Chain Analytics",
+            "id": "0d84f5fc-1e9f-4480-96c9-c27369db1259",
+            "lease": STATE_DIR / "leases" / "onchain_analytics.json",
+            "outputs": str(BASE_DIR / "signals" / "onchain" / "_heartbeat.json"),
+            "ttl_sec": 900,  # 15min for a 10min cron (5min grace)
+        },
+        {
+            "name": "DEX Scanner",
+            "id": "c8e7bf57-9014-4e04-83f8-9bc758485b34",
+            "lease": STATE_DIR / "leases" / "dex_scanner.json",
+            "outputs": str(BASE_DIR / "signals" / "dexscreener" / "*.json"),
+            "ttl_sec": 420,  # 7min for a 5min cron
+        },
+        # Router uses its own monitoring in check_router_stall()
+    ]
+    
+    for j in jobs:
+        lease_age = _lease_age_seconds(j["lease"])
+        out_age = _latest_mtime_seconds(j["outputs"])
+        
+        # If either missing, treat as stale
+        lease_stale = (lease_age is None) or (lease_age > j["ttl_sec"])
+        out_stale = (out_age is None) or (out_age > j["ttl_sec"])
+        
+        if lease_stale and out_stale:
+            # BOTH stale - job is truly not running
+            reason = f"lease_age={lease_age if lease_age else 'missing'}s output_age={out_age if out_age else 'missing'}s ttl={j['ttl_sec']}s"
+            _queue_reset_for_stale_job(j["id"], j["name"], reason)
+            issues.append(f"{j['name']} stale (queued reset)")
+            _log(f"STALE JOB DETECTED: {j['name']} - {reason}", "WARNING")
+        elif lease_stale or out_stale:
+            # Only one stale - might be mid-run or transient
+            _log(f"{j['name']}: lease_stale={lease_stale} ({lease_age}s), out_stale={out_stale} ({out_age}s) - monitoring", "DEBUG")
+    
+    return issues
 
 
 if __name__ == "__main__":
