@@ -13,6 +13,13 @@ import requests
 from datetime import datetime, timezone
 from pathlib import Path
 
+# Job lease for deterministic liveness tracking
+try:
+    from job_lease import acquire, release
+    HAS_LEASE = True
+except ImportError:
+    HAS_LEASE = False
+
 # ---------------------------------------------------------------------------
 # Paths
 # ---------------------------------------------------------------------------
@@ -413,8 +420,16 @@ def run_scan():
 # Entry point
 # ---------------------------------------------------------------------------
 if __name__ == "__main__":
+    # Acquire lease for liveness tracking
+    if HAS_LEASE:
+        acquire("dex_scanner", ttl_seconds=300)  # 5 min
+    
     try:
         run_scan()
+        if HAS_LEASE:
+            release("dex_scanner", "ok")
     except Exception as e:
+        if HAS_LEASE:
+            release("dex_scanner", "error", str(e))
         _log(f"FATAL: {e}")
         sys.exit(1)

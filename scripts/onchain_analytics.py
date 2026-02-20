@@ -22,6 +22,13 @@ import requests
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
 
+# Job lease for deterministic liveness tracking
+try:
+    from job_lease import acquire, release
+    HAS_LEASE = True
+except ImportError:
+    HAS_LEASE = False
+
 SCRIPT_DIR = Path(__file__).resolve().parent
 BASE_DIR = Path(os.environ.get("SANAD_HOME", str(SCRIPT_DIR.parent)))
 CONFIG_ENV = BASE_DIR / "config" / ".env"
@@ -328,9 +335,17 @@ def run():
 
 
 if __name__ == "__main__":
+    # Acquire lease for liveness tracking
+    if HAS_LEASE:
+        acquire("onchain_analytics", ttl_seconds=600)  # 10 min
+    
     try:
         run()
+        if HAS_LEASE:
+            release("onchain_analytics", "ok")
     except Exception as e:
+        if HAS_LEASE:
+            release("onchain_analytics", "error", str(e))
         _log(f"FATAL: {e}")
         import traceback
         traceback.print_exc()
