@@ -27,6 +27,13 @@ try:
 except ImportError:
     HAS_NORMALIZER = False
 
+# Job lease system for deterministic liveness tracking
+try:
+    from job_lease import acquire, release
+    HAS_LEASE = True
+except ImportError:
+    HAS_LEASE = False
+
 # ---------------------------------------------------------------------------
 # Paths
 # ---------------------------------------------------------------------------
@@ -510,6 +517,29 @@ def _update_cron_health(status: str = "ok"):
 # Main run
 # ---------------------------------------------------------------------------
 def run_router():
+    # Acquire lease for liveness tracking
+    if HAS_LEASE:
+        acquire("signal_router", ttl_seconds=720)  # 12 min (10 min timeout + 2 min grace)
+    
+    _update_cron_health("running")  # Mark as running at start
+    
+    error_occurred = False
+    try:
+        _run_router_impl()
+    except Exception as e:
+        error_occurred = True
+        if HAS_LEASE:
+            release("signal_router", "error", str(e))
+        _update_cron_health("error")
+        raise  # Re-raise for outer handler
+    finally:
+        # Always release lease and update cron_health
+        if not error_occurred:
+            if HAS_LEASE:
+                release("signal_router", "ok")
+            _update_cron_health("ok")
+
+def _run_router_impl():
     now = _now()
     now_str = now.strftime("%Y-%m-%dT%H:%M:%S+00:00")
     _log(now_str)
@@ -1335,11 +1365,7 @@ def run_router():
 
     _save_json_atomic(ROUTER_STATE_PATH, state)
 
-    # Update cron health
-    try:
-        _update_cron_health(status="ok")
-    except Exception as e:
-        _log(f"Failed to update cron_health: {e}")
+    # cron_health now updated in outer wrapper (finally block)
 
     # Cleanup temp file
     try:
