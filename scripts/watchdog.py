@@ -1324,6 +1324,183 @@ def check_disk_memory():
     return issues
 
 
+def check_stuck_openclaw_jobs():
+    """
+    Auto-fix OpenClaw jobs stuck in runningAtMs state.
+    
+    This is the enterprise-grade fix for the scheduler bug where jobs
+    get stuck in "running" state even after completion/timeout.
+    
+    Strategy:
+    1. Check critical jobs for stuck runningAtMs
+    2. Auto disable→enable to clear scheduler state
+    3. Only escalate if auto-fix fails twice
+    """
+    issues = []
+    fixed = []
+    
+    # Critical jobs with their expected timeouts
+    critical_jobs = {
+        "Signal Router": {
+            "id": "00079d3a-0206-4afc-9dd9-8263521e1bf3",
+            "timeout": 600,
+            "grace": 120  # Extra grace period
+        },
+        "CoinGecko Scanner": {
+            "id": "3a7f742b-889a-4c05-9697-f5f873fea02c",
+            "timeout": 60,
+            "grace": 60
+        },
+        "On-Chain Analytics": {
+            "id": "0d84f5fc-1e9f-4480-96c9-c27369db1259",
+            "timeout": 90,
+            "grace": 60
+        },
+        "DEX Scanner": {
+            "id": "c8e7bf57-9014-4e04-83f8-9bc758485b34",
+            "timeout": 120,
+            "grace": 60
+        },
+        "Price Snapshot": {
+            "id": "4eea530c-3db5-4cdc-904a-76583704dccd",
+            "timeout": 60,
+            "grace": 60
+        }
+    }
+    
+    try:
+        # Get job states from OpenClaw
+        result = subprocess.run(
+            ["openclaw", "cron", "list", "--json"],
+            capture_output=True,
+            text=True,
+            timeout=30
+        )
+        
+        if result.returncode != 0:
+            _log(f"Failed to get cron list: {result.stderr}", "ERROR")
+            return issues
+        
+        cron_data = json.loads(result.stdout)
+        jobs = cron_data.get("jobs", [])
+        
+        now_ms = time.time() * 1000
+        
+        for job_name, config in critical_jobs.items():
+            job_id = config["id"]
+            timeout = config["timeout"]
+            grace = config["grace"]
+            max_age_ms = (timeout + grace) * 1000
+            
+            # Find this job in the list
+            job = next((j for j in jobs if j["id"] == job_id), None)
+            if not job:
+                continue
+            
+            state = job.get("state", {})
+            running_at_ms = state.get("runningAtMs")
+            
+            if not running_at_ms:
+                continue  # Job not stuck
+            
+            # Calculate how long it's been stuck
+            stuck_age_ms = now_ms - running_at_ms
+            stuck_age_sec = stuck_age_ms / 1000
+            
+            if stuck_age_ms > max_age_ms:
+                # Job is stuck!
+                _log(f"Detected stuck job: {job_name} (stuck for {stuck_age_sec:.0f}s, max={timeout+grace}s)", "WARNING")
+                
+                attempt_key = f"stuck_openclaw_{job_name.lower().replace(' ', '_')}"
+                attempts = _track_attempts(attempt_key)
+                
+                if attempts <= 2:
+                    # Auto-fix: disable→enable to clear runningAtMs
+                    try:
+                        _log(f"Auto-fixing {job_name}: disable→enable (attempt {attempts+1}/2)", "INFO")
+                        
+                        # Disable
+                        subprocess.run(
+                            ["openclaw", "cron", "update", "--id", job_id, "--enabled", "false"],
+                            capture_output=True,
+                            timeout=15,
+                            check=True
+                        )
+                        
+                        time.sleep(1)
+                        
+                        # Enable
+                        subprocess.run(
+                            ["openclaw", "cron", "update", "--id", job_id, "--enabled", "true"],
+                            capture_output=True,
+                            timeout=15,
+                            check=True
+                        )
+                        
+                        fixed.append(f"{job_name} (stuck {stuck_age_sec:.0f}s)")
+                        
+                        _log_action(
+                            component="openclaw_scheduler",
+                            problem=f"{job_name}_stuck_{stuck_age_sec:.0f}s",
+                            action="disable_enable",
+                            result="success",
+                            attempts=attempts + 1
+                        )
+                        
+                        _log(f"Successfully cleared stuck state for {job_name}", "INFO")
+                        
+                    except subprocess.TimeoutExpired:
+                        _log(f"Timeout while fixing {job_name}", "ERROR")
+                        issues.append(f"{job_name} (fix timeout)")
+                    except subprocess.CalledProcessError as e:
+                        _log(f"Failed to fix {job_name}: {e}", "ERROR")
+                        issues.append(f"{job_name} (fix failed)")
+                else:
+                    # Auto-fix failed twice, escalate
+                    issues.append(f"{job_name} (stuck {stuck_age_sec:.0f}s, auto-fix failed 2x)")
+                    _log(f"Escalating {job_name}: auto-fix failed twice", "ERROR")
+        
+        # Success notification
+        if fixed:
+            _alert(
+                f"🔧 WATCHDOG AUTO-FIX:\n"
+                f"• Problem: {len(fixed)} OpenClaw job(s) stuck in runningAtMs\n"
+                f"• Action: disable→enable to clear scheduler state\n"
+                f"• Fixed: {', '.join(fixed)}\n"
+                f"• Result: ✅ Jobs should resume",
+                ALERT_LEVEL_INFO
+            )
+            
+            # Clear attempt counters on success
+            for job_name in critical_jobs.keys():
+                attempt_key = f"stuck_openclaw_{job_name.lower().replace(' ', '_')}"
+                _reset_attempts(attempt_key)
+        
+        # Escalation for persistent failures
+        if issues:
+            _alert(
+                f"🚨 WATCHDOG NEEDS HELP:\n"
+                f"• Problem: OpenClaw jobs stuck despite auto-fix\n"
+                f"• Jobs: {', '.join(issues)}\n"
+                f"• Attempted: disable→enable (2x)\n"
+                f"• Impact: Jobs not dispatching, stale data\n"
+                f"• Next: Manual intervention needed",
+                ALERT_LEVEL_CRITICAL
+            )
+    
+    except subprocess.TimeoutExpired:
+        _log("Timeout getting cron list", "ERROR")
+        issues.append("cron list timeout")
+    except json.JSONDecodeError as e:
+        _log(f"Failed to parse cron list JSON: {e}", "ERROR")
+        issues.append("cron parse error")
+    except Exception as e:
+        _log(f"Stuck OpenClaw jobs check failed: {e}", "ERROR")
+        issues.append(f"check error: {e}")
+    
+    return issues
+
+
 # --- MAIN ---
 
 def run():
@@ -1336,6 +1513,7 @@ def run():
     all_issues = {}
     
     checks = [
+        ("Stuck OpenClaw Jobs", check_stuck_openclaw_jobs),  # PRIORITY: auto-fix scheduler bugs
         ("Reconciliation Staleness", check_reconciliation_staleness),  # NEW: critical for Gate 11
         ("DexScreener Freshness", check_dexscreener_freshness),  # NEW: critical for 3-source corroboration
         ("Cron Health", check_cron_health),
