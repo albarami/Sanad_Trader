@@ -1987,31 +1987,80 @@ def stage_7_execute(signal, sanad_result, strategy_result, bull_result, bear_res
         except Exception as e:
             print(f"  Partial fill sim error ({e}) — proceeding")
 
-        # Route to best exchange
+        # Use exchange-agnostic paper execution (no live API calls)
         try:
-            from exchange_router import route
-            exchange_info = route(signal.get("symbol", signal["token"] + "USDT"))
-            exchange = exchange_info.get("exchange", "binance")
+            import paper_execution
+            
+            # Get execution parameters from decision record
+            exec_params = paper_execution.get_execution_parameters(decision_record)
+            
+            # Get price from decision record (already validated)
+            current_price = exec_params.get("price")
+            if not current_price:
+                # Fallback to current_price_checked from earlier
+                current_price = decision_record.get("strategy", {}).get("current_price")
+            
+            if not current_price or current_price <= 0:
+                raise ValueError(f"No valid price available: {current_price}")
+            
+            venue = exec_params.get("venue", "CEX")
+            exchange = exec_params.get("exchange", "binance")
+            liquidity_usd = exec_params.get("liquidity_usd")
+            
+            print(f"  EXECUTING PAPER TRADE: BUY {quantity:.6f} {symbol}")
+            print(f"  Venue: {venue}, Exchange: {exchange}, Price: ${current_price:,.4f}")
+            
+            order_result = paper_execution.execute_paper_trade(
+                token=signal["token"],
+                symbol=symbol,
+                side="BUY",
+                quantity=quantity,
+                decision_price=current_price,
+                venue=venue,
+                exchange=exchange,
+                liquidity_usd=liquidity_usd
+            )
+            
+            if order_result.get("success"):
+                decision_record["execution"] = {
+                    "order_id": order_result["orderId"],
+                    "fill_price": order_result["price"],
+                    "quantity": order_result["quantity"],
+                    "fee_usd": order_result["fee_usd"],
+                    "venue": order_result["venue"],
+                    "exchange": order_result["exchange"],
+                    "slippage_pct": order_result.get("slippage_pct", 0),
+                }
+                order = {
+                    "orderId": order_result["orderId"],
+                    "price": order_result["price"],
+                    "quantity": order_result["quantity"],
+                    "fee_usd": order_result["fee_usd"],
+                }
+                print(f"  Paper trade filled: {order['orderId']} @ ${order['price']:,.4f}")
+            else:
+                error_detail = order_result.get("detail", order_result.get("error", "Unknown"))
+                decision_record["execution"] = {
+                    "error": "Paper order failed",
+                    "detail": error_detail,
+                    "venue": venue,
+                    "exchange": exchange,
+                }
+                print(f"  WARNING: Paper order execution failed: {error_detail}")
+                order = None
+                
         except Exception as e:
-            exchange = "binance"
-
-        print(f"  EXECUTING PAPER TRADE: BUY {quantity:.6f} {symbol}")
-        order = binance_client.place_order(
-            symbol=symbol,
-            side="BUY",
-            quantity=quantity,
-            paper_mode=True,
-        )
+            import traceback
+            error_detail = f"{type(e).__name__}: {str(e)}"
+            decision_record["execution"] = {
+                "error": "Paper order failed",
+                "detail": error_detail,
+                "traceback": traceback.format_exc()[-500:],  # Last 500 chars
+            }
+            print(f"  ERROR: Paper execution exception: {error_detail}")
+            order = None
 
         if order:
-            decision_record["execution"] = {
-                "order_id": order["orderId"],
-                "fill_price": order["price"],
-                "quantity": order["quantity"],
-                "fee_usd": order["fee_usd"],
-            }
-            print(f"  Paper trade filled: {order['orderId']} @ ${order['price']:,.4f}")
-
             # Update positions state (pass execution_mode for tracking)
             execution_mode = decision_record.get("execution_mode", "paper_standard")
             _add_position(signal, strategy_result, order, sanad_result, bull_result, execution_mode=execution_mode)
@@ -2035,9 +2084,6 @@ def stage_7_execute(signal, sanad_result, strategy_result, bull_result, bear_res
                     )
                 except Exception as e:
                     print(f"  Telegram notification error: {e}")
-        else:
-            decision_record["execution"] = {"error": "Paper order failed"}
-            print(f"  WARNING: Paper order execution failed")
     else:
         rejection_reason_short = str(rejection_reason)[:200] if rejection_reason else "Unknown"
         print(f"  REJECTED: {rejection_reason_short}")
