@@ -311,7 +311,7 @@ def check_cron_health():
 
     # Expected cron intervals (in minutes) with grace period
     expected_crons = {
-        "price_snapshot": 15,    # Every 3min, alert if >15min (5x tolerance)
+        # price_snapshot removed — job no longer exists in OpenClaw cron
         "reconciliation": 30,   # Every 10min, alert if >30min (3x tolerance)
         # meme_radar removed — not in crontab
     }
