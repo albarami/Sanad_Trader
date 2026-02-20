@@ -1811,15 +1811,26 @@ A paper loss of $50 that teaches the system a pattern is worth more than a paper
     confidence = judge_result.get("confidence_score", 0) or 0
 
     # Infer confidence from verdict if missing/zero (Judge API failure fallback)
+    # Confidence inference: ONLY in PAPER mode when verdict exists (v1.1)
     if confidence <= 0 and verdict in ("APPROVE", "REVISE"):
-        if verdict == "APPROVE":
-            confidence = 65
-            print(f"  ⚠️ Inferred confidence 65 from APPROVE verdict (model returned {judge_result.get('confidence_score', 0)})")
-        elif verdict == "REVISE":
-            confidence = 45
-            print(f"  ⚠️ Inferred confidence 45 from REVISE verdict (model returned {judge_result.get('confidence_score', 0)})")
-        judge_result["confidence_score"] = confidence
-        judge_result["inferred_confidence"] = True
+        mode = os.getenv("SYSTEM_MODE", "PAPER").upper()
+        
+        if mode == "PAPER":
+            # PAPER: infer safe default confidence
+            if verdict == "APPROVE":
+                confidence = 55
+                print(f"  ⚠️ Inferred confidence 55 from APPROVE verdict (model returned {judge_result.get('confidence_score', 0)})")
+            elif verdict == "REVISE":
+                confidence = 40
+                print(f"  ⚠️ Inferred confidence 40 from REVISE verdict (model returned {judge_result.get('confidence_score', 0)})")
+            judge_result["confidence_score"] = confidence
+            judge_result["confidence_inferred"] = True
+        else:
+            # LIVE: confidence=0 with positive verdict = fail-closed
+            print(f"  ❌ LIVE mode: confidence=0 with {verdict} verdict → REJECT (fail-closed)")
+            verdict = "REJECT"
+            judge_result["verdict"] = "REJECT"
+            judge_result["rejection_reason"] = "confidence_missing_LIVE_failclosed"
 
     # Paper mode deterministic override: confidence >= 60 = APPROVE (belt-and-suspenders)
     if _judge_paper and confidence >= 60 and verdict == "REJECT":
@@ -2151,27 +2162,40 @@ def stage_7_execute(signal, sanad_result, strategy_result, bull_result, bear_res
             decision_record["rejection_reason"] = f"Invalid price: {current_price}"
             return decision_record
         
-        # Check if this is a REVISE probe (paper mode learning trade)
+        # Check verdict and handle based on PAPER_PROFILE (v1.1)
         verdict = judge_result.get("verdict", "REJECT")
-        try:
-            import json
-            portfolio = json.load(open(STATE_DIR / "portfolio.json"))
-            is_paper_mode = portfolio.get("mode", "paper") == "paper"
-        except:
-            is_paper_mode = True  # Default to paper mode if file missing
-        is_revise_probe = (verdict == "REVISE" and is_paper_mode)
+        confidence = judge_result.get("confidence_score", 0)
         
-        # Apply micro-sizing for REVISE probes
-        base_position_usd = strategy_result.get("position_usd", 200)
-        if is_revise_probe:
-            # Micro-probe: cap at $25 for REVISE trades (learning data, not conviction)
-            PAPER_REVISE_PROBE_USD = 25
-            position_usd = min(base_position_usd, PAPER_REVISE_PROBE_USD)
-            decision_record["execution_mode"] = "paper_probe_revise"
-            print(f"  REVISE PROBE: Micro-sizing {base_position_usd} → ${position_usd} (learning mode)")
-        else:
-            position_usd = base_position_usd
+        # REVISE handling: only allowed in PAPER+LEARN mode
+        if verdict == "REVISE":
+            if is_paper_learn_mode():
+                # PAPER+LEARN: Allow REVISE with constraints
+                base_position_usd = strategy_result.get("position_usd", 200)
+                size_multiplier = get_threshold("size_multiplier_revise", "paper_profiles.LEARN", 0.3)
+                position_usd = base_position_usd * size_multiplier
+                
+                decision_record["execution_mode"] = "paper_learn_revise"
+                decision_record["judge_verdict"] = "REVISE"
+                decision_record["paper_override"] = True
+                decision_record["override_reason"] = "learning_mode_revise_approval"
+                
+                print(f"  REVISE → APPROVED (PAPER+LEARN): sizing {base_position_usd} → ${position_usd:.0f} ({size_multiplier:.1%})")
+            else:
+                # PAPER+STRICT or LIVE: REVISE = REJECT
+                print(f"  REVISE verdict: BLOCKED (not in PAPER+LEARN mode)")
+                decision_record["final_action"] = "REJECT"
+                decision_record["rejection_reason"] = "Judge REVISE (not in learning mode)"
+                return decision_record
+        elif verdict == "APPROVE":
+            # Normal approval path
+            position_usd = strategy_result.get("position_usd", 200)
             decision_record["execution_mode"] = "paper_standard"
+        else:
+            # REJECT or other
+            print(f"  Judge verdict {verdict}: BLOCKED")
+            decision_record["final_action"] = "REJECT"
+            decision_record["rejection_reason"] = f"Judge {verdict}"
+            return decision_record
         
         quantity = position_usd / current_price
 
