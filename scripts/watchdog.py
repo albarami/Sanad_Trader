@@ -1688,6 +1688,20 @@ def check_lease_and_output_staleness():
             "outputs": str(BASE_DIR / "signals" / "dexscreener" / "*.json"),
             "ttl_sec": 420,  # 7min for a 5min cron
         },
+        {
+            "name": "Birdeye Scanner",
+            "id": "76592dfe-7831-4a80-aa30-760618ca049b",
+            "lease": STATE_DIR / "leases" / "birdeye_scanner.json",
+            "outputs": str(BASE_DIR / "signals" / "birdeye" / "*.json"),
+            "ttl_sec": 420,  # 7min for a 5min cron
+        },
+        {
+            "name": "Birdeye DEX Scanner",
+            "id": "3729bd4c-2f8c-458f-9d93-4784233550bb",
+            "lease": STATE_DIR / "leases" / "birdeye_dex_scanner.json",
+            "outputs": str(BASE_DIR / "signals" / "birdeye" / "*.json"),
+            "ttl_sec": 420,  # 7min for a 5min cron
+        },
         # Router uses its own monitoring in check_router_stall()
     ]
     

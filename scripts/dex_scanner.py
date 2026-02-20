@@ -157,4 +157,18 @@ def main():
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    from job_lease import acquire, release
+    
+    lease = None
+    exit_code = 0
+    try:
+        lease = acquire("birdeye_dex_scanner", ttl_seconds=300)
+        exit_code = main()
+        release("birdeye_dex_scanner", "ok" if exit_code == 0 else "error")
+    except Exception as e:
+        print(f"FATAL: {e}", file=sys.stderr)
+        if lease:
+            release("birdeye_dex_scanner", "error", str(e))
+        exit_code = 1
+    
+    sys.exit(exit_code)

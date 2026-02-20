@@ -593,8 +593,15 @@ def run_scan():
 # Entry point
 # ---------------------------------------------------------------------------
 if __name__ == "__main__":
+    from job_lease import acquire, release
+    
+    lease = None
     try:
+        lease = acquire("birdeye_scanner", ttl_seconds=300)
         run_scan()
+        release("birdeye_scanner", "ok")
     except Exception as e:
         _log(f"FATAL: {e}")
+        if lease:
+            release("birdeye_scanner", "error", str(e))
         sys.exit(1)
