@@ -404,12 +404,21 @@ def _update_state(order: dict, new_state: OrderState):
 # ─────────────────────────────────────────────────────────
 
 def _execute_paper(order: dict) -> dict:
-    """Paper trade execution — simulate fill."""
+    """
+    Paper trade execution — simulate fill.
+    
+    IMPORTANT: Caller MUST pass price in order dict.
+    Fallback to Binance/MEXC API is legacy behavior that breaks DEX tokens.
+    """
     # Simulate immediate fill for paper mode
     fill_price = order.get("price")
 
     if fill_price is None:
-        # Get live price for market orders
+        _log(f"WARNING: Paper order missing price (order={order.get('client_order_id')})")
+        _log("OMS paper fills should receive price from decision packet, not query exchanges")
+        _log("Attempting legacy Binance/MEXC fallback (will fail for DEX tokens)")
+        
+        # Legacy fallback (should not be used)
         try:
             if order["exchange"] == "binance":
                 import binance_client
@@ -417,11 +426,16 @@ def _execute_paper(order: dict) -> dict:
             elif order["exchange"] == "mexc":
                 import mexc_client
                 fill_price = mexc_client.get_price(order["symbol"])
-        except Exception:
+        except Exception as e:
+            _log(f"Legacy price fallback failed: {e}")
             fill_price = 0
 
     if not fill_price or fill_price <= 0:
-        return {"success": False, "error": "Cannot determine fill price"}
+        return {
+            "success": False, 
+            "error": "Cannot determine fill price",
+            "detail": "OMS requires price in order dict for paper mode (legacy API fallback failed)"
+        }
 
     # Simulate small slippage for realism
     import random
