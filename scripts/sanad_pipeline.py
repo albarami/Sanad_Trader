@@ -1642,14 +1642,60 @@ A paper loss of $50 that teaches the system a pattern is worth more than a paper
     else:
         print("  [5a] Al-Muhasbi reviewing via GPT-5.2...")
 
-    judge_response = call_openai_responses(
-        system_prompt=judge_system,
-        user_message=judge_message,
-        model="gpt-5.2-pro",
-        max_tokens=8000,
-        stage="judge",
-        token_symbol=signal.get("token", ""),
-    )
+    # Hard timeout wrapper: never hang on Judge API call
+    from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeout
+    JUDGE_TIMEOUT_SEC = 90  # Allow 90s for Judge to complete
+    
+    def _call_judge_llm():
+        """Isolated judge call for timeout enforcement"""
+        return call_openai_responses(
+            system_prompt=judge_system,
+            user_message=judge_message,
+            model="gpt-5.2-pro",
+            max_tokens=8000,
+            stage="judge",
+            token_symbol=signal.get("token", ""),
+        )
+    
+    judge_response = None
+    timeout_occurred = False
+    error_occurred = None
+    
+    try:
+        with ThreadPoolExecutor(max_workers=1) as executor:
+            future = executor.submit(_call_judge_llm)
+            judge_response = future.result(timeout=JUDGE_TIMEOUT_SEC)
+    except FuturesTimeout:
+        timeout_occurred = True
+        print(f"  ⚠️ JUDGE TIMEOUT after {JUDGE_TIMEOUT_SEC}s")
+    except Exception as e:
+        error_occurred = e
+        print(f"  ⚠️ JUDGE ERROR: {type(e).__name__}: {str(e)[:200]}")
+    
+    # Handle timeout/error with deterministic fallback
+    if timeout_occurred or error_occurred:
+        if _judge_paper:
+            # Paper mode: downgrade to REVISE probe for learning
+            print(f"  📊 PAPER FALLBACK: Judge {'timeout' if timeout_occurred else 'error'} → REVISE probe")
+            judge_result = {
+                "verdict": "REVISE",
+                "confidence_score": 45,
+                "reasoning": f"Judge {'TIMEOUT' if timeout_occurred else 'ERROR'} after {JUDGE_TIMEOUT_SEC}s — paper fallback to REVISE probe",
+                "inferred_confidence": True,
+                "judge_timeout": timeout_occurred,
+                "judge_error": str(error_occurred) if error_occurred else None,
+            }
+            return judge_result, None
+        else:
+            # Live mode: fail closed
+            print(f"  🔒 FAIL CLOSED: Judge {'timeout' if timeout_occurred else 'error'} in LIVE mode → REJECT")
+            return {
+                "verdict": "REJECT",
+                "confidence_score": 0,
+                "reasoning": f"Judge {'TIMEOUT' if timeout_occurred else 'ERROR'} — fail closed in live mode",
+                "judge_timeout": timeout_occurred,
+                "judge_error": str(error_occurred) if error_occurred else None,
+            }, None
 
     judge_result = _parse_json_response(judge_response) if judge_response else None
     if not judge_result:
