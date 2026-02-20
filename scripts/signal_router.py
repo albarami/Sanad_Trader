@@ -1053,8 +1053,12 @@ def run_router():
         pipeline_signal["router_score"] = selected_score  # Pass to pipeline for tier routing
 
         # --- Validate required fields before sending to pipeline ---
-        required_fields = ["token", "source", "thesis", "venue", "exchange"]
+        # Note: Empty string "" should NOT count as missing (some signals have minimal thesis)
+        required_fields = ["token", "source", "venue", "exchange"]  # thesis optional for cross-source
         missing_fields = [f for f in required_fields if not pipeline_signal.get(f)]
+        # Warn but don't block on empty thesis (DexScreener cross-source signals may lack narrative)
+        if not pipeline_signal.get("thesis"):
+            _log(f"  WARN {selected_token}: thesis is empty (cross-source signal?)")
         if missing_fields:
             _log(f"  SKIP {selected_token}: missing required fields: {', '.join(missing_fields)}")
             # Record as rejected counterfactual
