@@ -259,8 +259,14 @@ def _write_signal(signal: dict):
     filename = f"whale_tracker_{timestamp}.json"
     filepath = SIGNAL_DIR / filename
     
+    # Wrap in bundle format expected by router
+    bundle = {
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "signals": [signal]
+    }
+    
     with open(filepath, "w") as f:
-        json.dump(signal, f, indent=2)
+        json.dump(bundle, f, indent=2)
     
     _log(f"Signal written: {filename}")
 
