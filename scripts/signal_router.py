@@ -1184,39 +1184,63 @@ def run_router():
             stdout = result.stdout.strip()
             stderr = result.stderr.strip()
 
-            # Try to parse pipeline result from stdout
+            # Read structured decision from decisions.jsonl (authoritative source)
             pipeline_action = "UNKNOWN"
             pipeline_reason = ""
-            for line in reversed(stdout.splitlines()):
-                if '"final_action"' in line:
-                    try:
-                        # Try to parse the summary JSON block
-                        pass
-                    except Exception:
-                        pass
-                if "APPROVE" in line.upper():
-                    pipeline_action = "APPROVE"
-                elif "REJECT" in line.upper():
-                    pipeline_action = "REJECT"
-                elif "REVISE" in line.upper():
-                    pipeline_action = "REVISE"
-
-            # Better: look for the SUMMARY block
-            if "SUMMARY" in stdout:
-                summary_start = stdout.index("SUMMARY")
-                summary_text = stdout[summary_start:]
-                for line in summary_text.splitlines():
-                    if '"final_action"' in line:
-                        if "APPROVE" in line:
-                            pipeline_action = "APPROVE"
-                        elif "REJECT" in line:
-                            pipeline_action = "REJECT"
-                        elif "REVISE" in line:
-                            pipeline_action = "REVISE"
-                    if '"reason"' in line or '"rejection_reason"' in line:
-                        pipeline_reason = line.split(":", 1)[-1].strip().strip('",')
-
-            _log(f"Pipeline result: {pipeline_action}" + (f" ({pipeline_reason})" if pipeline_reason else ""))
+            decision_data = None
+            
+            decisions_file = BASE_DIR / "execution-logs" / "decisions.jsonl"
+            if decisions_file.exists():
+                try:
+                    # Read last line (most recent decision)
+                    with open(decisions_file, "rb") as f:
+                        f.seek(0, 2)  # Seek to end
+                        fsize = f.tell()
+                        if fsize > 0:
+                            # Read last 10KB (captures full decision JSON)
+                            f.seek(max(0, fsize - 10240))
+                            lines = f.read().decode('utf-8', errors='ignore').splitlines()
+                            if lines:
+                                last_line = lines[-1]
+                                decision_data = json.loads(last_line)
+                                
+                                # Extract action and reason
+                                pipeline_action = decision_data.get("final_action", "UNKNOWN")
+                                pipeline_reason = (
+                                    decision_data.get("rejection_reason") or 
+                                    decision_data.get("reason") or 
+                                    ""
+                                )
+                                
+                                # Get venue/exchange info for EXECUTE actions
+                                if pipeline_action == "EXECUTE":
+                                    execution = decision_data.get("execution", {})
+                                    venue = execution.get("venue", "?")
+                                    exchange = execution.get("exchange", "?")
+                                    fill_price = execution.get("fill_price", 0)
+                                    pipeline_reason = f"venue={venue} exchange={exchange} fill=${fill_price:.6f}"
+                                
+                                _log(f"Pipeline result: {pipeline_action}" + 
+                                     (f" ({pipeline_reason[:100]})" if pipeline_reason else ""))
+                except Exception as e:
+                    _log(f"Failed to read decision JSON: {e}")
+                    # Fallback to stdout parsing
+                    pipeline_action = "UNKNOWN"
+            
+            # Fallback: parse stdout if decision file unavailable
+            if pipeline_action == "UNKNOWN":
+                _log("Warning: No decision JSON found, parsing stdout (fragile)")
+                for line in reversed(stdout.splitlines()):
+                    if "APPROVE" in line.upper():
+                        pipeline_action = "APPROVE"
+                        break
+                    elif "REJECT" in line.upper():
+                        pipeline_action = "REJECT"
+                        break
+                    elif "REVISE" in line.upper():
+                        pipeline_action = "REVISE"
+                        break
+                _log(f"Pipeline result (from stdout): {pipeline_action}")
 
             if stdout:
                 # Print last 20 lines of pipeline output for visibility
