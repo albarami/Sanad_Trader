@@ -638,7 +638,12 @@ def gate_15_sanad_audit(config, decision_packet, state):
             return False, f"Al-Muhasbi verdict: REJECT (confidence {judge_confidence}%)"
 
         if audit_verdict == "REVISE":
-            return False, f"Al-Muhasbi verdict: REVISE — logged for review, not executable"
+            # Paper mode: Treat REVISE as APPROVE for learning (with micro-sizing applied later)
+            if config.get("mode", "paper").lower() == "paper":
+                return True, f"PAPER PROBE: Al-Muhasbi REVISE treated as APPROVE (learning mode, will micro-size)"
+            else:
+                # Live mode: REVISE is non-executable (requires human review)
+                return False, f"Al-Muhasbi verdict: REVISE — logged for review, not executable in live mode"
 
         if audit_verdict != "APPROVE":
             if allow_paper_override:

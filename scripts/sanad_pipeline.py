@@ -1941,13 +1941,29 @@ def stage_7_execute(signal, sanad_result, strategy_result, bull_result, bear_res
             decision_record["rejection_reason"] = f"Invalid price: {current_price}"
             return decision_record
         
-        quantity = strategy_result.get("position_usd", 200) / current_price
+        # Check if this is a REVISE probe (paper mode learning trade)
+        verdict = judge_result.get("verdict", "REJECT")
+        is_revise_probe = (verdict == "REVISE" and _load_json(STATE_DIR / "portfolio.json", {}).get("mode", "paper") == "paper")
+        
+        # Apply micro-sizing for REVISE probes
+        base_position_usd = strategy_result.get("position_usd", 200)
+        if is_revise_probe:
+            # Micro-probe: cap at $25 for REVISE trades (learning data, not conviction)
+            PAPER_REVISE_PROBE_USD = 25
+            position_usd = min(base_position_usd, PAPER_REVISE_PROBE_USD)
+            decision_record["execution_mode"] = "paper_probe_revise"
+            print(f"  REVISE PROBE: Micro-sizing {base_position_usd} → ${position_usd} (learning mode)")
+        else:
+            position_usd = base_position_usd
+            decision_record["execution_mode"] = "paper_standard"
+        
+        quantity = position_usd / current_price
 
         # Partial fill simulation
         try:
             from partial_fill_sim import simulate_fill
             fill_result = simulate_fill(
-                order_size_usd=strategy_result.get("position_usd", 200),
+                order_size_usd=position_usd,  # Use adjusted position_usd (may be micro-sized for REVISE)
                 liquidity_usd=signal.get("volume_24h", 1000000) / 24,
             )
             if fill_result.get("fill_pct", 1.0) < 0.5:
@@ -1985,8 +2001,9 @@ def stage_7_execute(signal, sanad_result, strategy_result, bull_result, bear_res
             }
             print(f"  Paper trade filled: {order['orderId']} @ ${order['price']:,.4f}")
 
-            # Update positions state
-            _add_position(signal, strategy_result, order, sanad_result, bull_result)
+            # Update positions state (pass execution_mode for tracking)
+            execution_mode = decision_record.get("execution_mode", "paper_standard")
+            _add_position(signal, strategy_result, order, sanad_result, bull_result, execution_mode=execution_mode)
 
             # ── TELEGRAM NOTIFICATION ──
             if HAS_NOTIFIER:
@@ -2155,7 +2172,7 @@ def _calc_tp_pct(entry_price, bull_result):
         return THRESHOLDS["risk"]["take_profit_default_pct"]
 
 
-def _add_position(signal, strategy_result, order, sanad_result, bull_result=None):
+def _add_position(signal, strategy_result, order, sanad_result, bull_result=None, execution_mode="paper_standard"):
     """Add position to positions.json state file."""
     try:
         positions = _load_state("positions.json")
@@ -2166,7 +2183,7 @@ def _add_position(signal, strategy_result, order, sanad_result, bull_result=None
             "token": signal["token"],
             "symbol": signal.get("symbol", signal["token"] + "USDT"),
             "exchange": signal.get("exchange", "binance"),
-            "side": "LONG",
+            "side": signal.get("direction", "LONG").upper(),  # Support SHORT direction
             "entry_price": order["price"],
             "current_price": order["price"],
             "quantity": order["quantity"],
@@ -2186,6 +2203,7 @@ def _add_position(signal, strategy_result, order, sanad_result, bull_result=None
             "regime_tag": strategy_result.get("regime_tag", "UNKNOWN"),
             "regime_size_modifier": strategy_result.get("regime_size_modifier", 1.0),
             "thompson_mode": strategy_result.get("thompson_mode", "fallback"),
+            "execution_mode": execution_mode,  # Track if this is a REVISE probe
             "status": "OPEN",
             "opened_at": datetime.now(timezone.utc).isoformat(),
         }

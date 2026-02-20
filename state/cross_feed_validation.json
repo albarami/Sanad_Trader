@@ -1,78 +1,78 @@
 {
   "status": "OK",
-  "timestamp": "2026-02-20T05:47:31.008496+00:00",
+  "timestamp": "2026-02-20T05:57:46.365523+00:00",
   "checked": 10,
   "warnings": 0,
   "blocked": false,
   "deviations": [
     {
       "token": "BTC",
-      "binance": 67936.79,
-      "coingecko": 67913,
-      "deviation_pct": 0.035,
+      "binance": 67750.79,
+      "coingecko": 67821,
+      "deviation_pct": 0.104,
       "status": "OK"
     },
     {
       "token": "ETH",
-      "binance": 1958.3,
-      "coingecko": 1958.39,
-      "deviation_pct": 0.005,
+      "binance": 1954.22,
+      "coingecko": 1955.37,
+      "deviation_pct": 0.059,
       "status": "OK"
     },
     {
       "token": "SOL",
-      "binance": 83.45,
+      "binance": 83.21,
       "coingecko": 83.4,
-      "deviation_pct": 0.06,
+      "deviation_pct": 0.228,
       "status": "OK"
     },
     {
       "token": "BNB",
-      "binance": 613.2,
-      "coingecko": 612.88,
-      "deviation_pct": 0.052,
+      "binance": 611.63,
+      "coingecko": 612.1,
+      "deviation_pct": 0.077,
       "status": "OK"
     },
     {
       "token": "DOGE",
-      "binance": 0.09945,
-      "coingecko": 0.099407,
-      "deviation_pct": 0.043,
+      "binance": 0.09907,
+      "coingecko": 0.099321,
+      "deviation_pct": 0.253,
       "status": "OK"
     },
     {
       "token": "PEPE",
       "binance": 4.23e-06,
-      "coingecko": 4.22e-06,
-      "deviation_pct": 0.236,
+      "coingecko": 4.23e-06,
+      "deviation_pct": 0.0,
       "status": "OK"
     },
     {
       "token": "SHIB",
-      "binance": 6.26e-06,
-      "coingecko": 6.25e-06,
+      "binance": 6.25e-06,
+      "coingecko": 6.26e-06,
       "deviation_pct": 0.16,
       "status": "OK"
     },
     {
       "token": "WIF",
       "binance": 0.218,
-      "coingecko": 0.21814,
-      "deviation_pct": 0.064,
+      "coingecko": 0.218407,
+      "deviation_pct": 0.187,
       "status": "OK"
     },
     {
       "token": "BONK",
-      "binance": 6.19e-06,
-      "coingecko": 6.18e-06,
+      "binance": 6.18e-06,
+      "coingecko": 6.19e-06,
       "deviation_pct": 0.162,
       "status": "OK"
     },
     {
       "token": "FLOKI",
-      "binance": 3.014e-05,
-      "coingecko": 3.01e-05,
-      "deviation_pct": 0.133,
+      "binance": 3.008e-05,
+      "coingecko": 3.013e-05,
+      "deviation_pct": 0.166,
       "status": "OK"
     }
   ]

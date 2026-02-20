@@ -1,6 +1,6 @@
 {
   "source_name": "Birdeye trending",
-  "total_signals": 5,
+  "total_signals": 6,
   "trades_executed": 1,
   "wins": 0,
   "losses": 1,
@@ -10,7 +10,7 @@
   "win_rate": 0.0,
   "ucb1_score": 50,
   "grade": "C",
-  "last_signal_at": "2026-02-20T05:47:34.984694+00:00",
+  "last_signal_at": "2026-02-20T06:01:43.951706+00:00",
   "last_trade_at": "2026-02-17T15:35:27.613319+00:00",
   "last_win_at": null,
   "last_recalc_at": "2026-02-17T15:35:27.613930+00:00",

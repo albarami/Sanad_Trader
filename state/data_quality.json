@@ -1,6 +1,6 @@
 {
-  "status": "WARN",
-  "timestamp": "2026-02-20T05:47:31.010756+00:00",
+  "status": "OK",
+  "timestamp": "2026-02-20T05:57:46.368519+00:00",
   "checks": [
     {
       "check": "timestamp_skew",
@@ -19,19 +19,11 @@
     },
     {
       "check": "stale_detection",
-      "status": "WARN",
-      "issues": [
-        {
-          "symbol": "WIFUSDT",
-          "stale_price": 0.218,
-          "consecutive_polls": 5,
-          "severity": "WARN"
-        }
-      ]
+      "status": "OK",
+      "issues": []
     }
   ],
   "summary": {
-    "WARN": 1,
-    "OK": 3
+    "OK": 4
   }
 }

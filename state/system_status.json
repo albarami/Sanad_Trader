@@ -34,13 +34,13 @@
       "detail": "NTP status unknown: "
     },
     "circuit_breakers": {
-      "status": "OK",
-      "detail": "All closed"
+      "status": "WARNING",
+      "detail": "1 tripped: binance_api"
     },
     "openclaw_escalation": {
       "status": "OK",
       "detail": "No active escalations"
     }
   },
-  "heartbeat_timestamp": "2026-02-20T05:54:57.987155+00:00"
+  "heartbeat_timestamp": "2026-02-20T05:59:17.218272+00:00"
 }
