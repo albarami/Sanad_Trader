@@ -1086,10 +1086,39 @@ def check_position_freshness():
 
 
 def check_data_freshness():
-    """Check if scanners have fresh data (<15 min)."""
+    """Check if scanners have fresh data using LEASE-BASED TRUTH first."""
     issues = []
     try:
-        # Check onchain heartbeat (scanner writes this EVERY run, even if 0 signals)
+        # PRIORITY 1: Check leases (deterministic truth)
+        lease_dir = STATE_DIR / "leases"
+        scanner_leases = {
+            "coingecko": {"name": "coingecko_scanner", "ttl": 300},
+            "onchain": {"name": "onchain_analytics", "ttl": 600},
+            "dex": {"name": "dex_scanner", "ttl": 300}
+        }
+        
+        for scanner_key, lease_info in scanner_leases.items():
+            lease_path = lease_dir / f"{lease_info['name']}.json"
+            if lease_path.exists():
+                try:
+                    lease = json.load(open(lease_path))
+                    heartbeat_at = lease.get("heartbeat_at", lease.get("started_at"))
+                    ttl = lease.get("ttl_seconds", lease_info["ttl"])
+                    
+                    heartbeat_dt = datetime.fromisoformat(heartbeat_at.replace("Z", "+00:00"))
+                    now = datetime.now(timezone.utc)
+                    age_sec = (now - heartbeat_dt).total_seconds()
+                    
+                    # If lease is fresh, scanner is HEALTHY
+                    if age_sec < ttl:
+                        _log(f"{scanner_key} lease fresh ({age_sec:.0f}s < {ttl}s TTL)", "DEBUG")
+                        continue  # Skip to next scanner
+                    else:
+                        _log(f"{scanner_key} lease STALE ({age_sec:.0f}s > {ttl}s TTL)", "WARNING")
+                except Exception as e:
+                    _log(f"Lease check failed for {scanner_key}: {e}", "WARNING")
+        
+        # FALLBACK: Check onchain heartbeat (scanner writes this EVERY run, even if 0 signals)
         onchain_heartbeat = BASE_DIR / "signals" / "onchain" / "_heartbeat.json"
         if onchain_heartbeat.exists():
             heartbeat_data = json.load(open(onchain_heartbeat))
