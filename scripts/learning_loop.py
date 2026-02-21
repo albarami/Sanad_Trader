@@ -4,39 +4,38 @@ Sanad Trader v3.1 — Ticket 5: Learning Loop
 
 Deterministic Python. No LLMs.
 
-When a position is CLOSED with PnL data, this module:
-1. Updates bandit_strategy_stats (Thompson Sampling Beta params)
-2. Updates source_ucb_stats (UCB1 source grading)
+Exactly-once processing via durable learning_status state machine:
+  PENDING → RUNNING → DONE (or FAILED)
 
-All operations are exactly-once: a single DB transaction atomically
-claims the position, increments stats, and marks learning complete.
+Atomic claim (BEGIN IMMEDIATE) prevents double-counting.
+Atomic SQL increments prevent lost-update races.
+Canonical source keys via signal_normalizer.canonical_source().
+Enrichers (solscan, rugcheck, helius) skipped via signal_normalizer.is_enricher().
 
-Functions:
-- process_closed_position(position_id) — Single-transaction atomic processing
-- scan_unprocessed_closures() — Find CLOSED positions not yet learned from
-- run() — CLI: scan + process all unprocessed closures
+Usage:
+  python3 scripts/learning_loop.py          # scan + process all PENDING
+  python3 scripts/learning_loop.py --once   # single pass (for cron/lifecycle)
 """
 
 import json
 import os
 import sys
+import sqlite3
 from datetime import datetime, timezone
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).parent))
+SCRIPT_DIR = Path(__file__).resolve().parent
+sys.path.insert(0, str(SCRIPT_DIR))
 
-from state_store import get_connection, DBBusyError
+from state_store import get_connection, init_db, DB_PATH as DEFAULT_DB_PATH
 
-BASE_DIR = Path(os.environ.get("SANAD_HOME", "/data/.openclaw/workspace/trading"))
+# Import canonical source + enricher guard from signal_normalizer
+from signal_normalizer import canonical_source, is_enricher
+
+BASE_DIR = Path(os.environ.get("SANAD_HOME", str(SCRIPT_DIR.parent)))
 LOGS_DIR = BASE_DIR / "logs"
 LOGS_DIR.mkdir(parents=True, exist_ok=True)
 LOG_FILE = LOGS_DIR / "learning_loop.log"
-
-# Enricher sources that must NOT be graded via UCB1
-ENRICHER_SOURCES = frozenset([
-    "solscan", "rugcheck", "dexscreener", "birdeye_enricher",
-    "etherscan", "bscscan", "blockchair",
-])
 
 
 def _log(msg: str):
@@ -50,84 +49,93 @@ def _log(msg: str):
         pass
 
 
-def _is_enricher(source_id: str) -> bool:
-    """Check if source is an enricher (not a signal source)."""
-    if not source_id:
-        return False
-    # Check against known enrichers
-    lower = source_id.lower()
-    for e in ENRICHER_SOURCES:
-        if e in lower:
-            return True
-    # Also try the signal_normalizer if available
-    try:
-        from signal_normalizer import is_enricher
-        return is_enricher(source_id)
-    except Exception:
-        pass
-    return False
+def _get_db_path():
+    """Resolve DB path — supports SANAD_DB_PATH override for isolated tests."""
+    override = os.environ.get("SANAD_DB_PATH")
+    if override:
+        return Path(override)
+    return BASE_DIR / "state" / "sanad_trader.db"
 
 
-def process_closed_position(position_id: str) -> dict:
+def process_closed_position(position_id: str, db_path=None) -> dict:
     """
     Process a single CLOSED position in ONE atomic transaction.
-    
-    Single transaction:
-    1. Atomic claim: check CLOSED + pnl_pct NOT NULL + not already learning_complete
-    2. Atomic increment bandit_strategy_stats (no read-modify-write)
-    3. Atomic increment source_ucb_stats (no read-modify-write)
-    4. Mark position learning_complete
+
+    State machine: PENDING → RUNNING → DONE
+    Uses BEGIN IMMEDIATE for write lock from the start.
+
+    Steps (all in one transaction):
+    1. Atomic claim: UPDATE learning_status PENDING→RUNNING (rowcount==1 or skip)
+    2. Atomic increment bandit_strategy_stats
+    3. Atomic increment source_ucb_stats (skip enrichers)
+    4. Mark learning_status=DONE
     5. Commit once
-    
-    If any step fails, entire transaction rolls back — no double-counting.
+
+    Any exception → rollback → mark FAILED with error text.
     """
+    db_path = db_path or _get_db_path()
     now_iso = datetime.now(timezone.utc).isoformat()
-    
-    with get_connection() as conn:
-        # Step 1: Atomic claim — read position AND verify it's eligible
+
+    conn = sqlite3.connect(db_path, timeout=5.0)
+    conn.row_factory = sqlite3.Row
+    conn.execute("PRAGMA busy_timeout=5000")
+
+    try:
+        # BEGIN IMMEDIATE — acquire write lock upfront
+        conn.execute("BEGIN IMMEDIATE")
+
+        # Step 1: Atomic claim
+        cursor = conn.execute("""
+            UPDATE positions
+            SET learning_status = 'RUNNING', learning_updated_at = ?
+            WHERE position_id = ?
+              AND status = 'CLOSED'
+              AND learning_status = 'PENDING'
+        """, (now_iso, position_id))
+
+        if cursor.rowcount != 1:
+            conn.rollback()
+            _log(f"Position {position_id}: claim failed (not CLOSED/PENDING or already claimed)")
+            return {"position_id": position_id, "skipped": True}
+
+        # Read position data (within same transaction, guaranteed consistent)
         row = conn.execute("""
             SELECT position_id, strategy_id, regime_tag, source_primary,
-                   pnl_usd, pnl_pct, status, token_address, features_json
-            FROM positions
-            WHERE position_id = ?
+                   pnl_usd, pnl_pct, token_address
+            FROM positions WHERE position_id = ?
         """, (position_id,)).fetchone()
-        
-        if not row:
-            raise ValueError(f"Position {position_id} not found")
-        
+
         pos = dict(row)
-        
-        if pos["status"] != "CLOSED":
-            raise ValueError(f"Position {position_id} is {pos['status']}, not CLOSED")
-        
+
         if pos["pnl_pct"] is None:
+            conn.execute("""
+                UPDATE positions SET learning_status='FAILED',
+                    learning_error='pnl_pct is NULL', learning_updated_at=?
+                WHERE position_id=?
+            """, (now_iso, position_id))
+            conn.commit()
             raise ValueError(f"Position {position_id} has no pnl_pct")
-        
-        # Check if already processed
-        features = {}
-        if pos["features_json"]:
-            try:
-                features = json.loads(pos["features_json"])
-            except json.JSONDecodeError:
-                features = {}
-        
-        if features.get("learning_complete"):
-            _log(f"Position {position_id} already processed, skipping")
-            return {"position_id": position_id, "skipped": True}
-        
+
         is_win = pos["pnl_pct"] > 0
         strategy_id = pos["strategy_id"]
         regime_tag = pos["regime_tag"] or "unknown"
-        source_id = pos["source_primary"] or "unknown"
-        
-        _log(f"Processing position {position_id}: {pos['token_address']} "
+        raw_source = pos["source_primary"] or "unknown"
+
+        # Canonicalize source
+        try:
+            source_info = canonical_source(raw_source)
+            source_id = source_info["source_key"]
+        except Exception:
+            source_id = raw_source
+
+        _log(f"Processing {position_id}: {pos['token_address']} "
              f"{'WIN' if is_win else 'LOSS'} ({pos['pnl_pct']:+.2%}) "
              f"strategy={strategy_id} source={source_id}")
-        
-        # Step 2: Atomic increment bandit_strategy_stats (no read-modify-write)
+
+        # Step 2: Atomic increment bandit_strategy_stats
         win_inc = 1.0 if is_win else 0.0
         loss_inc = 0.0 if is_win else 1.0
-        
+
         conn.execute("""
             INSERT INTO bandit_strategy_stats(strategy_id, regime_tag, alpha, beta, n, last_updated)
             VALUES (?, ?, ?, ?, 1, ?)
@@ -138,30 +146,27 @@ def process_closed_position(position_id: str) -> dict:
                 last_updated = excluded.last_updated
         """, (
             strategy_id, regime_tag,
-            1.0 + win_inc, 1.0 + loss_inc,  # New row: prior(1) + increment
+            1.0 + win_inc, 1.0 + loss_inc,
             now_iso,
-            win_inc, loss_inc                 # Existing row: just increment
+            win_inc, loss_inc
         ))
-        
-        # Read back for logging
-        bandit_row = conn.execute("""
+
+        bandit_row = dict(conn.execute("""
             SELECT alpha, beta, n FROM bandit_strategy_stats
             WHERE strategy_id = ? AND regime_tag = ?
-        """, (strategy_id, regime_tag)).fetchone()
-        bandit_row = dict(bandit_row)
-        
+        """, (strategy_id, regime_tag)).fetchone())
+
         expected = bandit_row["alpha"] / (bandit_row["alpha"] + bandit_row["beta"])
         _log(f"Bandit: {strategy_id}/{regime_tag} {'WIN' if is_win else 'LOSS'} → "
              f"Alpha={bandit_row['alpha']:.0f} Beta={bandit_row['beta']:.0f} "
              f"n={bandit_row['n']} E[v]={expected:.3f}")
-        
+
         # Step 3: Atomic increment source_ucb_stats (skip enrichers)
         source_result = {}
-        if _is_enricher(source_id):
-            _log(f"Source: {source_id} is enricher, skipping UCB1 update")
+        if is_enricher(source_id):
+            _log(f"Source: {source_id} is enricher, skipping UCB1")
         else:
             reward = 1.0 if is_win else 0.0
-            
             conn.execute("""
                 INSERT INTO source_ucb_stats(source_id, n, reward_sum, last_updated)
                 VALUES (?, 1, ?, ?)
@@ -169,110 +174,107 @@ def process_closed_position(position_id: str) -> dict:
                     n = source_ucb_stats.n + 1,
                     reward_sum = source_ucb_stats.reward_sum + ?,
                     last_updated = excluded.last_updated
-            """, (
-                source_id,
-                reward,      # New row: first reward
-                now_iso,
-                reward       # Existing row: increment reward
-            ))
-            
-            # Read back for logging
-            source_row = conn.execute("""
-                SELECT n, reward_sum FROM source_ucb_stats
-                WHERE source_id = ?
-            """, (source_id,)).fetchone()
-            source_row = dict(source_row)
-            
+            """, (source_id, reward, now_iso, reward))
+
+            source_row = dict(conn.execute("""
+                SELECT n, reward_sum FROM source_ucb_stats WHERE source_id = ?
+            """, (source_id,)).fetchone())
+
             win_rate = source_row["reward_sum"] / source_row["n"] if source_row["n"] > 0 else 0.0
             _log(f"Source: {source_id} {'WIN' if is_win else 'LOSS'} → "
-                 f"n={source_row['n']} reward_sum={source_row['reward_sum']:.0f} "
+                 f"n={source_row['n']} reward={source_row['reward_sum']:.0f} "
                  f"win_rate={win_rate:.2%}")
-            
             source_result = {
                 "source_id": source_id,
                 "n": source_row["n"],
                 "reward_sum": source_row["reward_sum"],
                 "win_rate": win_rate
             }
-        
-        # Step 4: Mark position learning_complete
-        features["learning_complete"] = True
-        features["learning_at"] = now_iso
-        
+
+        # Step 4: Mark DONE
         conn.execute("""
             UPDATE positions
-            SET features_json = ?,
-                updated_at = ?
-            WHERE position_id = ?
-        """, (json.dumps(features), now_iso, position_id))
-        
-        # Step 5: Single commit — all or nothing
+            SET learning_status = 'DONE',
+                learning_updated_at = ?,
+                learning_error = NULL
+            WHERE position_id = ? AND learning_status = 'RUNNING'
+        """, (now_iso, position_id))
+
+        # Step 5: Single commit
         conn.commit()
-    
-    _log(f"Position {position_id} learning complete")
-    
-    return {
-        "position_id": position_id,
-        "is_win": is_win,
-        "pnl_pct": pos["pnl_pct"],
-        "bandit": {
-            "strategy_id": strategy_id,
-            "regime_tag": regime_tag,
-            "alpha": bandit_row["alpha"],
-            "beta": bandit_row["beta"],
-            "n": bandit_row["n"],
-            "expected_value": expected
-        },
-        "source": source_result
-    }
+        _log(f"Position {position_id} → DONE")
+
+        return {
+            "position_id": position_id,
+            "is_win": is_win,
+            "pnl_pct": pos["pnl_pct"],
+            "bandit": {
+                "strategy_id": strategy_id,
+                "regime_tag": regime_tag,
+                "alpha": bandit_row["alpha"],
+                "beta": bandit_row["beta"],
+                "n": bandit_row["n"],
+                "expected_value": expected
+            },
+            "source": source_result
+        }
+
+    except Exception as e:
+        conn.rollback()
+        # Try to mark FAILED
+        try:
+            conn.execute("BEGIN IMMEDIATE")
+            conn.execute("""
+                UPDATE positions
+                SET learning_status = 'FAILED',
+                    learning_error = ?,
+                    learning_updated_at = ?
+                WHERE position_id = ? AND learning_status = 'RUNNING'
+            """, (str(e)[:500], now_iso, position_id))
+            conn.commit()
+        except Exception:
+            pass
+        raise
+    finally:
+        conn.close()
 
 
-def scan_unprocessed_closures() -> list:
-    """
-    Find CLOSED positions that haven't been processed by the learning loop.
-    
-    A position is unprocessed if:
-    - status = 'CLOSED'
-    - pnl_pct is NOT NULL
-    - features_json is NULL or doesn't contain learning_complete=true
-    """
-    with get_connection() as conn:
+def scan_unprocessed_closures(db_path=None) -> list:
+    """Find CLOSED positions with learning_status='PENDING'."""
+    db_path = db_path or _get_db_path()
+    with get_connection(db_path) as conn:
         rows = conn.execute("""
             SELECT position_id, token_address, pnl_pct, strategy_id, source_primary
             FROM positions
             WHERE status = 'CLOSED'
               AND pnl_pct IS NOT NULL
-              AND (features_json IS NULL 
-                   OR features_json NOT LIKE '%"learning_complete": true%'
-                   AND features_json NOT LIKE '%"learning_complete":true%')
+              AND learning_status = 'PENDING'
             ORDER BY closed_at ASC
         """).fetchall()
-        
         return [dict(r) for r in rows]
 
 
-def run():
+def run(db_path=None):
     """Main entry: scan for unprocessed closures and process them."""
+    db_path = db_path or _get_db_path()
     _log("=" * 60)
     _log("Learning Loop START")
-    
-    unprocessed = scan_unprocessed_closures()
-    
+
+    unprocessed = scan_unprocessed_closures(db_path)
     if not unprocessed:
         _log("No unprocessed closures")
         return []
-    
+
     _log(f"Found {len(unprocessed)} unprocessed closure(s)")
-    
     results = []
     for pos in unprocessed:
         try:
-            result = process_closed_position(pos["position_id"])
+            result = process_closed_position(pos["position_id"], db_path)
             if not result.get("skipped"):
                 results.append(result)
         except Exception as e:
             _log(f"Error processing {pos['position_id']}: {e}")
-    
+
     _log(f"Learning Loop END — processed {len(results)}/{len(unprocessed)} positions")
     return results
 
@@ -281,7 +283,7 @@ if __name__ == "__main__":
     try:
         run()
     except KeyboardInterrupt:
-        _log("Interrupted by user")
+        _log("Interrupted")
     except Exception as e:
         _log(f"Learning loop crashed: {e}")
         import traceback

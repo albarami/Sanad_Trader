@@ -19,6 +19,13 @@ class DBBusyError(Exception):
     pass
 
 
+def _add_column_if_missing(conn, table, column, coltype):
+    """Add column if it doesn't exist. Idempotent."""
+    cols = [row[1] for row in conn.execute(f"PRAGMA table_info({table})").fetchall()]
+    if column not in cols:
+        conn.execute(f"ALTER TABLE {table} ADD COLUMN {column} {coltype}")
+
+
 def init_db(db_path=DB_PATH):
     """Initialize SQLite DB with schema. Idempotent."""
     db_path.parent.mkdir(parents=True, exist_ok=True)
@@ -89,6 +96,12 @@ def init_db(db_path=DB_PATH):
     conn.execute("CREATE INDEX IF NOT EXISTS idx_positions_status ON positions(status)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_positions_token ON positions(token_address)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_positions_created_at ON positions(created_at)")
+    
+    # Learning loop columns (Ticket 5 migration — idempotent)
+    _add_column_if_missing(conn, "positions", "learning_status", "TEXT DEFAULT 'PENDING'")
+    _add_column_if_missing(conn, "positions", "learning_updated_at", "TEXT")
+    _add_column_if_missing(conn, "positions", "learning_error", "TEXT")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_positions_learning ON positions(status, learning_status)")
     
     # async_tasks table
     conn.execute("""
@@ -348,7 +361,8 @@ def update_position_close(position_id: str, exit_payload: dict):
                     exit_reason = ?,
                     closed_at = ?,
                     pnl_usd = ?,
-                    pnl_pct = ?
+                    pnl_pct = ?,
+                    learning_status = 'PENDING'
                 WHERE position_id = ?
             """, (
                 now_iso,
