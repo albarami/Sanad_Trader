@@ -13,7 +13,7 @@ Designed to run as a cron job every 15 minutes.
 import hashlib
 import json
 import os
-import subprocess
+# import subprocess  # v3.1: removed, no longer using subprocess for pipeline
 import sys
 import tempfile
 import time
@@ -59,7 +59,7 @@ PORTFOLIO_PATH = STATE_DIR / "portfolio.json"
 TRADE_HISTORY_PATH = STATE_DIR / "trade_history.json"
 ROUTER_STATE_PATH = STATE_DIR / "signal_router_state.json"
 CRON_HEALTH_PATH = STATE_DIR / "cron_health.json"
-PIPELINE_SCRIPT = SCRIPT_DIR / "sanad_pipeline.py"
+# PIPELINE_SCRIPT = SCRIPT_DIR / "sanad_pipeline.py"  # v3.1: removed, using fast_decision_engine
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -154,6 +154,16 @@ def _save_json_atomic(path: Path, data: dict):
     tmp = path.with_suffix(".tmp")
     tmp.write_text(json.dumps(data, indent=2, default=str))
     tmp.rename(path)
+
+
+def _append_to_jsonl(filepath: Path, record: dict):
+    """Append JSON record to .jsonl file for observability."""
+    try:
+        filepath.parent.mkdir(parents=True, exist_ok=True)
+        with open(filepath, "a") as f:
+            f.write(json.dumps(record, default=str) + "\n")
+    except Exception as e:
+        _log(f"JSONL append error: {e}")
 
 
 # ---------------------------------------------------------------------------
@@ -1219,132 +1229,94 @@ def _run_router_impl():
             except Exception as e:
                 _log(f"Solscan enrichment failed: {e}")
 
-        # --- Write temp signal file ---
-        tmp_dir = BASE_DIR / "tmp"
-        tmp_dir.mkdir(parents=True, exist_ok=True)
-        signal_file = tmp_dir / f"router_signal_{now.strftime('%Y%m%d_%H%M%S')}.json"
-        signal_file.write_text(json.dumps(pipeline_signal, indent=2))
-
-        # --- Call pipeline ---
-        _log(f"Calling pipeline with 5min timeout...")
+        # --- v3.1 Hot Path: Call fast_decision_engine directly ---
+        _log(f"Calling v3.1 Hot Path (fast_decision_engine)...")
         pipeline_start = time.time()
+        
+        POLICY_VERSION = "v3.1.0"
         try:
-            # Use Popen with preexec_fn to set process group (allows killing entire subtree)
-            import os
-            proc = subprocess.Popen(
-                ["python3", str(PIPELINE_SCRIPT), str(signal_file)],
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                text=True,
-                preexec_fn=os.setpgrp  # Create new process group
-            )
+            # Load portfolio state
+            portfolio = _load_json(PORTFOLIO_PATH, default={
+                "cash_balance_usd": 10000,
+                "open_position_count": 0,
+                "total_exposure_pct": 0,
+                "mode": "paper"
+            })
             
-            # Wait with timeout, kill process group if exceeded
-            try:
-                stdout, stderr = proc.communicate(timeout=300)  # 5 minutes hard limit
-                result = type('obj', (object,), {
-                    'stdout': stdout,
-                    'stderr': stderr,
-                    'returncode': proc.returncode
-                })()
-            except subprocess.TimeoutExpired:
-                # Kill entire process group (catches hung child processes)
-                try:
-                    os.killpg(os.getpgid(proc.pid), signal.SIGKILL)
-                    _log("Pipeline TIMEOUT (>5min) — killed process group")
-                except Exception as kill_err:
-                    _log(f"Failed to kill process group: {kill_err}")
-                raise  # Re-raise to hit outer exception handler
+            # Build runtime state
+            runtime_state = {
+                "min_score": 40,
+                "regime_tag": "NEUTRAL",  # TODO: integrate regime_classifier
+                "kill_switch": False
+            }
+            
+            # Call v3.1 Hot Path
+            if HAS_V31_HOT_PATH:
+                decision_record = fast_decision_engine.evaluate_signal_fast(
+                    signal=pipeline_signal,
+                    portfolio=portfolio,
+                    runtime_state=runtime_state,
+                    policy_version=POLICY_VERSION
+                )
                 
-            pipeline_duration = time.time() - pipeline_start
-            _log(f"Pipeline completed in {pipeline_duration:.1f}s")
-            stdout = result.stdout.strip()
-            stderr = result.stderr.strip()
-
-            # Read structured decision from decisions.jsonl (authoritative source)
-            pipeline_action = "UNKNOWN"
-            pipeline_reason = ""
-            decision_data = None
+                pipeline_duration = time.time() - pipeline_start
+                _log(f"Hot Path completed in {pipeline_duration:.1f}s")
+                
+                # Extract result (v3.1 format)
+                pipeline_action = decision_record.get("result")  # EXECUTE/SKIP/BLOCK
+                pipeline_reason = decision_record.get("reason_code", "")
+                decision_data = decision_record
+                
+                # Persist SKIP/BLOCK decisions to DB
+                if pipeline_action in ("SKIP", "BLOCK"):
+                    try:
+                        state_store.insert_decision(decision_record)
+                        _log(f"Decision persisted to DB: {pipeline_action} - {pipeline_reason}")
+                    except state_store.DBBusyError:
+                        _log(f"DB busy, logging to JSONL fallback: {decision_record.get('decision_id', '?')}")
+                        _append_to_jsonl(BASE_DIR / "logs" / "decisions.jsonl", decision_record)
+                    except Exception as e:
+                        _log(f"Decision insert error: {e}, using JSONL fallback")
+                        _append_to_jsonl(BASE_DIR / "logs" / "decisions.jsonl", decision_record)
+                
+                # EXECUTE: position already created by try_open_position_atomic() in engine
+                elif pipeline_action == "EXECUTE":
+                    execution_data = decision_record.get("execution", {})
+                    position_id = execution_data.get("position_id", "?")
+                    entry_price = execution_data.get("entry_price", 0)
+                    size_usd = execution_data.get("size_usd", 0)
+                    
+                    _log(f"Decision: EXECUTE - Position {position_id} opened @ ${entry_price:.6f} (${size_usd})")
+                    
+                    # Update portfolio counters
+                    portfolio["open_position_count"] += 1
+                    portfolio["daily_trades"] = portfolio.get("daily_trades", 0) + 1
+                    _save_json_atomic(PORTFOLIO_PATH, portfolio)
+                    
+                    pipeline_reason = f"position={position_id} price=${entry_price:.6f}"
+                
+                # Always append to JSONL for observability
+                _append_to_jsonl(BASE_DIR / "logs" / "decisions.jsonl", decision_record)
             
-            decisions_file = BASE_DIR / "execution-logs" / "decisions.jsonl"
-            if decisions_file.exists():
-                try:
-                    # Read last line (most recent decision)
-                    with open(decisions_file, "rb") as f:
-                        f.seek(0, 2)  # Seek to end
-                        fsize = f.tell()
-                        if fsize > 0:
-                            # Read last 10KB (captures full decision JSON)
-                            f.seek(max(0, fsize - 10240))
-                            lines = f.read().decode('utf-8', errors='ignore').splitlines()
-                            if lines:
-                                last_line = lines[-1]
-                                decision_data = json.loads(last_line)
-                                
-                                # Extract action and reason
-                                pipeline_action = decision_data.get("final_action", "UNKNOWN")
-                                pipeline_reason = (
-                                    decision_data.get("rejection_reason") or 
-                                    decision_data.get("reason") or 
-                                    ""
-                                )
-                                
-                                # Get venue/exchange info for EXECUTE actions
-                                if pipeline_action == "EXECUTE":
-                                    execution = decision_data.get("execution", {})
-                                    venue = execution.get("venue", "?")
-                                    exchange = execution.get("exchange", "?")
-                                    fill_price = execution.get("fill_price", 0)
-                                    pipeline_reason = f"venue={venue} exchange={exchange} fill=${fill_price:.6f}"
-                                
-                                _log(f"Pipeline result: {pipeline_action}" + 
-                                     (f" ({pipeline_reason[:100]})" if pipeline_reason else ""))
-                except Exception as e:
-                    _log(f"Failed to read decision JSON: {e}")
-                    # Fallback to stdout parsing
-                    pipeline_action = "UNKNOWN"
-            
-            # Fallback: parse stdout if decision file unavailable
-            if pipeline_action == "UNKNOWN":
-                _log("Warning: No decision JSON found, parsing stdout (fragile)")
-                for line in reversed(stdout.splitlines()):
-                    if "APPROVE" in line.upper():
-                        pipeline_action = "APPROVE"
-                        break
-                    elif "REJECT" in line.upper():
-                        pipeline_action = "REJECT"
-                        break
-                    elif "REVISE" in line.upper():
-                        pipeline_action = "REVISE"
-                        break
-                _log(f"Pipeline result (from stdout): {pipeline_action}")
-
-            if stdout:
-                # Print last 20 lines of pipeline output for visibility
-                lines = stdout.splitlines()
-                if len(lines) > 20:
-                    _log("Pipeline output (last 20 lines):")
-                    for l in lines[-20:]:
-                        print(f"  | {l}")
-                else:
-                    _log("Pipeline output:")
-                    for l in lines:
-                        print(f"  | {l}")
-
-            if stderr:
-                _log(f"Pipeline stderr: {stderr[:500]}")
-
-            if result.returncode != 0:
-                _log(f"Pipeline exited with code {result.returncode}")
-
-        except subprocess.TimeoutExpired:
-            _log("Pipeline TIMEOUT (>5min) — aborting. Will not retry.")
-            pipeline_action = "TIMEOUT"
-            pipeline_reason = "Pipeline exceeded 5 minute timeout"
+            else:
+                # v3.1 Hot Path not available - this should not happen
+                _log("ERROR: v3.1 Hot Path not available (HAS_V31_HOT_PATH=False)")
+                pipeline_action = "ERROR"
+                pipeline_reason = "v3.1 Hot Path modules not imported"
+                decision_data = None
+        
+        except state_store.DBBusyError as e:
+            _log(f"DB busy during Hot Path: {e}")
+            pipeline_action = "SKIP"
+            pipeline_reason = "SKIP_DB_BUSY"
         except Exception as e:
-            _log(f"Pipeline ERROR: {e}")
+            _log(f"Hot Path ERROR: {e}")
+            import traceback
+            _log(traceback.format_exc())
             pipeline_action = "ERROR"
-            pipeline_reason = str(e)
+            pipeline_reason = f"Hot Path exception: {str(e)[:100]}"
+
+        # --- Update state ---            pipeline_reason = str(e)
 
         # --- Update state ---
         shash = _signal_hash(selected)
