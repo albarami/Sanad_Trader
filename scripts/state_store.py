@@ -5,13 +5,17 @@ Single source of truth. Atomic transactions. Idempotent operations.
 Fast-fail connections (250ms timeout).
 """
 
+import os
 import sqlite3
 import json
 from pathlib import Path
 from datetime import datetime, timezone, timedelta
 from contextlib import contextmanager
 
-DB_PATH = Path("state/sanad_trader.db")
+# Canonical DB path: SANAD_DB_PATH env > SANAD_HOME/state/sanad_trader.db > __file__-relative
+_SCRIPT_DIR = Path(__file__).resolve().parent
+_BASE_DIR = Path(os.environ.get("SANAD_HOME", str(_SCRIPT_DIR.parent)))
+DB_PATH = Path(os.environ["SANAD_DB_PATH"]) if os.environ.get("SANAD_DB_PATH") else _BASE_DIR / "state" / "sanad_trader.db"
 
 
 class DBBusyError(Exception):
@@ -102,6 +106,12 @@ def init_db(db_path=DB_PATH):
     _add_column_if_missing(conn, "positions", "learning_updated_at", "TEXT")
     _add_column_if_missing(conn, "positions", "learning_error", "TEXT")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_positions_learning ON positions(status, learning_status)")
+    
+    # Backfill legacy CLOSED rows where learning_status is NULL
+    conn.execute("""
+        UPDATE positions SET learning_status = 'PENDING'
+        WHERE learning_status IS NULL AND status = 'CLOSED' AND pnl_pct IS NOT NULL
+    """)
     
     # async_tasks table
     conn.execute("""
@@ -362,7 +372,9 @@ def update_position_close(position_id: str, exit_payload: dict):
                     closed_at = ?,
                     pnl_usd = ?,
                     pnl_pct = ?,
-                    learning_status = 'PENDING'
+                    learning_status = 'PENDING',
+                    learning_updated_at = ?,
+                    learning_error = NULL
                 WHERE position_id = ?
             """, (
                 now_iso,
@@ -371,6 +383,7 @@ def update_position_close(position_id: str, exit_payload: dict):
                 now_iso,
                 exit_payload["pnl_usd"],
                 exit_payload["pnl_pct"],
+                now_iso,
                 position_id
             ))
     except DBBusyError:

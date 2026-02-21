@@ -27,7 +27,7 @@ from pathlib import Path
 SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(SCRIPT_DIR))
 
-from state_store import get_connection, init_db, DB_PATH as DEFAULT_DB_PATH
+from state_store import get_connection, init_db, DB_PATH
 
 # Import canonical source + enricher guard from signal_normalizer
 from signal_normalizer import canonical_source, is_enricher
@@ -49,14 +49,6 @@ def _log(msg: str):
         pass
 
 
-def _get_db_path():
-    """Resolve DB path — supports SANAD_DB_PATH override for isolated tests."""
-    override = os.environ.get("SANAD_DB_PATH")
-    if override:
-        return Path(override)
-    return BASE_DIR / "state" / "sanad_trader.db"
-
-
 def process_closed_position(position_id: str, db_path=None) -> dict:
     """
     Process a single CLOSED position in ONE atomic transaction.
@@ -73,7 +65,7 @@ def process_closed_position(position_id: str, db_path=None) -> dict:
 
     Any exception → rollback → mark FAILED with error text.
     """
-    db_path = db_path or _get_db_path()
+    db_path = db_path or DB_PATH
     now_iso = datetime.now(timezone.utc).isoformat()
 
     conn = sqlite3.connect(db_path, timeout=5.0)
@@ -241,7 +233,7 @@ def process_closed_position(position_id: str, db_path=None) -> dict:
 
 def scan_unprocessed_closures(db_path=None) -> list:
     """Find CLOSED positions with learning_status='PENDING'."""
-    db_path = db_path or _get_db_path()
+    db_path = db_path or DB_PATH
     with get_connection(db_path) as conn:
         rows = conn.execute("""
             SELECT position_id, token_address, pnl_pct, strategy_id, source_primary
@@ -256,7 +248,9 @@ def scan_unprocessed_closures(db_path=None) -> list:
 
 def run(db_path=None):
     """Main entry: scan for unprocessed closures and process them."""
-    db_path = db_path or _get_db_path()
+    db_path = db_path or DB_PATH
+    # Ensure schema + backfill before scanning
+    init_db(db_path)
     _log("=" * 60)
     _log("Learning Loop START")
 

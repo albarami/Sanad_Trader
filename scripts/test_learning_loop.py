@@ -325,6 +325,69 @@ def test_done_persists():
 # MAIN
 # ─────────────────────────────────────────────
 
+# ─────────────────────────────────────────────
+# TEST 8: Legacy NULL learning_status backfilled
+# ─────────────────────────────────────────────
+
+def test_legacy_backfill():
+    print("\n" + "=" * 60)
+    print("TEST 8: Legacy NULL learning_status Backfilled + Processed")
+    print("=" * 60)
+
+    db = IsolatedDB()
+
+    # Insert a CLOSED position, then set learning_status=NULL to simulate legacy row
+    pid = db.create_position(pnl_pct=0.07, strategy_id="test_strat_legacy",
+                              source_primary="test_source_legacy")
+    c = db.conn()
+    c.execute("UPDATE positions SET learning_status = NULL WHERE position_id = ?", (pid,))
+    c.commit()
+    c.close()
+
+    # Verify it's NULL
+    row = db.query_one("SELECT learning_status FROM positions WHERE position_id=?", (pid,))
+    assert_eq("Pre-backfill learning_status", None, row["learning_status"])
+
+    # Run init_db which should backfill NULL → PENDING
+    init_db(db.db_path)
+
+    row = db.query_one("SELECT learning_status FROM positions WHERE position_id=?", (pid,))
+    assert_eq("Post-backfill learning_status", "PENDING", row["learning_status"])
+
+    # Now run() should find and process it
+    results = learning_loop.run(db.db_path)
+    assert_eq("Processed count", 1, len(results))
+    assert_eq("is_win", True, results[0]["is_win"])
+
+    # Verify DONE
+    row = db.query_one("SELECT learning_status FROM positions WHERE position_id=?", (pid,))
+    assert_eq("Final learning_status", "DONE", row["learning_status"])
+
+    # Verify exactly-once: run again should find nothing
+    results2 = learning_loop.run(db.db_path)
+    assert_eq("Second run finds nothing", 0, len(results2))
+
+    print("\n✅ TEST 8 PASSED")
+    db.cleanup()
+
+
+# ─────────────────────────────────────────────
+# TEST 9: DB path consistency
+# ─────────────────────────────────────────────
+
+def test_db_path_consistency():
+    print("\n" + "=" * 60)
+    print("TEST 9: Learning Loop Uses Same DB Path As state_store")
+    print("=" * 60)
+
+    from state_store import DB_PATH as store_path
+    from learning_loop import DB_PATH as loop_path
+
+    assert_eq("DB_PATH is same object", True, store_path == loop_path)
+
+    print("\n✅ TEST 9 PASSED")
+
+
 if __name__ == "__main__":
     try:
         test_win()
@@ -334,9 +397,11 @@ if __name__ == "__main__":
         test_guards()
         test_concurrency()
         test_done_persists()
+        test_legacy_backfill()
+        test_db_path_consistency()
 
         print("\n" + "=" * 60)
-        print("✅ ALL 7 TESTS PASSED (isolated temp DB, no production data touched)")
+        print("✅ ALL 9 TESTS PASSED (isolated temp DB, no production data touched)")
         print("=" * 60)
     except SystemExit:
         raise
