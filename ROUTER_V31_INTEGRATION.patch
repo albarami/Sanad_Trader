@@ -1,0 +1,170 @@
+# Signal Router v3.1 Integration Patch
+# This replaces the subprocess pipeline call with fast_decision_engine
+
+## Location: scripts/signal_router.py, approximately line 1227-1350
+
+### FIND THIS BLOCK (starting around line 1227):
+```python
+        # --- Call pipeline ---
+        _log(f"Calling pipeline with 5min timeout...")
+        pipeline_start = time.time()
+        try:
+            # Use Popen with preexec_fn to set process group (allows killing entire subtree)
+            import os
+            proc = subprocess.Popen(
+                ["python3", str(PIPELINE_SCRIPT), str(signal_file)],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+                preexec_fn=os.setpgrp  # Create new process group
+            )
+            
+            # Wait with timeout, kill process group if exceeded
+            try:
+                stdout, stderr = proc.communicate(timeout=300)  # 5 minutes hard limit
+                # ... (continues for ~120 lines)
+```
+
+### REPLACE WITH:
+```python
+        # --- Call fast decision engine (v3.1 Hot Path) ---
+        if HAS_V31_HOT_PATH:
+            _log(f"Calling v3.1 Hot Path (fast_decision_engine)...")
+            pipeline_start = time.time()
+            
+            try:
+                # Load portfolio and runtime state
+                portfolio = _load_json(PORTFOLIO_PATH, default={
+                    "cash_balance_usd": 10000,
+                    "open_position_count": 0,
+                    "total_exposure_pct": 0,
+                    "mode": "paper"
+                })
+                
+                # Build runtime state
+                runtime_state = {
+                    "min_score": 40,
+                    "regime_tag": "NEUTRAL",  # TODO: integrate regime_classifier
+                    "kill_switch": False
+                }
+                
+                # Call Hot Path
+                decision_record = fast_decision_engine.evaluate_signal_fast(
+                    signal=pipeline_signal,
+                    portfolio=portfolio,
+                    runtime_state=runtime_state,
+                    policy_version="v3.1.0"
+                )
+                
+                pipeline_duration = time.time() - pipeline_start
+                _log(f"Hot Path completed in {pipeline_duration:.1f}s")
+                
+                # Extract result
+                pipeline_action = decision_record.get("result")  # EXECUTE/SKIP/BLOCK
+                pipeline_reason = decision_record.get("reason_code", "")
+                decision_data = decision_record
+                
+                # Handle decision based on result
+                if pipeline_action in ("SKIP", "BLOCK"):
+                    # Log to DB (fallback to JSONL if busy)
+                    try:
+                        state_store.insert_decision(decision_record)
+                        _log(f"Decision logged to DB: {pipeline_action} - {pipeline_reason}")
+                    except state_store.DBBusyError:
+                        _log(f"DB busy, logging to JSONL only: {decision_record['decision_id']}")
+                        _append_to_jsonl(BASE_DIR / "logs" / "decisions.jsonl", decision_record)
+                    except Exception as e:
+                        _log(f"Decision insert error: {e}, using JSONL fallback")
+                        _append_to_jsonl(BASE_DIR / "logs" / "decisions.jsonl", decision_record)
+                
+                elif pipeline_action == "EXECUTE":
+                    # Position already created by try_open_position_atomic() in engine
+                    execution_data = decision_record.get("execution", {})
+                    position_id = execution_data.get("position_id", "?")
+                    entry_price = execution_data.get("entry_price", 0)
+                    
+                    _log(f"Decision: EXECUTE - Position {position_id} opened @ ${entry_price}")
+                    
+                    # Update portfolio counters
+                    portfolio["open_position_count"] += 1
+                    portfolio["daily_trades"] = portfolio.get("daily_trades", 0) + 1
+                    _save_json_atomic(PORTFOLIO_PATH, portfolio)
+                    
+                    pipeline_reason = f"position_id={position_id} price=${entry_price:.6f}"
+                
+                # Always append to JSONL for observability
+                _append_to_jsonl(BASE_DIR / "logs" / "decisions.jsonl", decision_record)
+                
+            except Exception as e:
+                _log(f"Hot Path error: {e}")
+                import traceback
+                _log(traceback.format_exc())
+                
+                # Fall back to SKIP
+                pipeline_action = "SKIP"
+                pipeline_reason = f"ENGINE_ERROR: {str(e)[:100]}"
+                decision_data = {
+                    "result": "SKIP",
+                    "reason_code": "SKIP_ENGINE_ERROR",
+                    "error": str(e)
+                }
+        
+        else:
+            # Fallback to v3.0 subprocess (if v3.1 not available)
+            _log(f"v3.1 Hot Path not available, falling back to v3.0 subprocess...")
+            pipeline_start = time.time()
+            try:
+                # Use Popen with preexec_fn to set process group (allows killing entire subtree)
+                import os
+                proc = subprocess.Popen(
+                    ["python3", str(PIPELINE_SCRIPT), str(signal_file)],
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    text=True,
+                    preexec_fn=os.setpgrp  # Create new process group
+                )
+                
+                # Wait with timeout, kill process group if exceeded
+                try:
+                    stdout, stderr = proc.communicate(timeout=300)  # 5 minutes hard limit
+                    result = type('obj', (object,), {
+                        'stdout': stdout,
+                        'stderr': stderr,
+                        'returncode': proc.returncode
+                    })()
+                except subprocess.TimeoutExpired:
+                    # Kill entire process group (catches hung child processes)
+                    try:
+                        os.killpg(os.getpgid(proc.pid), signal.SIGKILL)
+                        _log("Pipeline TIMEOUT (>5min) — killed process group")
+                    except Exception as kill_err:
+                        _log(f"Failed to kill process group: {kill_err}")
+                    raise  # Re-raise to hit outer exception handler
+                    
+                pipeline_duration = time.time() - pipeline_start
+                _log(f"Pipeline completed in {pipeline_duration:.1f}s")
+                
+                # Parse v3.0 output (existing logic)
+                pipeline_action = "UNKNOWN"
+                pipeline_reason = ""
+                # ... rest of v3.0 parsing logic ...
+```
+
+### ADD HELPER FUNCTION (at module level, around line 150):
+```python
+def _append_to_jsonl(filepath, record):
+    """Append JSON record to .jsonl file."""
+    try:
+        filepath.parent.mkdir(parents=True, exist_ok=True)
+        with open(filepath, "a") as f:
+            f.write(json.dumps(record, default=str) + "\n")
+    except Exception as e:
+        _log(f"JSONL append error: {e}")
+```
+
+## Notes:
+- This keeps v3.0 subprocess as fallback if v3.1 not available
+- Maintains all existing signal enrichment logic
+- DB writes with fallback to JSONL
+- Compatible with existing router state tracking
+- Logs timing for observability

@@ -34,6 +34,15 @@ try:
 except ImportError:
     HAS_LEASE = False
 
+# v3.1 Hot Path imports
+try:
+    import fast_decision_engine
+    import state_store
+    import ids
+    HAS_V31_HOT_PATH = True
+except ImportError:
+    HAS_V31_HOT_PATH = False
+
 # ---------------------------------------------------------------------------
 # Paths
 # ---------------------------------------------------------------------------
