@@ -90,9 +90,436 @@
       "active": true,
       "added": "2026-02-19T17:51:31.355295+00:00",
       "source": "xlsx_manual"
+    },
+    {
+      "address": "DfMxre4cKmvogbLrPigxmibVTTQDuzjdXojWzjCXXhzj",
+      "label": "WHALE_14",
+      "active": true,
+      "added": "2026-02-21T02:26:38.621439+00:00",
+      "source": "batch_2026_02_21"
+    },
+    {
+      "address": "CRVidEDtEUTYZisCxBZkpELzhQc9eauMLR3FWg74tReL",
+      "label": "WHALE_15",
+      "active": true,
+      "added": "2026-02-21T02:26:38.621439+00:00",
+      "source": "batch_2026_02_21"
+    },
+    {
+      "address": "EcJWNtETrzdbj8s2dXpaE4Tu4r7fxALD6TNw9H8S6ksz",
+      "label": "WHALE_16",
+      "active": true,
+      "added": "2026-02-21T02:26:38.621439+00:00",
+      "source": "batch_2026_02_21"
+    },
+    {
+      "address": "EGLsVxDdDUFQBPtHxNwq5rBSUczWVniVzvNkkK6szAu7",
+      "label": "WHALE_17",
+      "active": true,
+      "added": "2026-02-21T02:26:38.621439+00:00",
+      "source": "batch_2026_02_21"
+    },
+    {
+      "address": "2HWT2KLLdN2wxYTqdSuko5SBzg2SEJASgV4GE2tD7TML",
+      "label": "WHALE_18",
+      "active": true,
+      "added": "2026-02-21T02:26:38.621439+00:00",
+      "source": "batch_2026_02_21"
+    },
+    {
+      "address": "FdGbqLGGPrpBkNYfGXuAZVzM3py4qA76pMwp77GJxiwx",
+      "label": "WHALE_19",
+      "active": true,
+      "added": "2026-02-21T02:26:38.621439+00:00",
+      "source": "batch_2026_02_21"
+    },
+    {
+      "address": "7tH1V6GiDsTS5c3BdJaVAu71iyZAvPbUwFbdMmY9tkGr",
+      "label": "WHALE_20",
+      "active": true,
+      "added": "2026-02-21T02:26:38.621439+00:00",
+      "source": "batch_2026_02_21"
+    },
+    {
+      "address": "4dUCqJNuZJkVtCgqgZYPnQSscBxHqm8EpvX5oGQbGrw2",
+      "label": "WHALE_21",
+      "active": true,
+      "added": "2026-02-21T02:26:38.621439+00:00",
+      "source": "batch_2026_02_21"
+    },
+    {
+      "address": "E9nLJ8T9YEH8Xim1mQxN51XxUcSoSA1b4fNxCysEL62F",
+      "label": "WHALE_22",
+      "active": true,
+      "added": "2026-02-21T02:26:38.621439+00:00",
+      "source": "batch_2026_02_21"
+    },
+    {
+      "address": "H8kJvCZpjLWnYMYoLhJTq5vXDvV6HqzS82XVEZGnWhTN",
+      "label": "WHALE_23",
+      "active": true,
+      "added": "2026-02-21T02:26:38.621439+00:00",
+      "source": "batch_2026_02_21"
+    },
+    {
+      "address": "FszZ1BzCCJM9rzCxC6KGZXSBLmkJJJxTvFzE9gLaYAQm",
+      "label": "WHALE_24",
+      "active": true,
+      "added": "2026-02-21T02:26:38.621439+00:00",
+      "source": "batch_2026_02_21"
+    },
+    {
+      "address": "6JdChvPY7MXuAE7A6RcS68fJNTLPM8dxL6jdeSdC9Uzs",
+      "label": "WHALE_25",
+      "active": true,
+      "added": "2026-02-21T02:26:38.621439+00:00",
+      "source": "batch_2026_02_21"
+    },
+    {
+      "address": "A8mCnSDGzoWqkDQQUkKQju9HcmTDcikXS4Jt8NaUi9VV",
+      "label": "WHALE_26",
+      "active": true,
+      "added": "2026-02-21T02:26:38.621439+00:00",
+      "source": "batch_2026_02_21"
+    },
+    {
+      "address": "DhdkmQjrwBPk56MERMa8vZ6zxhTXrz9J93KXXEz97hfK",
+      "label": "WHALE_27",
+      "active": true,
+      "added": "2026-02-21T02:26:38.621439+00:00",
+      "source": "batch_2026_02_21"
+    },
+    {
+      "address": "Ec9uPQSwXhoXdN5KDaUGRQziiQWZPDXtcNm8J7uFiLJW",
+      "label": "WHALE_28",
+      "active": true,
+      "added": "2026-02-21T02:26:38.621439+00:00",
+      "source": "batch_2026_02_21"
+    },
+    {
+      "address": "BcrRKh1fVwKQzCiGHGURhqvYjokZmx8hULQzpwZfkvP3",
+      "label": "WHALE_29",
+      "active": true,
+      "added": "2026-02-21T02:26:38.621439+00:00",
+      "source": "batch_2026_02_21"
+    },
+    {
+      "address": "5pKHfK6j1jnFDtp52CrRuXKfxmK8EtKzMfHQXS8bUv7e",
+      "label": "WHALE_30",
+      "active": true,
+      "added": "2026-02-21T02:26:38.621439+00:00",
+      "source": "batch_2026_02_21"
+    },
+    {
+      "address": "3RCvGzXgDFuYUMJ4USYfLiK2GQj4KPt5WQaS5Zoai6NW",
+      "label": "WHALE_31",
+      "active": true,
+      "added": "2026-02-21T02:26:38.621439+00:00",
+      "source": "batch_2026_02_21"
+    },
+    {
+      "address": "9L3JCvJPdPMPRJESSuBCXRmZQmE7fFZm6JGRWRfHHWGw",
+      "label": "WHALE_32",
+      "active": true,
+      "added": "2026-02-21T02:26:38.621439+00:00",
+      "source": "batch_2026_02_21"
+    },
+    {
+      "address": "Gu7Xzs5X6PUQh9vzz1vup8iM2ayMXPrLwBXJaEq1TLcF",
+      "label": "WHALE_33",
+      "active": true,
+      "added": "2026-02-21T02:26:38.621439+00:00",
+      "source": "batch_2026_02_21"
+    },
+    {
+      "address": "7cUeTKcKguzKEXrJJgNoDvuRH4fB8KzKCEPZYnTnmZVk",
+      "label": "WHALE_34",
+      "active": true,
+      "added": "2026-02-21T02:26:38.621439+00:00",
+      "source": "batch_2026_02_21"
+    },
+    {
+      "address": "FJM6NG4dCt5FYZ1pG6Cd5QiwGbA9eQr5RMdcwFbBtLM1",
+      "label": "WHALE_35",
+      "active": true,
+      "added": "2026-02-21T02:26:38.621439+00:00",
+      "source": "batch_2026_02_21"
+    },
+    {
+      "address": "GWcNHbEyW2vr4dX8MQPX9Fy2pKPgYf9rjcEVfJE97Vd5",
+      "label": "WHALE_36",
+      "active": true,
+      "added": "2026-02-21T02:26:38.621439+00:00",
+      "source": "batch_2026_02_21"
+    },
+    {
+      "address": "7YmWiukJLHXVGJNbU5qvwLhubuLhBxBn9aCJUoQVGm1t",
+      "label": "WHALE_37",
+      "active": true,
+      "added": "2026-02-21T02:26:38.621439+00:00",
+      "source": "batch_2026_02_21"
+    },
+    {
+      "address": "G6uBEMQXTiNE7v5dQiwBWrPuUHAEg2PKiNxvYfNsMGbR",
+      "label": "WHALE_38",
+      "active": true,
+      "added": "2026-02-21T02:26:38.621439+00:00",
+      "source": "batch_2026_02_21"
+    },
+    {
+      "address": "8j9PyAKBbdwMXF7kWKPLfyFmRpzuJKYKWQV6uXevJNbp",
+      "label": "WHALE_39",
+      "active": true,
+      "added": "2026-02-21T02:26:38.621439+00:00",
+      "source": "batch_2026_02_21"
+    },
+    {
+      "address": "HXdZNa9T2gun8fVHDzahxKo1JNTkwK3KW4qkFLvq9Ls3",
+      "label": "WHALE_40",
+      "active": true,
+      "added": "2026-02-21T02:26:38.621439+00:00",
+      "source": "batch_2026_02_21"
+    },
+    {
+      "address": "BdnrwxpWKFEGqVKTWhSWcPUeRPZzmyXgWqzbd7pxY7gf",
+      "label": "WHALE_41",
+      "active": true,
+      "added": "2026-02-21T02:26:38.621439+00:00",
+      "source": "batch_2026_02_21"
+    },
+    {
+      "address": "4qX4c9UJLcAG6YQynjvK9XMwK1SRxi9C8F5JNmG1VK4w",
+      "label": "WHALE_42",
+      "active": true,
+      "added": "2026-02-21T02:26:38.621439+00:00",
+      "source": "batch_2026_02_21"
+    },
+    {
+      "address": "AwKiJCZWvxhZLAk6PNXjArcCCuwRqy8SJNyYG8W2vXzQ",
+      "label": "WHALE_43",
+      "active": true,
+      "added": "2026-02-21T02:26:38.621439+00:00",
+      "source": "batch_2026_02_21"
+    },
+    {
+      "address": "8Fy9Yx7RPPYpKQcWFNz9P5GSFf4fk3NK2STuVkMXR6D3",
+      "label": "WHALE_44",
+      "active": true,
+      "added": "2026-02-21T02:26:38.621439+00:00",
+      "source": "batch_2026_02_21"
+    },
+    {
+      "address": "5hFCLNqUMnJXQKUH9TxBgpTfyUzBEqMrRF16e9SHsGbk",
+      "label": "WHALE_45",
+      "active": true,
+      "added": "2026-02-21T02:26:38.621439+00:00",
+      "source": "batch_2026_02_21"
+    },
+    {
+      "address": "DA8N3VRRGBYiHbvgSRK8tFyJfhEJn57GqzZ3CuTPWJC3",
+      "label": "WHALE_46",
+      "active": true,
+      "added": "2026-02-21T02:26:38.621439+00:00",
+      "source": "batch_2026_02_21"
+    },
+    {
+      "address": "DV7NZK1Z5YdcvXQvqzP4E2NYngPpXkxLTnxtUfnmygUR",
+      "label": "WHALE_47",
+      "active": true,
+      "added": "2026-02-21T02:26:38.621439+00:00",
+      "source": "batch_2026_02_21"
+    },
+    {
+      "address": "H1qPZKKjLpMdT8nDhwjq6zWs874kLpz68YiRHQQu4cVA",
+      "label": "WHALE_48",
+      "active": true,
+      "added": "2026-02-21T02:26:38.621439+00:00",
+      "source": "batch_2026_02_21"
+    },
+    {
+      "address": "BwR3J3u5q2SLdsoK5X2dTnbTKW8UGcQTAHgY1gU2r5Sf",
+      "label": "WHALE_49",
+      "active": true,
+      "added": "2026-02-21T02:26:38.621439+00:00",
+      "source": "batch_2026_02_21"
+    },
+    {
+      "address": "3mdkCATqQPDjiqXosQeTfjMAJ2MhQVuPMK9ycsaHLAYr",
+      "label": "WHALE_50",
+      "active": true,
+      "added": "2026-02-21T02:26:38.621439+00:00",
+      "source": "batch_2026_02_21"
+    },
+    {
+      "address": "Gwb6V4A3XBSbZ5PYQFzLGnwLYBXrcs4qDCb7vwZ7bxg2",
+      "label": "WHALE_51",
+      "active": true,
+      "added": "2026-02-21T02:26:38.621439+00:00",
+      "source": "batch_2026_02_21"
+    },
+    {
+      "address": "2PiNrnd4D4RCXUPXQTTxM3yvwPFo6TwYBv47KTWsXJ3Z",
+      "label": "WHALE_52",
+      "active": true,
+      "added": "2026-02-21T02:26:38.621439+00:00",
+      "source": "batch_2026_02_21"
+    },
+    {
+      "address": "FLLF9CzNKNzRndQifjELGHLmHLhVLTQKvjrytYCe22pM",
+      "label": "WHALE_53",
+      "active": true,
+      "added": "2026-02-21T02:26:38.621439+00:00",
+      "source": "batch_2026_02_21"
+    },
+    {
+      "address": "ERPZfRmrGszrLY1D5jgAYo6cUKk4pkJxH6wfvUvfJBa8",
+      "label": "WHALE_54",
+      "active": true,
+      "added": "2026-02-21T02:26:38.621439+00:00",
+      "source": "batch_2026_02_21"
+    },
+    {
+      "address": "6M71znvhDSni7MWbnYCKrEPgGzQbU5BUDHPzUWj8poQR",
+      "label": "WHALE_55",
+      "active": true,
+      "added": "2026-02-21T02:26:38.621439+00:00",
+      "source": "batch_2026_02_21"
+    },
+    {
+      "address": "7h5iRZhMxADvsKmcH3QNQXALUcHUAoAKZvnzeLBs81qd",
+      "label": "WHALE_56",
+      "active": true,
+      "added": "2026-02-21T02:26:38.621439+00:00",
+      "source": "batch_2026_02_21"
+    },
+    {
+      "address": "GJSQvFb6At8MK8qdVinJXzdyZ9wdQyJvGpxCCHyGbgwx",
+      "label": "WHALE_57",
+      "active": true,
+      "added": "2026-02-21T02:26:38.621439+00:00",
+      "source": "batch_2026_02_21"
+    },
+    {
+      "address": "7JKd2eRTmihSLThQsD2wuCxMhpK6WcvQPBXA8vCs6DNW",
+      "label": "WHALE_58",
+      "active": true,
+      "added": "2026-02-21T02:26:38.621439+00:00",
+      "source": "batch_2026_02_21"
+    },
+    {
+      "address": "H8jt9bGSFXG7JzCDUThfG1ZfSjXQH9Z5PJH2zSvZKzfE",
+      "label": "WHALE_59",
+      "active": true,
+      "added": "2026-02-21T02:26:38.621439+00:00",
+      "source": "batch_2026_02_21"
+    },
+    {
+      "address": "AyLr6zkqmkz9o1FZo3A3j1k8HrXuC8QGi58LFnA8aLJd",
+      "label": "WHALE_60",
+      "active": true,
+      "added": "2026-02-21T02:26:38.621439+00:00",
+      "source": "batch_2026_02_21"
+    },
+    {
+      "address": "CpXfrBiBXp5r9vJJwLNHs3D4zbfDjcLDcQL22EWkW6jM",
+      "label": "WHALE_61",
+      "active": true,
+      "added": "2026-02-21T02:26:38.621439+00:00",
+      "source": "batch_2026_02_21"
+    },
+    {
+      "address": "DxWWGXcxBfCatP3AHMefQB8nQeUKznukcm9wSCGD49nG",
+      "label": "WHALE_62",
+      "active": true,
+      "added": "2026-02-21T02:26:38.621439+00:00",
+      "source": "batch_2026_02_21"
+    },
+    {
+      "address": "7PH5hzuMhL3fJgVgvjUbCb964FmJfYQU2Y3qFTuuVN4S",
+      "label": "WHALE_63",
+      "active": true,
+      "added": "2026-02-21T02:26:38.621439+00:00",
+      "source": "batch_2026_02_21"
+    },
+    {
+      "address": "DKuSaZ18CPGCGz2ZRUVEe8AJz5VZN4aKLWy4CxnCbLSS",
+      "label": "WHALE_64",
+      "active": true,
+      "added": "2026-02-21T02:26:38.621439+00:00",
+      "source": "batch_2026_02_21"
+    },
+    {
+      "address": "DRQrCwBHvWp8zvw8PxgJYGvqLfvvSzWJqv7DG3k7N5JY",
+      "label": "WHALE_65",
+      "active": true,
+      "added": "2026-02-21T02:26:38.621439+00:00",
+      "source": "batch_2026_02_21"
+    },
+    {
+      "address": "6cYfxdvXbKqAZNzxsHfvh5PYMXezRLAdEXeieepXhT73",
+      "label": "WHALE_66",
+      "active": true,
+      "added": "2026-02-21T02:26:38.621439+00:00",
+      "source": "batch_2026_02_21"
+    },
+    {
+      "address": "Bf9YTsNmDtpBFXkX2JbL6qSLUGXT68wNc5F5mwEAu1Fw",
+      "label": "WHALE_67",
+      "active": true,
+      "added": "2026-02-21T02:26:38.621439+00:00",
+      "source": "batch_2026_02_21"
+    },
+    {
+      "address": "BJD9gqngmQY1Vt3YeK5LEfUjL1gQbkQhZpCuBspHcbAS",
+      "label": "WHALE_68",
+      "active": true,
+      "added": "2026-02-21T02:26:38.621439+00:00",
+      "source": "batch_2026_02_21"
+    },
+    {
+      "address": "9cjxgJKd8BhJRFvuycQE9GyPhuFm7EeEQ8tVgaxkFrTh",
+      "label": "WHALE_69",
+      "active": true,
+      "added": "2026-02-21T02:26:38.621439+00:00",
+      "source": "batch_2026_02_21"
+    },
+    {
+      "address": "EeFZnSVBDZeX3qCLZktRDDX37FvjZfmzAyLRyYQfXMqo",
+      "label": "WHALE_70",
+      "active": true,
+      "added": "2026-02-21T02:26:38.621439+00:00",
+      "source": "batch_2026_02_21"
+    },
+    {
+      "address": "5T1VSQ1WMFuMrzhNGGbHiQY4Q7tHzFTNsXbvskFqEAhv",
+      "label": "WHALE_71",
+      "active": true,
+      "added": "2026-02-21T02:26:38.621439+00:00",
+      "source": "batch_2026_02_21"
+    },
+    {
+      "address": "9pnZLQBGGkP4Q6YCQwcdKfGVzpJpVUYNLY6q9RVL3RZR",
+      "label": "WHALE_72",
+      "active": true,
+      "added": "2026-02-21T02:26:38.621439+00:00",
+      "source": "batch_2026_02_21"
+    },
+    {
+      "address": "AoiLGjmLMVHMvqXPQk3KFTh2FsHmgbQXs5fjjNhxSxbg",
+      "label": "WHALE_73",
+      "active": true,
+      "added": "2026-02-21T02:26:38.621439+00:00",
+      "source": "batch_2026_02_21"
+    },
+    {
+      "address": "FnK3QmzFb1GYfkWRAEMJhowKeeyZpdB5yaDUUfgmyxRK",
+      "label": "WHALE_74",
+      "active": true,
+      "added": "2026-02-21T02:26:38.621439+00:00",
+      "source": "batch_2026_02_21"
     }
   ],
-  "last_updated": "2026-02-19T17:51:31.355301+00:00",
+  "last_updated": "2026-02-21T02:26:38.621439+00:00",
   "description": "Active whale wallets synced from seed list",
-  "total_count": 13
+  "total_count": 74
 }
