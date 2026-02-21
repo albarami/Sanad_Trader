@@ -178,8 +178,8 @@ paper_profiles:
 
 # Cold Path (Async Analysis)
 cold_path:
-  model: "anthropic/claude-opus-4-6"
-  judge_model: "openai/gpt-5.2"
+  model: "claude-haiku-4-5-20251001"  # Direct Anthropic API (no prefix)
+  judge_model: "gpt-5.2"  # Direct OpenAI API (no prefix)
   timeout_seconds: 300
   max_retries: 3
   parallel_bull_bear: true
