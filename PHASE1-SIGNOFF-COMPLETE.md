@@ -51,13 +51,26 @@ def apply_live_threshold_overlay(th):
     return th
 ```
 
-### Startup Invariant:
+### Startup Invariants:
+
+**1. Threshold Safety Check:**
 ```python
 if MODE == "LIVE":
     if trust < 60 or confidence < 50 or sanad < 60:
         print("❌ FATAL: LIVE mode with unsafe thresholds")
         sys.exit(1)
 ```
+
+**2. Mode Coherence Check (Al-Muḥāsibī operational caveat):**
+```python
+def verify_mode_coherence():
+    """Ensure SYSTEM_MODE matches portfolio.mode"""
+    if portfolio_mode == "LIVE" and system_mode != "LIVE":
+        print("❌ FATAL: Mode coherence violation!")
+        sys.exit(1)  # Prevents LIVE portfolio with PAPER config
+```
+
+This prevents the configuration failure mode where a LIVE portfolio runs with `SYSTEM_MODE=PAPER`, which would bypass the LIVE overlay and use relaxed thresholds.
 
 ### Verification:
 
@@ -169,3 +182,30 @@ Phase 1 is approved for both PAPER learning operation and LIVE-readiness. The sy
 **Status:** ✅ **PHASE 1 COMPLETE - READY FOR PHASE 2**
 
 **Signed:** Al-Muḥāsibī, 2026-02-21 08:02 GMT+8
+
+---
+
+## 🛡️ Mode Coherence Invariant (Al-Muḥāsibī Operational Caveat)
+
+### Issue:
+LIVE overlay only applies when `SYSTEM_MODE=LIVE`. If a LIVE portfolio runs with `SYSTEM_MODE=PAPER` (or unset), it bypasses the overlay and uses relaxed thresholds (35/30/40).
+
+### Solution:
+**Mode coherence check at startup:**
+- Compares `SYSTEM_MODE` env var to `portfolio.json` mode
+- If `portfolio.mode=LIVE` but `SYSTEM_MODE≠LIVE` → **ABORT (fail-closed)**
+- Prevents configuration mismatch that would compromise LIVE safety
+
+### Verification:
+```
+✅ PAPER/PAPER: MODE COHERENCE OK
+✅ LIVE/LIVE: MODE COHERENCE OK  
+❌ LIVE portfolio + PAPER env: FATAL (abort as designed)
+```
+
+### Result:
+LIVE safety now **provably fail-closed**. Even if someone forgets to set `SYSTEM_MODE=LIVE`, the system refuses to start rather than execute with relaxed thresholds.
+
+---
+
+**Updated:** 2026-02-21 08:15 GMT+8 (added mode coherence invariant)
