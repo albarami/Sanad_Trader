@@ -2416,8 +2416,49 @@ def stage_7_execute(signal, sanad_result, strategy_result, bull_result, bear_res
                 decision_record
             )
             
+            # Fallback: fetch live price if not in decision data
             if not current_price or current_price <= 0:
-                raise ValueError(f"No valid price available: {current_price}")
+                token_sym = signal.get("token", "")
+                print(f"  ⚠️ No price in decision data for {token_sym} — fetching live price...")
+                
+                # Try Binance first (CEX tokens)
+                try:
+                    binance_symbol = token_sym.upper() + "USDT"
+                    ticker = binance_client.get_ticker_24h(binance_symbol)
+                    if ticker and ticker.get("lastPrice"):
+                        current_price = float(ticker["lastPrice"])
+                        print(f"  📊 Binance price for {binance_symbol}: ${current_price:,.6f}")
+                except Exception as e:
+                    print(f"  Binance price fetch failed: {e}")
+                
+                # Try Birdeye for DEX tokens if Binance failed
+                if (not current_price or current_price <= 0) and signal.get("chain") == "solana":
+                    try:
+                        address = signal.get("address") or signal.get("contract_address")
+                        if address:
+                            from birdeye_client import get_token_price
+                            birdeye_price = get_token_price(address)
+                            if birdeye_price and birdeye_price > 0:
+                                current_price = birdeye_price
+                                print(f"  📊 Birdeye price: ${current_price:,.6f}")
+                    except Exception as e:
+                        print(f"  Birdeye price fetch failed: {e}")
+                
+                # Try signal price fields as absolute last resort
+                if not current_price or current_price <= 0:
+                    for key in ["current_price_usd", "current_price", "price_usd"]:
+                        val = signal.get(key)
+                        if val and isinstance(val, (int, float)) and val > 0:
+                            current_price = val
+                            print(f"  📊 Signal field {key}: ${current_price:,.6f}")
+                            break
+                
+                if not current_price or current_price <= 0:
+                    print(f"  ❌ Cannot determine price for {signal.get('token')} — rejecting (not crashing)")
+                    decision_record["final_action"] = "REJECT"
+                    decision_record["rejection_reason"] = f"No price available for {signal.get('token')}"
+                    decision_record["execution"] = {"error": "No price available", "detail": "All price sources returned None"}
+                    return decision_record
             
             liquidity_usd = token_profile.get("liquidity_usd")
             

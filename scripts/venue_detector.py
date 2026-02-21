@@ -137,9 +137,11 @@ def get_price_from_decision_data(signal: dict, strategy_result: dict = None, dec
             return strat_price
     
     if signal:
-        signal_price = signal.get("price")
-        if signal_price and signal_price > 0:
-            return signal_price
+        # Try multiple price field names (different sources use different keys)
+        for price_key in ["price", "current_price", "current_price_usd", "lastPrice", "price_usd"]:
+            signal_price = signal.get(price_key)
+            if signal_price and isinstance(signal_price, (int, float)) and signal_price > 0:
+                return signal_price
     
     return None
 
