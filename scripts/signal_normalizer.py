@@ -176,18 +176,27 @@ PROVIDERS = {
     "coingecko": ["coingecko", "cg", "gecko"],
     "dexscreener": ["dexscreener", "dex", "screener"],
     "birdeye": ["birdeye", "bird"],
-    "onchain": ["onchain", "helius", "solscan", "whale_tracker"],
+    "onchain": ["onchain", "whale_tracker", "whale_distribution", "whale_accumulation"],
     "telegram": ["telegram", "tg", "ct"],
     "sentiment": ["sentiment", "fud", "hype"],
     "pumpfun": ["pumpfun", "pump"],
     "binance": ["binance", "bnb", "cex", "majors_scanner"],
 }
 
+# Enrichers: NOT signal sources, should be logged separately
+ENRICHERS = {
+    "solscan": ["solscan", "solscan:holders", "solscan:verified"],
+    "rugcheck": ["rugcheck", "rugcheck:score"],
+    "helius": ["helius"],
+}
+
 VARIANTS = {
     "trending": ["trending", "trend", "hot"],
     "boost": ["boost", "boosted", "promoted"],
     "gainers": ["gainers", "gainer", "winner", "top"],
-    "whale_alert": ["whale", "whale_alert", "whale_tracker", "large_tx"],
+    "whale_distribution": ["whale_distribution", "distribution"],
+    "whale_accumulation": ["whale_accumulation", "accumulation"],
+    "whale_alert": ["whale_alert", "large_tx"],
     "new_listing": ["new_listing", "new", "launch", "ilo"],
     "community_takeover": ["community_takeover", "cto", "takeover"],
     "meme_radar": ["meme_radar", "meme", "radar"],
@@ -289,3 +298,68 @@ if __name__ == "__main__":
     for src in test_sources:
         result = canonical_source(src)
         print(f"{src} → {result['source_key']}")
+
+
+# ═════════════════════════════════════════════════════════
+# PART 3: MULTI-SOURCE + ENRICHER SEPARATION
+# ═════════════════════════════════════════════════════════
+
+def parse_attribution(signal_dict: Dict) -> Dict[str, any]:
+    """
+    Parse signal → structured attribution for learning.
+    
+    Returns:
+        {
+            "source_primary": "birdeye:trending",
+            "sources_used": ["birdeye:trending", "coingecko:trending"],
+            "enrichers_used": ["solscan:holders", "rugcheck:score"],
+            "source_raw": "Birdeye trending (top10=22%)"
+        }
+    """
+    raw_source = signal_dict.get("source", "")
+    
+    # Primary source from canonicalization
+    canonical = canonical_source(raw_source)
+    source_primary = canonical.get("source_key", "unknown:general")
+    
+    # Multi-source parsing (if cross_source_count exists)
+    sources_used = [source_primary]
+    cross_count = signal_dict.get("cross_source_count", 0)
+    if cross_count > 1:
+        # TODO: Parse actual cross-source list when available
+        # For now, just mark that multiple sources were involved
+        pass
+    
+    # Detect enrichers from signal metadata
+    enrichers_used = []
+    
+    # Check for Solscan enrichment
+    if signal_dict.get("holder_count", 0) > 0 or signal_dict.get("holder_concentration"):
+        enrichers_used.append("solscan:holders")
+    
+    if signal_dict.get("solscan_verified"):
+        enrichers_used.append("solscan:verified")
+    
+    # Check for Rugcheck enrichment  
+    if signal_dict.get("rugcheck_score") is not None:
+        enrichers_used.append("rugcheck:score")
+    
+    if signal_dict.get("rugcheck_flags"):
+        enrichers_used.append("rugcheck:flags")
+    
+    return {
+        "source_primary": source_primary,
+        "sources_used": sources_used,
+        "enrichers_used": enrichers_used,
+        "source_raw": raw_source
+    }
+
+
+def is_enricher(source_string: str) -> bool:
+    """Check if a source string is an enricher (not a signal source)."""
+    lower = source_string.lower()
+    for enricher_family, aliases in ENRICHERS.items():
+        for alias in aliases:
+            if alias in lower:
+                return True
+    return False
