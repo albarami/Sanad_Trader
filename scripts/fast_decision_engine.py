@@ -494,12 +494,13 @@ def build_policy_packet(signal: dict, strategy_data: dict, price: float, runtime
             "trust_score": signal.get("rugcheck_score", 0),
         },
         
-        # Market data (Gate 7 checks slippage)
+        # Market data (Gate 7 checks slippage, Gate 9 checks volatility)
         "market_data": {
             "estimated_slippage_bps": 50,  # Conservative default
             "spread_bps": 10,
             "liquidity_usd": signal.get("liquidity_usd", 0),
             "volume_24h": signal.get("volume_24h", 0),
+            "price_change_pct_window": signal.get("price_30min_change_pct", 0),  # Gate 9
         },
         
         # Trade details
