@@ -55,16 +55,12 @@ except Exception as e:
 MODEL = COLD_PATH_CONFIG.get("model", "claude-haiku-4-5-20251001")
 JUDGE_MODEL = COLD_PATH_CONFIG.get("judge_model", "gpt-5.2")
 TIMEOUT_SECONDS = COLD_PATH_CONFIG.get("timeout_seconds", 300)
-MAX_RETRIES = COLD_PATH_CONFIG.get("max_retries", 3)
+MAX_ATTEMPTS = COLD_PATH_CONFIG.get("max_attempts", 4)
 PARALLEL_BULL_BEAR = COLD_PATH_CONFIG.get("parallel_bull_bear", True)
 CATASTROPHIC_THRESHOLD = COLD_PATH_CONFIG.get("catastrophic_confidence_threshold", 85)
 
-# FIX B: Exact backoff schedule
-RETRY_DELAYS = {
-    1: 300,   # 5 minutes
-    2: 900,   # 15 minutes
-    3: 3600,  # 60 minutes
-}
+# Backoff schedule: attempt 1 fails → +300s, attempt 2 fails → +900s, attempt 3 fails → +3600s
+RETRY_DELAYS = [300, 900, 3600]
 
 
 # ─────────────────────────────────────────────
@@ -171,9 +167,7 @@ def claim_task(task_id: str) -> dict:
     """
     Atomically claim task by updating status to RUNNING.
     
-    FIX B: Atomic claim + authoritative DB attempts value
-    
-    Returns task dict with authoritative DB values if claimed, else None.
+    Returns task dict with authoritative DB attempts value from atomic claim, or None.
     """
     try:
         with get_connection() as conn:
@@ -195,7 +189,7 @@ def claim_task(task_id: str) -> dict:
             if cursor.rowcount == 0:
                 return None
             
-            # Fetch authoritative DB values AFTER claim
+            # Fetch authoritative DB attempts value in same connection/transaction window
             row = conn.execute("""
                 SELECT task_id, entity_id, task_type, attempts, created_at
                 FROM async_tasks
@@ -206,7 +200,7 @@ def claim_task(task_id: str) -> dict:
                 return None
             
             task = dict(row)
-            _log(f"Claimed task {task_id} (attempt {task['attempts']})")
+            _log(f"Claimed task {task_id} (attempt {task['attempts']} of {MAX_ATTEMPTS})")
             return task
             
     except Exception as e:
@@ -239,23 +233,22 @@ def mark_task_failed(task_id: str, error_code: str, error_msg: str, attempts: in
     """
     Mark task as FAILED or schedule retry.
     
-    FIX B: Use authoritative attempts value from claim.
-    FIX C: Store error code for debugging.
+    Uses authoritative attempts value from claim.
     
     Backoff schedule:
-    - attempts == 1 → +300s
-    - attempts == 2 → +900s
-    - attempts == 3 → +3600s
-    - attempts >= 4 → FAILED permanently
+    - attempt 1 fails → retry in 300s (5m)
+    - attempt 2 fails → retry in 900s (15m)
+    - attempt 3 fails → retry in 3600s (60m)
+    - attempt 4 fails → FAILED permanently
     """
     try:
         with get_connection() as conn:
             now_iso = datetime.now(timezone.utc).isoformat()
+            full_error = f"{error_code}: {error_msg}"
             
-            # Determine if permanently failed
-            if attempts >= MAX_RETRIES:
+            # Check if we've exhausted all attempts
+            if attempts >= MAX_ATTEMPTS:
                 # Final failure
-                full_error = f"{error_code}: {error_msg}"
                 conn.execute("""
                     UPDATE async_tasks
                     SET status = 'FAILED',
@@ -265,22 +258,24 @@ def mark_task_failed(task_id: str, error_code: str, error_msg: str, attempts: in
                 """, (full_error, now_iso, task_id))
                 _log(f"Task {task_id} FAILED permanently after {attempts} attempts ({error_code})")
                 
-                # Mark position as permanently failed
+                # Mark position as permanently failed (if exists)
                 row = conn.execute("SELECT entity_id FROM async_tasks WHERE task_id = ?", (task_id,)).fetchone()
                 if row:
-                    conn.execute("""
-                        UPDATE positions
-                        SET risk_flag = 'FLAG_ASYNC_FAILED_PERMANENT'
-                        WHERE position_id = ?
-                    """, (row["entity_id"],))
-                    _log(f"Position {row['entity_id']} marked FLAG_ASYNC_FAILED_PERMANENT")
+                    # Check if position exists before updating
+                    pos_exists = conn.execute("SELECT 1 FROM positions WHERE position_id = ?", (row["entity_id"],)).fetchone()
+                    if pos_exists:
+                        conn.execute("""
+                            UPDATE positions
+                            SET risk_flag = 'FLAG_ASYNC_FAILED_PERMANENT'
+                            WHERE position_id = ?
+                        """, (row["entity_id"],))
+                        _log(f"Position {row['entity_id']} marked FLAG_ASYNC_FAILED_PERMANENT")
             else:
-                # Schedule retry with exact backoff
-                delay_sec = RETRY_DELAYS.get(attempts, RETRY_DELAYS[3])
+                # Schedule retry with backoff (attempts is 1-indexed)
+                delay_sec = RETRY_DELAYS[attempts - 1]
                 next_run = datetime.now(timezone.utc) + timedelta(seconds=delay_sec)
                 next_run_iso = next_run.isoformat()
                 
-                full_error = f"{error_code}: {error_msg}"
                 conn.execute("""
                     UPDATE async_tasks
                     SET status = 'PENDING',
@@ -289,7 +284,7 @@ def mark_task_failed(task_id: str, error_code: str, error_msg: str, attempts: in
                         updated_at = ?
                     WHERE task_id = ?
                 """, (full_error, next_run_iso, now_iso, task_id))
-                _log(f"Task {task_id} retry scheduled in {delay_sec}s (attempt {attempts}/{MAX_RETRIES}, {error_code})")
+                _log(f"Task {task_id} retry scheduled in {delay_sec}s (attempt {attempts}/{MAX_ATTEMPTS}, {error_code})")
             
             conn.commit()
     except Exception as e:

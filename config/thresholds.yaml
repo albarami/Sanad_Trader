@@ -181,6 +181,6 @@ cold_path:
   model: "claude-haiku-4-5-20251001"  # Direct Anthropic API (no prefix)
   judge_model: "gpt-5.2"  # Direct OpenAI API (no prefix)
   timeout_seconds: 300
-  max_retries: 3
+  max_attempts: 4  # Total attempts: 1st try + 3 retries (5m/15m/60m)
   parallel_bull_bear: true
   catastrophic_confidence_threshold: 85
