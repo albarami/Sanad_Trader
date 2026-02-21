@@ -691,6 +691,43 @@ def _run_router_impl():
         _save_json_atomic(ROUTER_STATE_PATH, state)
         return
 
+    # --- Load rejection cooldown state (P0-3: deduplication) ---
+    rejection_cooldown_path = STATE_DIR / "rejection_cooldown.json"
+    rejection_cooldown = {}
+    if rejection_cooldown_path.exists():
+        try:
+            rejection_cooldown = json.loads(rejection_cooldown_path.read_text())
+        except:
+            pass
+    
+    # Filter out recently rejected tokens (6h cooldown)
+    cooldown_hours = 6
+    cutoff_time = (now - timedelta(hours=cooldown_hours)).isoformat()
+    pre_cooldown_count = len(all_signals)
+    
+    filtered_signals = []
+    for sig in all_signals:
+        token = sig.get("token", "").upper()
+        source = sig.get("source", sig.get("_origin", "unknown"))
+        cooldown_key = f"{token}:{source}"
+        
+        last_reject_time = rejection_cooldown.get(cooldown_key)
+        if last_reject_time and last_reject_time > cutoff_time:
+            _log(f"  Cooldown: skipping {token} (rejected {last_reject_time[:16]})")
+            continue
+        
+        filtered_signals.append(sig)
+    
+    all_signals = filtered_signals
+    if pre_cooldown_count > len(all_signals):
+        _log(f"Rejection cooldown: {pre_cooldown_count} → {len(all_signals)} signals ({pre_cooldown_count - len(all_signals)} filtered)")
+    
+    if not all_signals:
+        _log("No signals after cooldown filter.")
+        state["last_run"] = now_str
+        _save_json_atomic(ROUTER_STATE_PATH, state)
+        return
+
     # --- Load system state ---
     open_tokens = _load_open_tokens()
     cooldowns = _load_cooldown_tokens()
@@ -1320,6 +1357,15 @@ def _run_router_impl():
         daily_runs = state["daily_pipeline_runs"]
         _log(f"Daily runs: {daily_runs}/{MAX_DAILY_RUNS}")
 
+        # --- Record rejection in cooldown state (P0-3) ---
+        if pipeline_action in ("REJECT", "REVISE", "TIMEOUT", "ERROR"):
+            try:
+                cooldown_key = f"{selected_token}:{selected.get('source', selected.get('_origin', 'unknown'))}"
+                rejection_cooldown[cooldown_key] = now_str
+                _save_json_atomic(rejection_cooldown_path, rejection_cooldown)
+            except Exception as e:
+                _log(f"Rejection cooldown update failed: {e}")
+        
         # --- Counterfactual tracking for rejections ---
         # Record rejected signals so we can check later what we missed
         if pipeline_action in ("REJECT", "REVISE", "TIMEOUT", "ERROR"):

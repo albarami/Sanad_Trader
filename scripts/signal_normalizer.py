@@ -165,7 +165,58 @@ def normalize_signal(raw: dict, source_hint: str = "") -> dict | None:
     if not canonical["token"] or not canonical["source"]:
         return None
 
+    # P1-2: Infer direction if missing
+    if not canonical.get("direction") or canonical["direction"] == "LONG":
+        canonical["direction"] = infer_direction(canonical)
+
     return canonical
+
+
+def infer_direction(signal: dict) -> str:
+    """
+    P1-2: Infer LONG/SHORT from signal context + regime.
+    
+    Rules:
+    1. Explicit direction takes precedence
+    2. Whale distribution → SHORT
+    3. BEAR regime + down-trending majors → SHORT
+    4. Meme pump in bear → SHORT (fade)
+    5. Default → LONG
+    """
+    # Explicit direction
+    if signal.get("direction") and signal["direction"] != "LONG":
+        return signal["direction"]
+    
+    source = signal.get("source", "").lower()
+    token = signal.get("token", "").upper()
+    price_change_24h = signal.get("price_change_24h", 0)
+    volume_24h = signal.get("volume_24h", 0)
+    
+    # Whale distribution → SHORT
+    if "distribution" in source:
+        return "SHORT"
+    
+    # Load regime
+    try:
+        regime_path = Path(BASE_DIR) / "state" / "active_regime_profile.json"
+        if regime_path.exists():
+            regime_data = json.loads(regime_path.read_text())
+            regime_tag = regime_data.get("regime", "UNKNOWN")
+            
+            # BEAR regime logic
+            if regime_tag in ("BEAR", "BEAR_HIGH_VOL"):
+                # Majors down-trending → SHORT opportunity
+                if token in ("BTC", "ETH", "SOL", "BNB", "XRP", "ADA", "DOGE") and price_change_24h < -3:
+                    return "SHORT"
+                
+                # Meme pump in bear → fade (SHORT)
+                if price_change_24h > 50 and volume_24h < 1_000_000:
+                    return "SHORT"
+    except:
+        pass
+    
+    # Default: LONG
+    return "LONG"
 
 
 # ═════════════════════════════════════════════════════════

@@ -1399,6 +1399,30 @@ def stage_3_strategy_match(signal, sanad_result, profile=None):
     simple_tier = TIER_MAP.get(profile.asset_tier, "TIER_3") if profile else "TIER_3"
     eligible_by_tier = get_eligible_strategies(profile, regime_tag) if profile else []
     
+    # P1-1: Load regime profile and filter avoid_strategies
+    regime_avoid = []
+    regime_size_modifier = 1.0
+    try:
+        regime_profile_path = STATE_DIR / "active_regime_profile.json"
+        if regime_profile_path.exists():
+            regime_prof = json.load(open(regime_profile_path))
+            regime_avoid = regime_prof.get("profile", {}).get("avoid_strategies", [])
+            regime_size_mod_profile = regime_prof.get("profile", {}).get("position_sizing", {}).get("base_position_pct")
+            if regime_size_mod_profile:
+                # Normalize to multiplier (assume 2.0% baseline)
+                regime_size_modifier = regime_size_mod_profile / 2.0
+            if regime_avoid:
+                print(f"  Regime {regime_prof.get('regime')}: avoiding {regime_avoid}, size_mod={regime_size_modifier:.2f}")
+    except Exception as e:
+        print(f"  Regime profile load failed: {e}")
+    
+    # Remove avoided strategies
+    if regime_avoid and eligible_by_tier:
+        pre_filter_count = len(eligible_by_tier)
+        eligible_by_tier = [s for s in eligible_by_tier if s not in regime_avoid]
+        if len(eligible_by_tier) < pre_filter_count:
+            print(f"  Post-regime filter: {eligible_by_tier} (removed {pre_filter_count - len(eligible_by_tier)})")
+    
     if eligible_by_tier:
         print(f"  Eligible strategies by tier: {eligible_by_tier}")
     else:
@@ -1516,8 +1540,8 @@ def stage_3_strategy_match(signal, sanad_result, profile=None):
         max_pct = THRESHOLDS["sizing"].get("live_max_position_pct", THRESHOLDS["sizing"]["max_position_pct"])
     position_pct = min(position_pct, max_pct)
 
-    # ── Regime-adjusted position sizing ──
-    regime_size_modifier = regime_data.get("implications", {}).get("position_size_modifier", 1.0)
+    # ── Regime-adjusted position sizing (P1-1: use loaded regime_size_modifier) ──
+    # regime_size_modifier already loaded from active_regime_profile.json above
     # Paper mode: floor the regime modifier so sizing stays meaningful
     regime_floor = THRESHOLDS.get("sizing", {}).get("paper_regime_floor", 0.3)
     if THRESHOLDS.get("mode", "paper") == "paper":
@@ -2638,6 +2662,7 @@ def _add_position(signal, strategy_result, order, sanad_result, bull_result=None
             "execution_mode": execution_mode,  # Track if this is a REVISE probe
             "status": "OPEN",
             "opened_at": datetime.now(timezone.utc).isoformat(),
+            "max_hold_hours": strategy_result.get("exit_rules", {}).get("max_hold_hours"),
         }
         pos_list.append(new_position)
         positions["positions"] = pos_list

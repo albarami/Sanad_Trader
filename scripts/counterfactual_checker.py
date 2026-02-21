@@ -67,23 +67,38 @@ def run():
 
     try:
         from binance_client import get_price
+        from birdeye_client import get_token_price
     except ImportError:
-        _log("binance_client not available — skipping")
+        _log("Price clients not available — skipping")
         return
 
+    # P1-3: Batch process oldest 50 unchecked entries
+    unchecked = []
     for r in rejections:
         if r.get("checked"):
             continue
+        
+        try:
+            rejected_at = datetime.fromisoformat(r["rejected_at"])
+            age_hours = (now - rejected_at).total_seconds() / 3600
+            if age_hours >= min_age_hours:
+                unchecked.append((age_hours, r))
+        except:
+            pass
+    
+    # Sort by age (oldest first) and take top 50
+    unchecked.sort(reverse=True, key=lambda x: x[0])
+    batch_to_check = [r for age, r in unchecked[:50]]
+    
+    _log(f"Found {len(unchecked)} unchecked (>{min_age_hours}h old), processing batch of {len(batch_to_check)}")
 
-        # Parse rejection time
+    for r in batch_to_check:
         try:
             rejected_at = datetime.fromisoformat(r["rejected_at"])
         except Exception:
             continue
 
         age_hours = (now - rejected_at).total_seconds() / 3600
-        if age_hours < min_age_hours:
-            continue
 
         # Get current price
         entry_price = r.get("price_at_rejection")
@@ -93,12 +108,26 @@ def run():
             r["verdict"] = "NO_PRICE"
             continue
 
+        # Try Binance first, fallback to Birdeye for DEX tokens
+        current = None
         try:
             current = get_price(r["symbol"])
-            if not current:
-                continue
-            current = float(current)
-        except Exception:
+            if current:
+                current = float(current)
+        except:
+            pass
+        
+        if not current:
+            try:
+                # Try Birdeye for DEX tokens
+                token = r.get("token", "")
+                birdeye_data = get_token_price(token)
+                if birdeye_data and "price" in birdeye_data:
+                    current = float(birdeye_data["price"])
+            except:
+                pass
+        
+        if not current:
             continue
 
         pnl_pct = ((current - entry_price) / entry_price) * 100
@@ -167,7 +196,12 @@ def run():
     else:
         _log("No checked rejections with price data yet")
 
-    _log(f"=== CHECK COMPLETE: {checked_count} new checks ===")
+    # P1-3: Log completion percentage
+    total_rejections = len(rejections)
+    total_checked = sum(1 for r in rejections if r.get("checked"))
+    completion_pct = (total_checked / total_rejections * 100) if total_rejections > 0 else 0
+    
+    _log(f"=== CHECK COMPLETE: {checked_count} new checks, completion: {total_checked}/{total_rejections} ({completion_pct:.1f}%) ===")
 
 
 if __name__ == "__main__":
