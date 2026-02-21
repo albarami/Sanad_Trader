@@ -1280,8 +1280,23 @@ Return your analysis as valid JSON with these exact keys:
     # Hard blocks override everything
     rugpull_flags = sanad_result.get("rugpull_flags", [])
     sybil_risk = sanad_result.get("sybil_risk", "LOW")
+    
+    # Detect paper mode
+    _sanad_paper_mode = False
+    try:
+        _sanad_paper_mode = json.load(open(STATE_DIR / "portfolio.json")).get("mode", "paper") == "paper"
+    except Exception:
+        _sanad_paper_mode = True  # Fail to paper (safe default)
+    
     if rugpull_flags:
-        recommendation = "BLOCK"
+        if _sanad_paper_mode and not sanad_result.get("hard_gate"):
+            # Paper mode + soft LLM flags only (hard gates already returned BLOCK earlier)
+            # Downgrade to CAUTION — let the system learn from borderline meme coins
+            recommendation = "CAUTION"
+            print(f"  ⚠️ PAPER MODE: {len(rugpull_flags)} LLM flags downgraded to CAUTION (flags: {rugpull_flags[:3]})")
+        else:
+            # Live mode OR hard gate confirmed: zero tolerance
+            recommendation = "BLOCK"
     elif sybil_risk == "HIGH":
         recommendation = "BLOCK"
     elif trust_score >= 80:
@@ -3131,9 +3146,10 @@ def run_pipeline(signal):
     sc_rugpull = sanad_result.get("rugpull_flags", [])
 
     if _sc_paper:
-        # Paper mode: only short-circuit on rugpull flags or trust below paper threshold
+        # Paper mode: respect recommendation (CAUTION from downgraded flags should pass through)
+        # Only short-circuit if recommendation is BLOCK AND trust is below threshold
         sc_threshold = THRESHOLDS["sanad"]["minimum_trade_score"]  # 15
-        should_short_circuit = bool(sc_rugpull) or sc_trust < sc_threshold
+        should_short_circuit = (sc_rec == "BLOCK") and (sc_trust < sc_threshold or sanad_result.get("hard_gate"))
     else:
         # Live mode: short-circuit whenever Sanad says BLOCK
         should_short_circuit = sc_rec == "BLOCK"
