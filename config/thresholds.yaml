@@ -100,21 +100,25 @@ scoring:
   live_min_trust_score: 70
 strategies:
   meme-momentum:
-    max_hold_hours: 72
-    trailing_stop_pct: 0.05
-    take_profit_pct: 0.20
+    max_hold_hours: 6
+    trailing_stop_pct: 0.02
+    take_profit_pct: 0.08
   whale-following:
-    max_hold_hours: 168
-    trailing_stop_pct: 0.08
-    take_profit_pct: 0.30
+    max_hold_hours: 8
+    trailing_stop_pct: 0.02
+    take_profit_pct: 0.06
   cex-listing-play:
-    max_hold_hours: 120
-    trailing_stop_pct: 0.10
-    take_profit_pct: 0.25
-  sentiment-divergence:
-    max_hold_hours: 48
+    max_hold_hours: 8
     trailing_stop_pct: 0.03
-    take_profit_pct: 0.15
+    take_profit_pct: 0.08
+  sentiment-divergence:
+    max_hold_hours: 6
+    trailing_stop_pct: 0.02
+    take_profit_pct: 0.06
+  early-launch:
+    max_hold_hours: 4
+    trailing_stop_pct: 0.03
+    take_profit_pct: 0.10
   live_min_confidence_score: 60
   paper_min_trust_score: 10
 execution:

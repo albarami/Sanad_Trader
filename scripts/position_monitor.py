@@ -291,6 +291,7 @@ def check_time_exit(position):
     """Exit Condition D: Time-based exit using strategy > Bull's timeframe > tier defaults."""
     opened_at = parse_dt(position["opened_at"])
     hold_hours = (now_utc() - opened_at).total_seconds() / 3600
+    bull_timeframe = position.get("bull_timeframe", "")
     
     # Priority 1: Strategy-specific max_hold_hours
     strategy_cfg = _get_strategy_config(position)
@@ -298,7 +299,6 @@ def check_time_exit(position):
         max_hold = strategy_cfg["max_hold_hours"]
     else:
         # Priority 2: Bull's timeframe if available
-        bull_timeframe = position.get("bull_timeframe", "")
         asset_tier = position.get("asset_tier", "TIER_3_MICRO")
         
         try:
@@ -315,7 +315,7 @@ def check_time_exit(position):
             max_hold = tier_defaults.get(asset_tier, MAX_HOLD_HOURS)
     
     if hold_hours > max_hold:
-        return True, "TIME_EXIT", f"Position open {hold_hours:.1f}h > {max_hold}h (from Bull: '{bull_timeframe}')"
+        return True, "TIME_EXIT", f"Position open {hold_hours:.1f}h > {max_hold}h (from strategy)"
     return False, None, None
 
 
