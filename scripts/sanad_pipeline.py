@@ -1974,13 +1974,26 @@ A paper loss of $50 that teaches the system a pattern is worth more than a paper
 
     judge_result = _parse_json_response(judge_response) if judge_response else None
     if not judge_result:
-        # Fail-closed: if judge can't render verdict, REJECT
-        print("  FAIL-CLOSED: Al-Muhasbi returned no parseable verdict → REJECT")
-        return {
-            "verdict": "REJECT",
-            "confidence_score": 0,
-            "reasoning": "Al-Muhasbi API failure — fail closed, when in doubt REJECT",
-        }, None
+        # Parsing failure: treat like timeout (check paper mode)
+        if _judge_paper:
+            # Paper mode: downgrade to REVISE probe for learning
+            print("  📊 PAPER FALLBACK: Judge parse failure → REVISE probe")
+            judge_result = {
+                "verdict": "REVISE",
+                "confidence_score": 45,
+                "reasoning": "Judge parse failure — paper fallback to REVISE probe",
+                "inferred_confidence": True,
+                "judge_parse_failure": True,
+            }
+            return judge_result, None
+        else:
+            # Live mode: fail closed
+            print("  🔒 FAIL CLOSED: Al-Muhasbi parse failure in LIVE mode → REJECT")
+            return {
+                "verdict": "REJECT",
+                "confidence_score": 0,
+                "reasoning": "Al-Muhasbi API failure — fail closed, when in doubt REJECT",
+            }, None
 
     verdict = judge_result.get("verdict", "REJECT")
     confidence = judge_result.get("confidence_score", 0) or 0
