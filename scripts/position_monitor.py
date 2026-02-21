@@ -629,25 +629,27 @@ def close_position(position, current_price, reason, detail=""):
         import traceback
         traceback.print_exc()
 
-    # ── v3.1 Learning Loop (trigger-on-close) ──
-    # Updates Thompson Sampling + UCB1 stats from realized outcome.
-    # Non-blocking: if this fails, learning_status stays PENDING and cron picks it up.
+    # ── v3.1 SQLite Close + Learning Loop ──
+    # 1. Ensure position exists in SQLite (v3.0→v3.1 bridge) and close it
+    # 2. Trigger learning loop for Thompson/UCB1 stats update
+    # Non-blocking: if anything fails, learning_status stays PENDING and cron picks it up.
     try:
         import state_store
-        # Close in SQLite (sets learning_status='PENDING')
-        state_store.update_position_close(position.get("id", ""), {
+        state_store.init_db()
+        position_id = state_store.ensure_and_close_position(position, {
             "exit_price": current_price,
             "exit_reason": reason,
             "pnl_usd": net_pnl_usd,
             "pnl_pct": pnl_pct,
         })
+        print(f"    SQLite: position {position_id[:8]}... CLOSED (learning_status=PENDING)")
         # Immediately attempt learning
         import learning_loop
-        learning_loop.process_closed_position(position.get("id", ""))
+        learning_loop.process_closed_position(position_id)
         print(f"    Learning Loop: stats updated (DONE)")
     except Exception as e:
         # Non-blocking: cron fallback will process PENDING positions
-        print(f"    Learning Loop: deferred to cron ({e})")
+        print(f"    SQLite/Learning: deferred to cron ({e})")
 
     return net_pnl_usd
 

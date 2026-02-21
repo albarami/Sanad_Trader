@@ -390,6 +390,87 @@ def update_position_close(position_id: str, exit_payload: dict):
         raise
 
 
+def ensure_and_close_position(position_dict: dict, exit_payload: dict, db_path=None):
+    """
+    Ensure a position exists in SQLite and close it.
+    
+    For v3.0→v3.1 bridge: positions opened via file-based pipeline may not
+    exist in SQLite yet. This upserts the position then closes it, setting
+    learning_status='PENDING' for the learning loop.
+    
+    Args:
+        position_dict: Position data from positions.json (must have 'id' or 'position_id')
+        exit_payload: dict with exit_price, exit_reason, pnl_usd, pnl_pct
+    
+    Returns: position_id
+    """
+    now_iso = datetime.now(timezone.utc).isoformat()
+    position_id = position_dict.get("position_id") or position_dict.get("id", "")
+    if not position_id:
+        raise ValueError("Position has no id/position_id")
+    
+    _db = db_path or DB_PATH
+    try:
+        with get_connection(_db) as conn:
+            # Check if position exists
+            existing = conn.execute(
+                "SELECT position_id FROM positions WHERE position_id = ?",
+                (position_id,)
+            ).fetchone()
+            
+            if not existing:
+                # Insert from file-based data (v3.0 bridge)
+                conn.execute("""
+                    INSERT OR IGNORE INTO positions (
+                        position_id, decision_id, signal_id, created_at, updated_at,
+                        status, token_address, chain, strategy_id, entry_price,
+                        size_usd, regime_tag, source_primary
+                    ) VALUES (?, ?, ?, ?, ?, 'OPEN', ?, ?, ?, ?, ?, ?, ?)
+                """, (
+                    position_id,
+                    position_dict.get("decision_id", f"legacy_{position_id[:16]}"),
+                    position_dict.get("signal_id", f"legacy_sig_{position_id[:16]}"),
+                    position_dict.get("opened_at", now_iso),
+                    now_iso,
+                    position_dict.get("token_address", position_dict.get("token", "UNKNOWN")),
+                    position_dict.get("chain", "unknown"),
+                    position_dict.get("strategy_name", position_dict.get("strategy_id", "unknown")),
+                    position_dict.get("entry_price", 0),
+                    position_dict.get("position_usd", position_dict.get("size_usd", 0)),
+                    position_dict.get("regime_tag", "unknown"),
+                    position_dict.get("source_primary", position_dict.get("signal_source_canonical", "unknown")),
+                ))
+            
+            # Now close it
+            conn.execute("""
+                UPDATE positions SET
+                    status = 'CLOSED',
+                    updated_at = ?,
+                    exit_price = ?,
+                    exit_reason = ?,
+                    closed_at = ?,
+                    pnl_usd = ?,
+                    pnl_pct = ?,
+                    learning_status = 'PENDING',
+                    learning_updated_at = ?,
+                    learning_error = NULL
+                WHERE position_id = ?
+            """, (
+                now_iso,
+                exit_payload["exit_price"],
+                exit_payload["exit_reason"],
+                now_iso,
+                exit_payload["pnl_usd"],
+                exit_payload["pnl_pct"],
+                now_iso,
+                position_id
+            ))
+        
+        return position_id
+    except DBBusyError:
+        raise
+
+
 def get_open_positions(db_conn=None):
     """Get all open positions."""
     if db_conn:
