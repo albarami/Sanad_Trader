@@ -10,7 +10,7 @@ Polls async_tasks table for PENDING tasks and processes them:
 Updates positions.async_analysis_json with results.
 
 Author: Sanad Trader v3.1
-Ticket 4 FIX v2: Strict JSON contracts, consistent attempts, debuggable failures
+Ticket 4 v4: Race-safe state transitions, authoritative attempts, RUNNING guards
 """
 
 import json
@@ -27,6 +27,9 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 from state_store import get_connection, DBBusyError
 import llm_client
+
+# Test mode: set ASYNC_TEST_MODE=1 to add deliberate sleep after claim
+TEST_MODE = os.environ.get("ASYNC_TEST_MODE") == "1"
 
 # ─────────────────────────────────────────────
 # CONFIGURATION
@@ -51,15 +54,19 @@ except Exception as e:
     print(f"ERROR: Failed to load config: {e}")
     sys.exit(1)
 
-# Cold path settings
+# Cold path settings — single source of truth
 MODEL = COLD_PATH_CONFIG.get("model", "claude-haiku-4-5-20251001")
 JUDGE_MODEL = COLD_PATH_CONFIG.get("judge_model", "gpt-5.2")
 TIMEOUT_SECONDS = COLD_PATH_CONFIG.get("timeout_seconds", 300)
-MAX_ATTEMPTS = COLD_PATH_CONFIG.get("max_attempts", 4)
+MAX_ATTEMPTS = COLD_PATH_CONFIG.get("max_attempts", 4)  # Total: 1st try + 3 retries
 PARALLEL_BULL_BEAR = COLD_PATH_CONFIG.get("parallel_bull_bear", True)
 CATASTROPHIC_THRESHOLD = COLD_PATH_CONFIG.get("catastrophic_confidence_threshold", 85)
 
-# Backoff schedule: attempt 1 fails → +300s, attempt 2 fails → +900s, attempt 3 fails → +3600s
+# Backoff schedule (indexed by attempts_now - 1):
+#   attempts_now == 1 → RETRY_DELAYS[0] = 300s
+#   attempts_now == 2 → RETRY_DELAYS[1] = 900s
+#   attempts_now == 3 → RETRY_DELAYS[2] = 3600s
+#   attempts_now >= 4 → FAILED
 RETRY_DELAYS = [300, 900, 3600]
 
 
@@ -80,11 +87,7 @@ def _log(msg: str):
 
 
 def _dump_raw_llm(task_id: str, stage: str, raw_text: str):
-    """
-    Dump raw LLM response to file for debugging.
-    
-    FIX C: Operational telemetry for parse failures
-    """
+    """Dump raw LLM response to file for debugging."""
     try:
         filename = LLM_RAW_DIR / f"{stage}_{task_id}.txt"
         with open(filename, "w") as f:
@@ -121,7 +124,7 @@ except Exception as e:
     sys.exit(1)
 
 
-# FIX A1: Strict JSON contract suffix
+# Strict JSON contract suffix appended to all prompts
 JSON_CONTRACT = """
 
 CRITICAL OUTPUT FORMAT:
@@ -132,21 +135,30 @@ The JSON object must match the schema provided above exactly.
 
 
 # ─────────────────────────────────────────────
-# TASK PROCESSING
+# TASK STATE MACHINE
+#
+# State transitions (all guarded by current status):
+#   PENDING  → RUNNING   (claim_task: atomic UPDATE WHERE status='PENDING')
+#   RUNNING  → DONE      (mark_task_done: UPDATE WHERE status='RUNNING')
+#   RUNNING  → PENDING   (mark_task_failed retry: UPDATE WHERE status='RUNNING')
+#   RUNNING  → FAILED    (mark_task_failed final: UPDATE WHERE status='RUNNING')
+#
+# Attempts lifecycle:
+#   - Incremented ONLY in claim_task (attempts := attempts + 1)
+#   - NEVER incremented in mark_task_failed or process_task
+#   - All downstream code uses attempts_now from claim SELECT
 # ─────────────────────────────────────────────
 
 def poll_pending_tasks():
     """
     Poll async_tasks for PENDING tasks ready to run.
-    
-    Returns list of task dicts.
+    Returns list of task_id strings (NOT full task dicts — those come from claim).
     """
     try:
         with get_connection() as conn:
             now_iso = datetime.now(timezone.utc).isoformat()
             rows = conn.execute("""
-                SELECT task_id, entity_id, task_type, 
-                       attempts, created_at, next_run_at
+                SELECT task_id
                 FROM async_tasks
                 WHERE status = 'PENDING'
                   AND next_run_at <= ?
@@ -154,7 +166,7 @@ def poll_pending_tasks():
                 LIMIT 10
             """, (now_iso,)).fetchall()
             
-            return [dict(row) for row in rows]
+            return [row["task_id"] for row in rows]
     except DBBusyError:
         _log("DB busy during poll, will retry next cycle")
         return []
@@ -165,15 +177,16 @@ def poll_pending_tasks():
 
 def claim_task(task_id: str) -> dict:
     """
-    Atomically claim task by updating status to RUNNING.
+    Atomically claim task: PENDING → RUNNING, attempts += 1.
     
-    Returns task dict with authoritative DB attempts value from atomic claim, or None.
+    Returns authoritative task dict (with post-increment attempts) or None.
+    The returned dict is the ONLY source of truth for attempts_now.
     """
     try:
         with get_connection() as conn:
             now_iso = datetime.now(timezone.utc).isoformat()
             
-            # Atomic update: increment attempts, set RUNNING
+            # Atomic claim: only succeeds if PENDING and ready
             cursor = conn.execute("""
                 UPDATE async_tasks
                 SET status = 'RUNNING',
@@ -189,7 +202,7 @@ def claim_task(task_id: str) -> dict:
             if cursor.rowcount == 0:
                 return None
             
-            # Fetch authoritative DB attempts value in same connection/transaction window
+            # Immediately read authoritative row in same connection
             row = conn.execute("""
                 SELECT task_id, entity_id, task_type, attempts, created_at
                 FROM async_tasks
@@ -201,6 +214,12 @@ def claim_task(task_id: str) -> dict:
             
             task = dict(row)
             _log(f"Claimed task {task_id} (attempt {task['attempts']} of {MAX_ATTEMPTS})")
+            
+            # Test mode: sleep 2s after claim to prove RUNNING state is observable
+            if TEST_MODE:
+                _log(f"[TEST_MODE] Sleeping 2s after claim — task is RUNNING in DB")
+                time.sleep(2)
+            
             return task
             
     except Exception as e:
@@ -209,12 +228,14 @@ def claim_task(task_id: str) -> dict:
 
 
 def mark_task_done(task_id: str):
-    """Mark task as DONE."""
+    """
+    Mark task as DONE. Guarded by status='RUNNING'.
+    """
     try:
         with get_connection() as conn:
             now_iso = datetime.now(timezone.utc).isoformat()
             
-            conn.execute("""
+            cursor = conn.execute("""
                 UPDATE async_tasks
                 SET status = 'DONE',
                     updated_at = ?,
@@ -224,44 +245,52 @@ def mark_task_done(task_id: str):
             """, (now_iso, task_id))
             
             conn.commit()
-            _log(f"Task {task_id} marked DONE")
+            
+            if cursor.rowcount == 0:
+                _log(f"WARNING: mark_task_done({task_id}) — task was not RUNNING (race?)")
+            else:
+                _log(f"Task {task_id} marked DONE")
     except Exception as e:
         _log(f"Error marking task {task_id} done: {e}")
 
 
-def mark_task_failed(task_id: str, error_code: str, error_msg: str, attempts: int):
+def mark_task_failed(task_id: str, error_code: str, error_msg: str, attempts_now: int):
     """
-    Mark task as FAILED or schedule retry.
+    Mark task as retry-PENDING or FAILED. Guarded by status='RUNNING'.
     
-    Uses authoritative attempts value from claim.
+    attempts_now is the authoritative post-claim value from DB.
+    It is NOT incremented here — only claim_task increments attempts.
     
-    Backoff schedule:
-    - attempt 1 fails → retry in 300s (5m)
-    - attempt 2 fails → retry in 900s (15m)
-    - attempt 3 fails → retry in 3600s (60m)
-    - attempt 4 fails → FAILED permanently
+    Schedule:
+      attempts_now == 1 → retry in 300s
+      attempts_now == 2 → retry in 900s
+      attempts_now == 3 → retry in 3600s
+      attempts_now >= 4 → FAILED permanently
     """
     try:
         with get_connection() as conn:
             now_iso = datetime.now(timezone.utc).isoformat()
             full_error = f"{error_code}: {error_msg}"
             
-            # Check if we've exhausted all attempts
-            if attempts >= MAX_ATTEMPTS:
-                # Final failure
-                conn.execute("""
+            if attempts_now >= MAX_ATTEMPTS:
+                # Permanent failure — RUNNING → FAILED
+                cursor = conn.execute("""
                     UPDATE async_tasks
                     SET status = 'FAILED',
                         last_error = ?,
                         updated_at = ?
                     WHERE task_id = ?
+                      AND status = 'RUNNING'
                 """, (full_error, now_iso, task_id))
-                _log(f"Task {task_id} FAILED permanently after {attempts} attempts ({error_code})")
+                
+                if cursor.rowcount == 0:
+                    _log(f"WARNING: mark_task_failed({task_id}) — task was not RUNNING (race?)")
+                else:
+                    _log(f"Task {task_id} FAILED permanently after {attempts_now} attempts ({error_code})")
                 
                 # Mark position as permanently failed (if exists)
                 row = conn.execute("SELECT entity_id FROM async_tasks WHERE task_id = ?", (task_id,)).fetchone()
                 if row:
-                    # Check if position exists before updating
                     pos_exists = conn.execute("SELECT 1 FROM positions WHERE position_id = ?", (row["entity_id"],)).fetchone()
                     if pos_exists:
                         conn.execute("""
@@ -271,20 +300,25 @@ def mark_task_failed(task_id: str, error_code: str, error_msg: str, attempts: in
                         """, (row["entity_id"],))
                         _log(f"Position {row['entity_id']} marked FLAG_ASYNC_FAILED_PERMANENT")
             else:
-                # Schedule retry with backoff (attempts is 1-indexed)
-                delay_sec = RETRY_DELAYS[attempts - 1]
+                # Retry — RUNNING → PENDING with backoff
+                delay_sec = RETRY_DELAYS[attempts_now - 1]
                 next_run = datetime.now(timezone.utc) + timedelta(seconds=delay_sec)
                 next_run_iso = next_run.isoformat()
                 
-                conn.execute("""
+                cursor = conn.execute("""
                     UPDATE async_tasks
                     SET status = 'PENDING',
                         last_error = ?,
                         next_run_at = ?,
                         updated_at = ?
                     WHERE task_id = ?
+                      AND status = 'RUNNING'
                 """, (full_error, next_run_iso, now_iso, task_id))
-                _log(f"Task {task_id} retry scheduled in {delay_sec}s (attempt {attempts}/{MAX_ATTEMPTS}, {error_code})")
+                
+                if cursor.rowcount == 0:
+                    _log(f"WARNING: mark_task_failed({task_id}) — task was not RUNNING (race?)")
+                else:
+                    _log(f"Task {task_id} retry scheduled in {delay_sec}s (attempt {attempts_now}/{MAX_ATTEMPTS}, {error_code})")
             
             conn.commit()
     except Exception as e:
@@ -292,22 +326,16 @@ def mark_task_failed(task_id: str, error_code: str, error_msg: str, attempts: in
 
 
 # ─────────────────────────────────────────────
-# ANALYSIS FUNCTIONS (FIX A: Strict JSON contracts)
+# ANALYSIS FUNCTIONS (Strict JSON contracts)
 # ─────────────────────────────────────────────
 
 def run_sanad_verification(position_data: dict, signal_payload: dict, task_id: str) -> dict:
-    """
-    Run Sanad verification (rugpull, sybil, trust).
-    
-    FIX A1: Strict JSON contract in prompt
-    FIX A2: Robust extraction + validation
-    """
+    """Run Sanad verification (rugpull, sybil, trust)."""
     position_id = position_data.get('position_id', '?')
     token_symbol = position_data.get('token_address', '?')
     
     _log(f"Running Sanad verification for position {position_id}")
     
-    # Build user message with explicit schema
     user_msg = f"""
 Token: {position_data.get('token_address')}
 Chain: {position_data.get('chain')}
@@ -327,48 +355,33 @@ Required JSON schema:
 }}
 """
     
-    try:
-        raw = llm_client.call_claude(
-            SANAD_PROMPT + JSON_CONTRACT,
-            user_msg,
-            model=MODEL,
-            max_tokens=2000,
-            stage="cold_sanad",
-            token_symbol=token_symbol
-        )
-        
-        if not raw:
-            raise RuntimeError("Sanad API call returned None")
-        
-        # FIX A2: Extract and validate
-        parsed = llm_client.extract_json_object(raw)
-        if not parsed:
-            _dump_raw_llm(task_id, "sanad", raw)
-            raise ValueError("Failed to extract JSON from Sanad response")
-        
-        # Validate required fields
-        if "trust_score" not in parsed:
-            _dump_raw_llm(task_id, "sanad", raw)
-            raise ValueError("Sanad JSON missing trust_score")
-        
-        return {
-            "raw": raw[:500] + "..." if len(raw) > 500 else raw,  # Truncate for storage
-            "parsed": parsed,
-            "model": MODEL,
-            "timestamp": datetime.now(timezone.utc).isoformat()
-        }
-    except Exception as e:
-        _log(f"Sanad verification error: {e}")
-        raise
+    raw = llm_client.call_claude(
+        SANAD_PROMPT + JSON_CONTRACT, user_msg,
+        model=MODEL, max_tokens=2000, stage="cold_sanad", token_symbol=token_symbol
+    )
+    
+    if not raw:
+        raise RuntimeError("Sanad API call returned None")
+    
+    parsed = llm_client.extract_json_object(raw)
+    if not parsed:
+        _dump_raw_llm(task_id, "sanad", raw)
+        raise ValueError("Failed to extract JSON from Sanad response")
+    
+    if "trust_score" not in parsed:
+        _dump_raw_llm(task_id, "sanad", raw)
+        raise ValueError("Sanad JSON missing trust_score")
+    
+    return {
+        "raw": raw[:500] + ("..." if len(raw) > 500 else ""),
+        "parsed": parsed,
+        "model": MODEL,
+        "timestamp": datetime.now(timezone.utc).isoformat()
+    }
 
 
 def run_bull_analysis(signal_payload: dict, token_symbol: str, task_id: str) -> dict:
-    """
-    Run Bull argument (pro-trade).
-    
-    FIX A1: Strict JSON contract in prompt
-    FIX A2: Robust extraction + validation
-    """
+    """Run Bull argument (pro-trade)."""
     _log("Running Bull analysis")
     
     user_msg = f"""
@@ -385,48 +398,33 @@ Required JSON schema:
 }}
 """
     
-    try:
-        raw = llm_client.call_claude(
-            BULL_PROMPT + JSON_CONTRACT,
-            user_msg,
-            model=MODEL,
-            max_tokens=2000,
-            stage="cold_bull",
-            token_symbol=token_symbol
-        )
-        
-        if not raw:
-            raise RuntimeError("Bull API call returned None")
-        
-        # FIX A2: Extract and validate
-        parsed = llm_client.extract_json_object(raw)
-        if not parsed:
-            _dump_raw_llm(task_id, "bull", raw)
-            raise ValueError("Failed to extract JSON from Bull response")
-        
-        # Validate required fields
-        if "verdict" not in parsed or "confidence" not in parsed:
-            _dump_raw_llm(task_id, "bull", raw)
-            raise ValueError("Bull JSON missing verdict or confidence")
-        
-        return {
-            "raw": raw[:500] + "..." if len(raw) > 500 else raw,
-            "parsed": parsed,
-            "model": MODEL,
-            "timestamp": datetime.now(timezone.utc).isoformat()
-        }
-    except Exception as e:
-        _log(f"Bull analysis error: {e}")
-        raise
+    raw = llm_client.call_claude(
+        BULL_PROMPT + JSON_CONTRACT, user_msg,
+        model=MODEL, max_tokens=2000, stage="cold_bull", token_symbol=token_symbol
+    )
+    
+    if not raw:
+        raise RuntimeError("Bull API call returned None")
+    
+    parsed = llm_client.extract_json_object(raw)
+    if not parsed:
+        _dump_raw_llm(task_id, "bull", raw)
+        raise ValueError("Failed to extract JSON from Bull response")
+    
+    if "verdict" not in parsed or "confidence" not in parsed:
+        _dump_raw_llm(task_id, "bull", raw)
+        raise ValueError("Bull JSON missing verdict or confidence")
+    
+    return {
+        "raw": raw[:500] + ("..." if len(raw) > 500 else ""),
+        "parsed": parsed,
+        "model": MODEL,
+        "timestamp": datetime.now(timezone.utc).isoformat()
+    }
 
 
 def run_bear_analysis(signal_payload: dict, token_symbol: str, task_id: str) -> dict:
-    """
-    Run Bear argument (anti-trade).
-    
-    FIX A1: Strict JSON contract in prompt
-    FIX A2: Robust extraction + validation
-    """
+    """Run Bear argument (anti-trade)."""
     _log("Running Bear analysis")
     
     user_msg = f"""
@@ -443,49 +441,33 @@ Required JSON schema:
 }}
 """
     
-    try:
-        raw = llm_client.call_claude(
-            BEAR_PROMPT + JSON_CONTRACT,
-            user_msg,
-            model=MODEL,
-            max_tokens=2000,
-            stage="cold_bear",
-            token_symbol=token_symbol
-        )
-        
-        if not raw:
-            raise RuntimeError("Bear API call returned None")
-        
-        # FIX A2: Extract and validate
-        parsed = llm_client.extract_json_object(raw)
-        if not parsed:
-            _dump_raw_llm(task_id, "bear", raw)
-            raise ValueError("Failed to extract JSON from Bear response")
-        
-        # Validate required fields
-        if "verdict" not in parsed or "confidence" not in parsed:
-            _dump_raw_llm(task_id, "bear", raw)
-            raise ValueError("Bear JSON missing verdict or confidence")
-        
-        return {
-            "raw": raw[:500] + "..." if len(raw) > 500 else raw,
-            "parsed": parsed,
-            "model": MODEL,
-            "timestamp": datetime.now(timezone.utc).isoformat()
-        }
-    except Exception as e:
-        _log(f"Bear analysis error: {e}")
-        raise
+    raw = llm_client.call_claude(
+        BEAR_PROMPT + JSON_CONTRACT, user_msg,
+        model=MODEL, max_tokens=2000, stage="cold_bear", token_symbol=token_symbol
+    )
+    
+    if not raw:
+        raise RuntimeError("Bear API call returned None")
+    
+    parsed = llm_client.extract_json_object(raw)
+    if not parsed:
+        _dump_raw_llm(task_id, "bear", raw)
+        raise ValueError("Failed to extract JSON from Bear response")
+    
+    if "verdict" not in parsed or "confidence" not in parsed:
+        _dump_raw_llm(task_id, "bear", raw)
+        raise ValueError("Bear JSON missing verdict or confidence")
+    
+    return {
+        "raw": raw[:500] + ("..." if len(raw) > 500 else ""),
+        "parsed": parsed,
+        "model": MODEL,
+        "timestamp": datetime.now(timezone.utc).isoformat()
+    }
 
 
 def run_judge_verdict(signal_payload: dict, sanad: dict, bull: dict, bear: dict, token_symbol: str, task_id: str) -> dict:
-    """
-    Run Judge verdict (GPT reviews full evidence).
-    
-    FIX A1: Strict JSON contract in prompt
-    FIX A2: Robust extraction + validation (ESPECIALLY confidence field)
-    FIX C: Dump raw response on parse failure
-    """
+    """Run Judge verdict (GPT reviews full evidence)."""
     _log("Running Judge verdict")
     
     user_msg = f"""
@@ -517,81 +499,61 @@ Required JSON schema:
 }}
 """
     
-    try:
-        raw = llm_client.call_openai(
-            JUDGE_PROMPT + JSON_CONTRACT,
-            user_msg,
-            model=JUDGE_MODEL,
-            max_tokens=2000,
-            stage="cold_judge",
-            token_symbol=token_symbol
-        )
-        
-        if not raw:
-            raise RuntimeError("Judge API call returned None")
-        
-        # FIX A2: Extract and validate
-        parsed = llm_client.extract_json_object(raw)
-        if not parsed:
-            _dump_raw_llm(task_id, "judge", raw)
-            raise ValueError("ERR_JUDGE_PARSE: Failed to extract JSON from Judge response")
-        
-        # FIX A2: Validate REQUIRED fields (especially confidence)
-        if "verdict" not in parsed:
-            _dump_raw_llm(task_id, "judge", raw)
-            raise ValueError("ERR_JUDGE_PARSE: Judge JSON missing verdict field")
-        
-        if parsed["verdict"] not in ["APPROVE", "REJECT"]:
-            _dump_raw_llm(task_id, "judge", raw)
-            raise ValueError(f"ERR_JUDGE_PARSE: Invalid verdict value: {parsed['verdict']}")
-        
-        if "confidence" not in parsed:
-            _dump_raw_llm(task_id, "judge", raw)
-            raise ValueError("ERR_JUDGE_PARSE: Judge JSON missing confidence field")
-        
-        if not isinstance(parsed["confidence"], (int, float)):
-            _dump_raw_llm(task_id, "judge", raw)
-            raise ValueError(f"ERR_JUDGE_PARSE: Invalid confidence type: {type(parsed['confidence'])}")
-        
-        confidence = int(parsed["confidence"])
-        if not (0 <= confidence <= 100):
-            _dump_raw_llm(task_id, "judge", raw)
-            raise ValueError(f"ERR_JUDGE_PARSE: confidence out of range: {confidence}")
-        
-        # Normalize confidence to int
-        parsed["confidence"] = confidence
-        
-        return {
-            "raw": raw[:500] + "..." if len(raw) > 500 else raw,
-            "parsed": parsed,
-            "model": JUDGE_MODEL,
-            "timestamp": datetime.now(timezone.utc).isoformat()
-        }
-    except Exception as e:
-        _log(f"Judge verdict error: {e}")
-        raise
+    raw = llm_client.call_openai(
+        JUDGE_PROMPT + JSON_CONTRACT, user_msg,
+        model=JUDGE_MODEL, max_tokens=2000, stage="cold_judge", token_symbol=token_symbol
+    )
+    
+    if not raw:
+        raise RuntimeError("Judge API call returned None")
+    
+    parsed = llm_client.extract_json_object(raw)
+    if not parsed:
+        _dump_raw_llm(task_id, "judge", raw)
+        raise ValueError("ERR_JUDGE_PARSE: Failed to extract JSON from Judge response")
+    
+    if "verdict" not in parsed:
+        _dump_raw_llm(task_id, "judge", raw)
+        raise ValueError("ERR_JUDGE_PARSE: Judge JSON missing verdict field")
+    
+    if parsed["verdict"] not in ["APPROVE", "REJECT"]:
+        _dump_raw_llm(task_id, "judge", raw)
+        raise ValueError(f"ERR_JUDGE_PARSE: Invalid verdict value: {parsed['verdict']}")
+    
+    if "confidence" not in parsed:
+        _dump_raw_llm(task_id, "judge", raw)
+        raise ValueError("ERR_JUDGE_PARSE: Judge JSON missing confidence field")
+    
+    if not isinstance(parsed["confidence"], (int, float)):
+        _dump_raw_llm(task_id, "judge", raw)
+        raise ValueError(f"ERR_JUDGE_PARSE: Invalid confidence type: {type(parsed['confidence'])}")
+    
+    confidence = int(parsed["confidence"])
+    if not (0 <= confidence <= 100):
+        _dump_raw_llm(task_id, "judge", raw)
+        raise ValueError(f"ERR_JUDGE_PARSE: confidence out of range: {confidence}")
+    
+    parsed["confidence"] = confidence
+    
+    return {
+        "raw": raw[:500] + ("..." if len(raw) > 500 else ""),
+        "parsed": parsed,
+        "model": JUDGE_MODEL,
+        "timestamp": datetime.now(timezone.utc).isoformat()
+    }
 
 
-def process_task(task: dict):
+def process_task(task_id: str, entity_id: str, task_type: str, attempts_now: int):
     """
     Process a single async task.
     
-    Runs full Cold Path analysis and updates position record.
-    
-    FIX B: Use authoritative DB attempts value
-    FIX C: Error codes for debuggability
-    FIX D: Catastrophic logic from Judge JSON only
+    All parameters come from claim_task() (authoritative DB values).
+    attempts_now is the post-increment value — NEVER modified here.
     """
-    task_id = task["task_id"]
-    position_id = task["entity_id"]
-    task_type = task["task_type"]
-    attempts = task["attempts"]  # FIX B: Authoritative from DB
+    _log(f"Processing task {task_id} (type={task_type}, position={entity_id}, attempt={attempts_now})")
     
-    _log(f"Processing task {task_id} (type={task_type}, position={position_id}, attempt={attempts})")
-    
-    # Wall-clock timestamp for started_at
     started_at = datetime.now(timezone.utc).isoformat()
-    perf_start = time.perf_counter()  # Only for duration
+    perf_start = time.perf_counter()
     
     try:
         # Load position data
@@ -601,16 +563,15 @@ def process_task(task: dict):
                        size_usd, decision_id, signal_id, chain, strategy_id
                 FROM positions
                 WHERE position_id = ?
-            """, (position_id,)).fetchone()
+            """, (entity_id,)).fetchone()
             
             if not row:
-                raise ValueError(f"Position {position_id} not found")
+                raise ValueError(f"Position {entity_id} not found")
             
             position_data = dict(row)
         
         token_symbol = position_data.get("token_address", "UNKNOWN")
         
-        # Build signal payload
         signal_payload = {
             "token_address": position_data["token_address"],
             "chain": position_data["chain"],
@@ -619,7 +580,6 @@ def process_task(task: dict):
             "strategy_id": position_data["strategy_id"]
         }
         
-        # Run Cold Path analysis
         _log(f"Running Cold Path for {token_symbol}")
         
         # Step 1: Sanad verification
@@ -630,7 +590,6 @@ def process_task(task: dict):
             with ThreadPoolExecutor(max_workers=2) as executor:
                 bull_future = executor.submit(run_bull_analysis, signal_payload, token_symbol, task_id)
                 bear_future = executor.submit(run_bear_analysis, signal_payload, token_symbol, task_id)
-                
                 bull_result = bull_future.result(timeout=TIMEOUT_SECONDS)
                 bear_result = bear_future.result(timeout=TIMEOUT_SECONDS)
         else:
@@ -640,11 +599,9 @@ def process_task(task: dict):
         # Step 3: Judge verdict
         judge_result = run_judge_verdict(signal_payload, sanad_result, bull_result, bear_result, token_symbol, task_id)
         
-        # Wall-clock timestamp for completed_at
         completed_at = datetime.now(timezone.utc).isoformat()
         duration_sec = time.perf_counter() - perf_start
         
-        # Combine results
         analysis_result = {
             "sanad": sanad_result,
             "bull": bull_result,
@@ -659,7 +616,7 @@ def process_task(task: dict):
             }
         }
         
-        # FIX D: Catastrophic flagging from Judge JSON ONLY
+        # Catastrophic flagging from Judge JSON ONLY
         risk_flag = None
         judge_parsed = judge_result.get("parsed", {})
         verdict = judge_parsed.get("verdict")
@@ -672,7 +629,6 @@ def process_task(task: dict):
         # Update position record
         with get_connection() as conn:
             now_iso = datetime.now(timezone.utc).isoformat()
-            
             conn.execute("""
                 UPDATE positions
                 SET async_analysis_json = ?,
@@ -680,17 +636,13 @@ def process_task(task: dict):
                     risk_flag = COALESCE(?, risk_flag),
                     updated_at = ?
                 WHERE position_id = ?
-            """, (json.dumps(analysis_result), risk_flag, now_iso, position_id))
-            
+            """, (json.dumps(analysis_result), risk_flag, now_iso, entity_id))
             conn.commit()
         
         _log(f"Task {task_id} completed in {duration_sec:.1f}s (verdict={verdict}, confidence={confidence}%)")
-        
-        # Mark task done
         mark_task_done(task_id)
         
     except ValueError as e:
-        # Parse errors or validation failures
         error_msg = str(e)
         if "ERR_JUDGE_PARSE" in error_msg:
             error_code = "ERR_JUDGE_PARSE"
@@ -700,16 +652,13 @@ def process_task(task: dict):
             error_code = "ERR_VALIDATION"
         
         _log(f"Task {task_id} failed: {error_code}: {error_msg}")
-        mark_task_failed(task_id, error_code, error_msg, attempts)
+        mark_task_failed(task_id, error_code, error_msg, attempts_now)
         
     except Exception as e:
-        # API failures, timeouts, etc.
         _log(f"Task {task_id} failed: {e}")
         import traceback
         _log(traceback.format_exc())
-        
-        error_code = "ERR_WORKER"
-        mark_task_failed(task_id, error_code, str(e), attempts)
+        mark_task_failed(task_id, "ERR_WORKER", str(e), attempts_now)
 
 
 # ─────────────────────────────────────────────
@@ -721,27 +670,29 @@ def main():
     _log("=" * 60)
     _log(f"Async Analysis Queue Worker START (model={MODEL}, judge={JUDGE_MODEL})")
     
-    # Poll for pending tasks
-    tasks = poll_pending_tasks()
+    # Poll returns only task_ids (not full rows)
+    task_ids = poll_pending_tasks()
     
-    if not tasks:
+    if not task_ids:
         _log("No pending tasks")
         return
     
-    _log(f"Found {len(tasks)} pending task(s)")
+    _log(f"Found {len(task_ids)} pending task(s)")
     
-    # Process each task
-    for task in tasks:
-        task_id = task["task_id"]
-        
-        # Attempt to claim (returns authoritative DB values)
-        claimed_task = claim_task(task_id)
-        if not claimed_task:
+    for task_id in task_ids:
+        # Claim returns authoritative row from DB (or None)
+        claimed = claim_task(task_id)
+        if not claimed:
             _log(f"Task {task_id} not claimed (already taken or not ready)")
             continue
         
-        # Process with authoritative DB values
-        process_task(claimed_task)
+        # Pass individual fields from authoritative claim — NOT polled row
+        process_task(
+            task_id=claimed["task_id"],
+            entity_id=claimed["entity_id"],
+            task_type=claimed["task_type"],
+            attempts_now=claimed["attempts"]
+        )
     
     _log("Async Analysis Queue Worker END")
 
