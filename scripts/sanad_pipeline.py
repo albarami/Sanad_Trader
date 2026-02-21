@@ -111,7 +111,43 @@ def apply_live_threshold_overlay(th):
     
     return th
 
-# Apply LIVE overlays immediately after loading
+def apply_paper_learn_overlay(th):
+    """
+    Apply PAPER+LEARN profile overlays to enable relaxed learning thresholds.
+    
+    When SYSTEM_MODE=PAPER and PAPER_PROFILE=LEARN, overlay LEARN-specific
+    threshold values onto baseline keys so that enforcement code gets the
+    intended learning values (30/40/30) instead of baseline (35/30/40).
+    
+    This makes PAPER+LEARN work correctly without refactoring all enforcement points.
+    """
+    mode = os.getenv("SYSTEM_MODE", "PAPER").upper()
+    profile = os.getenv("PAPER_PROFILE", "STRICT").upper()
+    
+    if mode != "PAPER" or profile != "LEARN":
+        return th  # Only apply in PAPER+LEARN mode
+    
+    # Get LEARN profile overrides
+    learn = th.get("paper_profiles", {}).get("LEARN", {})
+    
+    if not learn:
+        return th  # No LEARN profile defined
+    
+    # Overlay LEARN values onto baseline keys
+    if "min_trust_score" in learn:
+        th["scoring"]["min_trust_score"] = learn["min_trust_score"]
+    if "min_confidence_score" in learn:
+        th["scoring"]["min_confidence_score"] = learn["min_confidence_score"]
+    if "min_sanad_score" in learn:
+        th["signals"]["min_sanad_score"] = learn["min_sanad_score"]
+    
+    print(f"📚 PAPER+LEARN MODE: Applied learning threshold overlays (trust={th['scoring']['min_trust_score']}, confidence={th['scoring']['min_confidence_score']}, sanad={th['signals']['min_sanad_score']})")
+    
+    return th
+
+# Apply overlays immediately after loading
+# Order matters: PAPER+LEARN first, then LIVE (LIVE takes precedence if both somehow set)
+THRESHOLDS = apply_paper_learn_overlay(THRESHOLDS)
 THRESHOLDS = apply_live_threshold_overlay(THRESHOLDS)
 
 # Startup invariant: LIVE safety check
