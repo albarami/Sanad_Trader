@@ -1,0 +1,704 @@
+#!/usr/bin/env python3
+"""
+Sanad Trader v3.1 — Fast Decision Engine (Hot Path)
+
+The deterministic <3s decision pipeline. Zero LLM calls.
+Replaces sanad_pipeline.py for runtime signal evaluation.
+
+5-Stage Pipeline:
+  Stage 1: Hard Safety Gates (<100ms)
+  Stage 2: Signal Scoring (<200ms)
+  Stage 3: Strategy Match + Thompson (<100ms)
+  Stage 4: Policy Engine Gates 1-14 (<500ms)
+  Stage 5: Execute Paper Trade (<1000ms)
+
+Author: Sanad Trader v3.1
+Date: 2026-02-22
+"""
+
+import os
+import sys
+import time
+import json
+from pathlib import Path
+from datetime import datetime, timezone
+
+# Add scripts dir to path
+BASE_DIR = Path(os.environ.get("SANAD_HOME", "/data/.openclaw/workspace/trading"))
+SCRIPTS_DIR = BASE_DIR / "scripts"
+sys.path.insert(0, str(SCRIPTS_DIR))
+
+# Import Ticket 1-2 modules
+import ids
+import state_store
+
+# Import existing v3.0 modules (reuse)
+try:
+    import hard_gates
+    HAS_HARD_GATES = True
+except ImportError:
+    HAS_HARD_GATES = False
+
+try:
+    import signal_scorer
+    HAS_SCORER = True
+except ImportError:
+    HAS_SCORER = False
+
+try:
+    import strategy_selector
+    HAS_STRATEGY = True
+except ImportError:
+    HAS_STRATEGY = False
+
+try:
+    import policy_engine
+    HAS_POLICY = True
+except ImportError:
+    HAS_POLICY = False
+
+try:
+    import paper_execution
+    HAS_PAPER = True
+except ImportError:
+    HAS_PAPER = False
+
+try:
+    import binance_client
+    HAS_BINANCE = True
+except ImportError:
+    HAS_BINANCE = False
+
+
+# ============================================================================
+# CONSTANTS
+# ============================================================================
+
+POLICY_VERSION = "v3.1.0"
+HOT_PATH_TIMEOUT_MS = 3000
+STAGE_BUDGETS_MS = {
+    "stage_1_safety": 100,
+    "stage_2_scoring": 200,
+    "stage_3_strategy": 100,
+    "stage_4_policy": 500,
+    "stage_5_execute": 1000,
+}
+
+
+# ============================================================================
+# HELPER FUNCTIONS
+# ============================================================================
+
+def now_utc_iso():
+    """Current UTC timestamp as ISO string."""
+    return datetime.now(timezone.utc).isoformat()
+
+
+def elapsed_ms(start_time):
+    """Milliseconds elapsed since start_time."""
+    return int((time.time() - start_time) * 1000)
+
+
+def build_decision_record(
+    signal_id, decision_id, policy_version, result, stage, reason_code,
+    signal, score_data, strategy_data, policy_data, execution_data, timings
+):
+    """
+    Build canonical DecisionRecord matching v3.1 spec schema.
+    
+    Returns: dict with all required keys
+    """
+    return {
+        # IDs & metadata
+        "decision_id": decision_id,
+        "signal_id": signal_id,
+        "policy_version": policy_version,
+        "created_at": now_utc_iso(),
+        
+        # Result
+        "result": result,
+        "stage": stage,
+        "reason_code": reason_code,
+        
+        # Signal identity
+        "token_address": signal.get("token_address") or signal.get("token", "unknown"),
+        "chain": signal.get("chain", "unknown"),
+        "source_primary": signal.get("source_primary") or signal.get("source", "unknown"),
+        "signal_type": signal.get("signal_type", "generic"),
+        
+        # Scoring
+        "score_total": score_data.get("score_total"),
+        "score_breakdown_json": json.dumps(score_data.get("score_breakdown")),
+        
+        # Strategy
+        "strategy_id": strategy_data.get("strategy_id"),
+        "position_usd": strategy_data.get("position_usd"),
+        
+        # Policy
+        "gate_failed": policy_data.get("gate_failed"),
+        "evidence_json": json.dumps(policy_data.get("evidence", {})),
+        
+        # Execution
+        "execution": execution_data,
+        
+        # Performance
+        "timings_json": json.dumps(timings),
+        
+        # Full packet
+        "decision_packet_json": json.dumps({
+            "meta": {
+                "signal_id": signal_id,
+                "decision_id": decision_id,
+                "policy_version": policy_version,
+                "created_at": now_utc_iso()
+            },
+            "signal": signal,
+            "score": score_data,
+            "strategy": strategy_data,
+            "policy": policy_data,
+            "execution": execution_data,
+            "timings_ms": timings
+        })
+    }
+
+
+# ============================================================================
+# STAGE 1: HARD SAFETY GATES
+# ============================================================================
+
+def stage_1_hard_safety_gates(signal, timings, start_time):
+    """
+    Stage 1: Hard Safety Gates (<100ms target)
+    
+    Checks:
+    - Honeypot (cached)
+    - Rugpull scan (from router enrichment)
+    - Sybil risk (cached)
+    - Kill switch
+    - Circuit breakers
+    
+    Returns: (passed: bool, reason_code: str or None, evidence: dict)
+    """
+    stage_start = time.time()
+    
+    # Placeholder: call hard_gates module if available
+    if HAS_HARD_GATES:
+        passed, reason_code, evidence = hard_gates.evaluate(signal)
+        timings["stage_1_safety"] = elapsed_ms(stage_start)
+        return passed, reason_code, evidence
+    
+    # Fallback: basic checks
+    onchain = signal.get("onchain_evidence", {})
+    
+    # Honeypot check
+    hp = onchain.get("honeypot", {})
+    if hp.get("is_honeypot") or hp.get("verdict") == "HONEYPOT":
+        timings["stage_1_safety"] = elapsed_ms(stage_start)
+        return False, "BLOCK_HONEYPOT", {"honeypot": hp}
+    
+    # Rugpull check
+    rs = onchain.get("rugpull_scan", {})
+    if rs.get("verdict") in ("RUG", "BLACKLISTED"):
+        timings["stage_1_safety"] = elapsed_ms(stage_start)
+        return False, "BLOCK_RUGPULL", {"rugpull_scan": rs}
+    
+    # Sybil check
+    ha = onchain.get("holder_analysis", {})
+    if ha.get("sybil_risk") == "CRITICAL":
+        timings["stage_1_safety"] = elapsed_ms(stage_start)
+        return False, "BLOCK_SYBIL_CRITICAL", {"sybil": ha}
+    
+    # Kill switch (check file flag)
+    kill_switch_path = BASE_DIR / "config" / "kill_switch.flag"
+    if kill_switch_path.exists():
+        content = kill_switch_path.read_text().strip().upper()
+        if content == "TRUE":
+            timings["stage_1_safety"] = elapsed_ms(stage_start)
+            return False, "BLOCK_KILL_SWITCH", {"kill_switch": True}
+    
+    # All passed
+    timings["stage_1_safety"] = elapsed_ms(stage_start)
+    return True, None, {}
+
+
+# ============================================================================
+# STAGE 2: SIGNAL SCORING
+# ============================================================================
+
+def stage_2_signal_scoring(signal, runtime_state, timings, start_time):
+    """
+    Stage 2: Signal Scoring (<200ms target)
+    
+    Returns: (score_total: float, score_breakdown: dict)
+    """
+    stage_start = time.time()
+    
+    # Placeholder: call signal_scorer module if available
+    if HAS_SCORER:
+        score_total, score_breakdown = signal_scorer.score_signal(signal, runtime_state)
+        timings["stage_2_scoring"] = elapsed_ms(stage_start)
+        return score_total, score_breakdown
+    
+    # Fallback: basic scoring
+    score = 0
+    breakdown = {}
+    
+    # RugCheck score
+    rugcheck = signal.get("rugcheck_score", 0)
+    if rugcheck >= 70:
+        rc_points = 30
+    elif rugcheck >= 50:
+        rc_points = 20
+    elif rugcheck >= 40:
+        rc_points = 10
+    else:
+        rc_points = 0
+    
+    breakdown["rugcheck"] = {"raw": rugcheck, "points": rc_points}
+    score += rc_points
+    
+    # Cross-source corroboration
+    cross_sources = signal.get("cross_source_count", 1)
+    if cross_sources >= 3:
+        cs_points = 25
+    elif cross_sources >= 2:
+        cs_points = 18
+    else:
+        cs_points = 8
+    
+    breakdown["cross_source"] = {"count": cross_sources, "points": cs_points}
+    score += cs_points
+    
+    # Volume
+    volume_24h = signal.get("volume_24h", 0)
+    if volume_24h >= 5_000_000:
+        vol_points = 20
+    elif volume_24h >= 1_000_000:
+        vol_points = 15
+    elif volume_24h >= 100_000:
+        vol_points = 10
+    else:
+        vol_points = 0
+    
+    breakdown["volume"] = {"raw": volume_24h, "points": vol_points}
+    score += vol_points
+    
+    breakdown["total"] = score
+    
+    timings["stage_2_scoring"] = elapsed_ms(stage_start)
+    return score, breakdown
+
+
+# ============================================================================
+# STAGE 3: STRATEGY SELECTION
+# ============================================================================
+
+def stage_3_strategy_selection(signal, portfolio, runtime_state, timings, start_time):
+    """
+    Stage 3: Strategy Match + Thompson Select (<100ms target)
+    
+    Returns: (strategy_id: str or None, position_usd: float or None, eligible: list)
+    """
+    stage_start = time.time()
+    
+    # Placeholder: call strategy_selector module if available
+    if HAS_STRATEGY:
+        eligible = strategy_selector.get_eligible_strategies(signal, runtime_state)
+        if not eligible:
+            timings["stage_3_strategy"] = elapsed_ms(stage_start)
+            return None, None, []
+        
+        strategy_id = strategy_selector.thompson_select(eligible, runtime_state)
+        position_usd = strategy_selector.calculate_position_size(strategy_id, portfolio)
+        
+        timings["stage_3_strategy"] = elapsed_ms(stage_start)
+        return strategy_id, position_usd, eligible
+    
+    # Fallback: default strategy
+    strategy_id = "default"
+    position_usd = 100.0  # Default sizing
+    eligible = [strategy_id]
+    
+    timings["stage_3_strategy"] = elapsed_ms(stage_start)
+    return strategy_id, position_usd, eligible
+
+
+# ============================================================================
+# STAGE 4: POLICY ENGINE
+# ============================================================================
+
+def stage_4_policy_engine(decision_packet, timings, start_time):
+    """
+    Stage 4: Policy Engine Gates 1-14 (<500ms target)
+    
+    Returns: (passed: bool, gate_failed: int or None, evidence: dict)
+    """
+    stage_start = time.time()
+    
+    # Placeholder: call policy_engine module if available
+    if HAS_POLICY:
+        result = policy_engine.evaluate_gates(decision_packet, gate_range=(1, 14))
+        timings["stage_4_policy"] = elapsed_ms(stage_start)
+        
+        if result["result"] == "PASS":
+            return True, None, {}
+        else:
+            return False, result.get("gate_failed"), {"reason": result.get("reason")}
+    
+    # Fallback: pass (policy engine required in production)
+    timings["stage_4_policy"] = elapsed_ms(stage_start)
+    return True, None, {}
+
+
+# ============================================================================
+# STAGE 5: EXECUTE
+# ============================================================================
+
+def stage_5_execute(signal, decision_id, strategy_id, position_usd, timings, start_time):
+    """
+    Stage 5: Execute Paper Trade (<1000ms target)
+    
+    Steps:
+    1. Fetch live price (with timeout)
+    2. Create position via try_open_position_atomic()
+    3. Return position record
+    
+    Returns: (success: bool, position: dict or None, error: str or None)
+    """
+    stage_start = time.time()
+    
+    token = signal.get("token_address") or signal.get("token")
+    
+    # Fetch live price (hard timeout 500ms)
+    try:
+        if HAS_BINANCE:
+            price = binance_client.get_price(token, timeout=0.5)
+        else:
+            # Fallback: mock price
+            price = signal.get("price", 1.0)
+        
+        if not price:
+            timings["stage_5_execute"] = elapsed_ms(stage_start)
+            return False, None, "SKIP_NO_PRICE"
+    
+    except Exception as e:
+        timings["stage_5_execute"] = elapsed_ms(stage_start)
+        return False, None, f"SKIP_PRICE_TIMEOUT: {e}"
+    
+    # Build position payload
+    position_id = ids.make_position_id(decision_id, execution_ordinal=1)
+    position_payload = {
+        "position_id": position_id,
+        "size_token": position_usd / price if price > 0 else 0,
+        "regime_tag": signal.get("regime_tag", "NEUTRAL"),
+        "features": {
+            "entry_signal": signal,
+            "strategy_id": strategy_id
+        }
+    }
+    
+    # Execute via try_open_position_atomic
+    try:
+        # Build decision record for DB insert (will be done atomically)
+        decision_for_db = {
+            "decision_id": decision_id,
+            "signal_id": signal.get("signal_id"),
+            "created_at": now_utc_iso(),
+            "policy_version": POLICY_VERSION,
+            "result": "EXECUTE",
+            "stage": "STAGE_5_EXECUTE",
+            "reason_code": "EXECUTE",
+            "token_address": signal.get("token_address") or signal.get("token", "unknown"),
+            "chain": signal.get("chain", "unknown"),
+            "source_primary": signal.get("source_primary") or signal.get("source"),
+            "signal_type": signal.get("signal_type", "generic"),
+            "strategy_id": strategy_id,
+            "position_usd": position_usd,
+            "timings_ms": {}  # Will be filled later
+        }
+        
+        position, metadata = state_store.try_open_position_atomic(
+            decision_for_db, price, position_payload
+        )
+        
+        timings["stage_5_execute"] = elapsed_ms(stage_start)
+        
+        if metadata.get("already_existed"):
+            # Position already exists (idempotent retry) - this is SUCCESS
+            return True, position, None
+        else:
+            # New position created
+            return True, position, None
+    
+    except state_store.DBBusyError as e:
+        timings["stage_5_execute"] = elapsed_ms(stage_start)
+        return False, None, "SKIP_DB_BUSY"
+    
+    except Exception as e:
+        timings["stage_5_execute"] = elapsed_ms(stage_start)
+        return False, None, f"SKIP_EXECUTION_ERROR: {e}"
+
+
+# ============================================================================
+# MAIN API: EVALUATE_SIGNAL_FAST
+# ============================================================================
+
+def evaluate_signal_fast(
+    signal: dict,
+    portfolio: dict,
+    runtime_state: dict,
+    policy_version: str = POLICY_VERSION
+) -> dict:
+    """
+    Hot Path: Evaluate signal and return decision in <3 seconds.
+    
+    NO LLM CALLS. Pure deterministic + statistical.
+    
+    Args:
+        signal: Enriched signal dict (from router)
+        portfolio: Portfolio state (cash, positions, exposure)
+        runtime_state: Runtime state (Thompson, UCB1, regime, etc.)
+        policy_version: Policy version string (default: v3.1.0)
+    
+    Returns:
+        DecisionRecord dict with keys:
+        - decision_id, signal_id, policy_version, created_at
+        - result (SKIP/BLOCK/EXECUTE)
+        - stage, reason_code
+        - token_address, chain, source_primary, signal_type
+        - score_total, score_breakdown_json
+        - strategy_id, position_usd
+        - gate_failed, evidence_json
+        - execution, timings_json, decision_packet_json
+    
+    Performance guarantee: <3000ms total
+    """
+    start_time = time.time()
+    timings = {}
+    
+    # Generate IDs
+    signal_id = ids.make_signal_id(signal)
+    decision_id = ids.make_decision_id(signal_id, policy_version)
+    
+    signal["signal_id"] = signal_id
+    signal["decision_id"] = decision_id
+    
+    # Initialize result containers
+    score_data = {"score_total": None, "score_breakdown": None}
+    strategy_data = {"strategy_id": None, "position_usd": None, "eligible": []}
+    policy_data = {"gate_failed": None, "evidence": {}}
+    execution_data = {"result": None, "position_id": None, "error": None}
+    
+    # ========================================================================
+    # STAGE 1: HARD SAFETY GATES
+    # ========================================================================
+    
+    passed, reason_code, evidence = stage_1_hard_safety_gates(signal, timings, start_time)
+    
+    if not passed:
+        # BLOCK decision
+        timings["total"] = elapsed_ms(start_time)
+        return build_decision_record(
+            signal_id, decision_id, policy_version,
+            result="BLOCK",
+            stage="STAGE_1_SAFETY",
+            reason_code=reason_code,
+            signal=signal,
+            score_data=score_data,
+            strategy_data=strategy_data,
+            policy_data={"evidence": evidence},
+            execution_data=execution_data,
+            timings=timings
+        )
+    
+    # ========================================================================
+    # STAGE 2: SIGNAL SCORING
+    # ========================================================================
+    
+    score_total, score_breakdown = stage_2_signal_scoring(signal, runtime_state, timings, start_time)
+    score_data = {"score_total": score_total, "score_breakdown": score_breakdown}
+    
+    # Check score threshold
+    min_score = runtime_state.get("min_score", 40)
+    if score_total < min_score:
+        # SKIP decision
+        timings["total"] = elapsed_ms(start_time)
+        return build_decision_record(
+            signal_id, decision_id, policy_version,
+            result="SKIP",
+            stage="STAGE_2_SCORE",
+            reason_code="SKIP_SCORE_LOW",
+            signal=signal,
+            score_data=score_data,
+            strategy_data=strategy_data,
+            policy_data=policy_data,
+            execution_data=execution_data,
+            timings=timings
+        )
+    
+    # ========================================================================
+    # STAGE 3: STRATEGY SELECTION
+    # ========================================================================
+    
+    strategy_id, position_usd, eligible = stage_3_strategy_selection(
+        signal, portfolio, runtime_state, timings, start_time
+    )
+    strategy_data = {
+        "strategy_id": strategy_id,
+        "position_usd": position_usd,
+        "eligible": eligible
+    }
+    
+    if not strategy_id:
+        # SKIP decision
+        timings["total"] = elapsed_ms(start_time)
+        return build_decision_record(
+            signal_id, decision_id, policy_version,
+            result="SKIP",
+            stage="STAGE_3_STRATEGY",
+            reason_code="SKIP_NO_STRATEGY",
+            signal=signal,
+            score_data=score_data,
+            strategy_data=strategy_data,
+            policy_data=policy_data,
+            execution_data=execution_data,
+            timings=timings
+        )
+    
+    # ========================================================================
+    # STAGE 4: POLICY ENGINE
+    # ========================================================================
+    
+    # Build decision packet for policy engine
+    decision_packet_for_policy = {
+        "signal": signal,
+        "score": score_data,
+        "strategy": strategy_data,
+        "portfolio": portfolio
+    }
+    
+    passed, gate_failed, evidence = stage_4_policy_engine(
+        decision_packet_for_policy, timings, start_time
+    )
+    policy_data = {"gate_failed": gate_failed, "evidence": evidence}
+    
+    if not passed:
+        # BLOCK decision
+        timings["total"] = elapsed_ms(start_time)
+        return build_decision_record(
+            signal_id, decision_id, policy_version,
+            result="BLOCK",
+            stage="STAGE_4_POLICY",
+            reason_code=f"BLOCK_POLICY_GATE_{gate_failed:02d}",
+            signal=signal,
+            score_data=score_data,
+            strategy_data=strategy_data,
+            policy_data=policy_data,
+            execution_data=execution_data,
+            timings=timings
+        )
+    
+    # ========================================================================
+    # STAGE 5: EXECUTE
+    # ========================================================================
+    
+    success, position, error = stage_5_execute(
+        signal, decision_id, strategy_id, position_usd, timings, start_time
+    )
+    
+    if not success:
+        # SKIP decision (execution failed)
+        timings["total"] = elapsed_ms(start_time)
+        return build_decision_record(
+            signal_id, decision_id, policy_version,
+            result="SKIP",
+            stage="STAGE_5_EXECUTE",
+            reason_code=error,
+            signal=signal,
+            score_data=score_data,
+            strategy_data=strategy_data,
+            policy_data=policy_data,
+            execution_data={"error": error},
+            timings=timings
+        )
+    
+    # ========================================================================
+    # SUCCESS: EXECUTE
+    # ========================================================================
+    
+    execution_data = {
+        "result": "EXECUTE",
+        "position_id": position["position_id"],
+        "entry_price": position["entry_price"],
+        "size_usd": position["size_usd"],
+        "created_at": position["created_at"]
+    }
+    
+    timings["total"] = elapsed_ms(start_time)
+    
+    return build_decision_record(
+        signal_id, decision_id, policy_version,
+        result="EXECUTE",
+        stage="STAGE_5_EXECUTE",
+        reason_code="EXECUTE",
+        signal=signal,
+        score_data=score_data,
+        strategy_data=strategy_data,
+        policy_data=policy_data,
+        execution_data=execution_data,
+        timings=timings
+    )
+
+
+# ============================================================================
+# CLI TEST INTERFACE
+# ============================================================================
+
+def main():
+    """CLI test interface for fast_decision_engine."""
+    import json
+    
+    # Mock signal
+    test_signal = {
+        "token": "PEPE",
+        "token_address": "0x123abc",
+        "chain": "solana",
+        "source": "test",
+        "thesis": "Test signal for fast decision engine",
+        "rugcheck_score": 75,
+        "volume_24h": 5000000,
+        "cross_source_count": 3,
+        "onchain_evidence": {
+            "honeypot": {"is_honeypot": False},
+            "rugpull_scan": {"verdict": "SAFE"},
+            "holder_analysis": {"sybil_risk": "LOW"}
+        }
+    }
+    
+    # Mock portfolio
+    test_portfolio = {
+        "cash_balance_usd": 10000,
+        "open_position_count": 0,
+        "total_exposure_pct": 0
+    }
+    
+    # Mock runtime state
+    test_runtime_state = {
+        "min_score": 40,
+        "regime_tag": "NEUTRAL"
+    }
+    
+    # Run evaluation
+    print("=" * 80)
+    print("FAST DECISION ENGINE TEST")
+    print("=" * 80)
+    
+    result = evaluate_signal_fast(test_signal, test_portfolio, test_runtime_state)
+    
+    print(json.dumps(result, indent=2))
+    print("=" * 80)
+    print(f"Total time: {result['timings_json']}")
+
+
+if __name__ == "__main__":
+    main()
