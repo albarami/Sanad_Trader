@@ -560,6 +560,23 @@ def close_position(position, current_price, reason, detail=""):
 
     # Add to trade_history.json (for Gate #13 cooldown)
     try:
+        # Extract attribution (fail-safe)
+        source_raw = position.get("signal_source_canonical", position.get("signal_source", "unknown"))
+        attribution = {"source_primary": "unknown:general", "sources_used": [], "enrichers_used": [], "source_raw": source_raw}
+        try:
+            from signal_normalizer import parse_attribution, canonical_source
+            # Construct minimal signal dict for attribution
+            signal_stub = {"source": source_raw}
+            attribution = parse_attribution(signal_stub)
+        except Exception:
+            # Fail-safe: use canonical_source
+            try:
+                from signal_normalizer import canonical_source
+                attribution["source_primary"] = canonical_source(source_raw).get("source_key", "unknown:general")
+                attribution["sources_used"] = [attribution["source_primary"]]
+            except Exception:
+                pass  # Use defaults
+        
         th_path = STATE_DIR / "trade_history.json"
         trade_history = load_json(th_path) or {"trades": []}
         trades = trade_history.get("trades", [])
@@ -573,7 +590,11 @@ def close_position(position, current_price, reason, detail=""):
             "exit_price": current_price,
             "pnl_pct": pnl_pct,
             "pnl_usd": net_pnl_usd,
-            "source": position.get("signal_source_canonical", position.get("signal_source", "unknown")),
+            "source": source_raw,  # Keep for backward compatibility
+            "source_raw": attribution["source_raw"],
+            "source_primary": attribution["source_primary"],
+            "sources_used": attribution["sources_used"],
+            "enrichers_used": attribution["enrichers_used"],
             "strategy": position.get("strategy_name", "unknown"),
             "regime_at_entry": position.get("regime_tag", "UNKNOWN"),
         })

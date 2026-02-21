@@ -2231,12 +2231,19 @@ def stage_7_execute(signal, sanad_result, strategy_result, bull_result, bear_res
     # Build full decision record (v3.0: include token profile)
     profile_dict = profile.to_dict() if profile else {}
     
+    # Extract attribution (fail-safe)
+    attribution = _extract_attribution(signal)
+    
     decision_record = {
         "correlation_id": correlation_id,
         "timestamp": datetime.now(timezone.utc).isoformat(),
         "signal": {
             "token": signal["token"],
-            "source": signal["source"],
+            "source": signal["source"],  # Keep for backward compatibility
+            "source_raw": attribution["source_raw"],
+            "source_primary": attribution["source_primary"],
+            "sources_used": attribution["sources_used"],
+            "enrichers_used": attribution["enrichers_used"],
             "thesis": signal["thesis"],
         },
         "token_profile": profile_dict,  # v3.0
@@ -2894,6 +2901,38 @@ def _record_rejection_cooldown(token: str):
         pass  # Non-critical
 
 
+def _extract_attribution(signal):
+    """
+    Extract source attribution from signal (fail-safe).
+    
+    Returns dict with source_primary, sources_used, enrichers_used.
+    Falls back gracefully if parse_attribution fails.
+    """
+    try:
+        from signal_normalizer import parse_attribution
+        return parse_attribution(signal)
+    except Exception:
+        # Fail-safe: use basic canonicalization
+        try:
+            from signal_normalizer import canonical_source
+            source_raw = signal.get("source", "unknown")
+            source_key = canonical_source(source_raw).get("source_key", "unknown:general")
+            return {
+                "source_primary": source_key,
+                "sources_used": [source_key],
+                "enrichers_used": [],
+                "source_raw": source_raw
+            }
+        except Exception:
+            # Ultimate fallback
+            return {
+                "source_primary": "unknown:general",
+                "sources_used": ["unknown:general"],
+                "enrichers_used": [],
+                "source_raw": signal.get("source", "unknown")
+            }
+
+
 def _log_decision_short_circuit(signal, sanad_result, stage="sanad"):
     """
     Log a short-circuited BLOCK decision with full telemetry (no LLM calls).
@@ -2904,6 +2943,9 @@ def _log_decision_short_circuit(signal, sanad_result, stage="sanad"):
         stage: Stage name - "pre_sanad" or "sanad" (default)
     """
     from datetime import datetime, timezone
+
+    # Extract attribution (fail-safe)
+    attribution = _extract_attribution(signal)
 
     # Run lightweight classification for telemetry (no LLM cost)
     asset_tier = "UNKNOWN"
@@ -2939,7 +2981,11 @@ def _log_decision_short_circuit(signal, sanad_result, stage="sanad"):
         "correlation_id": signal.get("correlation_id") or str(uuid.uuid4()),
         "signal": {
             "token": signal.get("token", "?"),
-            "source": signal.get("source", "?"),
+            "source": signal.get("source", "?"),  # Keep for backward compatibility
+            "source_raw": attribution["source_raw"],
+            "source_primary": attribution["source_primary"],
+            "sources_used": attribution["sources_used"],
+            "enrichers_used": attribution["enrichers_used"],
             "thesis": signal.get("thesis", ""),
         },
         "stage": stage_num,

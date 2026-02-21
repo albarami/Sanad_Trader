@@ -66,7 +66,21 @@ def _save_pattern(pattern):
 
 
 def _update_ucb1_score(source, win):
-    """Update UCB1 source grade based on trade outcome."""
+    """
+    Update UCB1 source grade based on trade outcome.
+    
+    GUARDRAIL: Never update UCB1 for enrichers (Solscan, RugCheck, etc.)
+    Only signal sources (CoinGecko, Birdeye, whale tracker, etc.) get graded.
+    """
+    # HARD BLOCK: No enrichers in UCB1
+    try:
+        from signal_normalizer import is_enricher
+        if is_enricher(source):
+            print(f"[UCB1] Skipping enricher: {source} (not a signal source)")
+            return
+    except Exception as e:
+        print(f"[UCB1] Warning: enricher check failed ({e}), proceeding cautiously")
+    
     UCB1_STATE.parent.mkdir(parents=True, exist_ok=True)
     
     ucb1 = {}
@@ -217,14 +231,18 @@ def analyze_trade(trade):
     corroboration = trade.get("cross_source_count", 1)
     exit_reason = trade.get("exit_reason", "unknown")
     
-    # Canonicalize source for UCB1 learning
-    try:
-        from signal_normalizer import canonical_source
-        source_info = canonical_source(raw_source)
-        source_key = source_info["source_key"]
-    except Exception as e:
-        _log(f"Warning: canonical_source failed: {e}, using raw source")
-        source_key = raw_source
+    # Resolve source for UCB1 learning (prefer source_primary, fall back to canonicalization)
+    source_key = trade.get("source_primary")
+    if not source_key or source_key == "unknown:general":
+        # Fall back to canonicalizing source_raw or source
+        try:
+            from signal_normalizer import canonical_source
+            fallback_source = trade.get("source_raw") or raw_source
+            source_info = canonical_source(fallback_source)
+            source_key = source_info["source_key"]
+        except Exception as e:
+            _log(f"Warning: canonical_source failed: {e}, using raw source")
+            source_key = raw_source
     
     is_win = pnl_pct > 0
     
