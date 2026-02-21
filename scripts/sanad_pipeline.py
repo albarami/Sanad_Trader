@@ -77,6 +77,60 @@ with open(CONFIG_DIR / "thresholds.yaml", "r") as f:
 
 
 # ─────────────────────────────────────────────
+# LIVE SAFETY OVERLAY (Phase 1 Fix)
+# ─────────────────────────────────────────────
+
+def apply_live_threshold_overlay(th):
+    """
+    Apply LIVE-specific threshold overlays to ensure strict enforcement.
+    
+    When SYSTEM_MODE=LIVE, overlay strict threshold values onto baseline keys
+    so that any code reading THRESHOLDS["scoring"]["min_trust_score"] gets
+    the LIVE value (70) instead of the relaxed baseline (35).
+    
+    This makes LIVE safe even if enforcement code doesn't use get_threshold().
+    """
+    mode = os.getenv("SYSTEM_MODE", "PAPER").upper()
+    
+    if mode != "LIVE":
+        return th  # No overlay needed for PAPER
+    
+    # Overlay LIVE-specific trust score
+    if "live_min_trust_score" in th.get("scoring", {}):
+        th["scoring"]["min_trust_score"] = th["scoring"]["live_min_trust_score"]
+    
+    # Overlay LIVE-specific confidence score
+    if "live_min_confidence_score" in th.get("strategies", {}):
+        th["scoring"]["min_confidence_score"] = th["strategies"]["live_min_confidence_score"]
+    
+    # Overlay LIVE-specific sanad score
+    if "live_mode_min_sanad_score" in th.get("signals", {}):
+        th["signals"]["min_sanad_score"] = th["signals"]["live_mode_min_sanad_score"]
+    
+    print(f"⚠️ LIVE MODE: Applied strict threshold overlays (trust={th['scoring']['min_trust_score']}, confidence={th['scoring']['min_confidence_score']}, sanad={th['signals']['min_sanad_score']})")
+    
+    return th
+
+# Apply LIVE overlays immediately after loading
+THRESHOLDS = apply_live_threshold_overlay(THRESHOLDS)
+
+# Startup invariant: LIVE safety check
+MODE = os.getenv("SYSTEM_MODE", "PAPER").upper()
+if MODE == "LIVE":
+    trust = THRESHOLDS["scoring"]["min_trust_score"]
+    confidence = THRESHOLDS["scoring"]["min_confidence_score"]
+    sanad = THRESHOLDS["signals"]["min_sanad_score"]
+    
+    if trust < 60 or confidence < 50 or sanad < 60:
+        print(f"❌ FATAL: LIVE mode with unsafe thresholds (trust={trust}, confidence={confidence}, sanad={sanad})")
+        print("❌ LIVE requires: trust≥60, confidence≥50, sanad≥60")
+        print("❌ Refusing to start. Check thresholds.yaml and LIVE overlay logic.")
+        sys.exit(1)
+    
+    print(f"✅ LIVE SAFETY CHECK PASSED: trust={trust}, confidence={confidence}, sanad={sanad}")
+
+
+# ─────────────────────────────────────────────
 # PAPER_PROFILE THRESHOLD RESOLVER (v1.1)
 # ─────────────────────────────────────────────
 
