@@ -768,21 +768,27 @@ def run_monitor():
     # ── Check each position ──
     closed_pnls = []
 
-    # Update DEX prices for non-Binance positions
+    # Update DEX prices for non-Binance positions (P0-2 fix)
     dex_positions = [p for p in open_positions if p.get("exchange") not in ("binance", "mexc")]
     if dex_positions:
         print(f"[POSITION MONITOR] Fetching {len(dex_positions)} DEX prices...")
         try:
             import sys
             sys.path.insert(0, str(STATE_DIR.parent / "scripts"))
-            from birdeye_client import get_token_price
+            from birdeye_client import get_token_overview
             
             for pos in dex_positions:
                 token = pos.get("token")
+                token_address = pos.get("token_address")
+                
+                if not token_address:
+                    print(f"  [DEX] {token}: SKIPPED (no token_address in position)")
+                    continue
+                
                 try:
-                    price_data = get_token_price(token)
-                    if price_data and "price" in price_data:
-                        dex_price = float(price_data["price"])
+                    overview = get_token_overview(token_address)
+                    if overview and overview.get("price"):
+                        dex_price = float(overview["price"])
                         symbol = pos.get("symbol", token)
                         price_cache[symbol] = dex_price
                         print(f"  [DEX] {token}: ${dex_price}")

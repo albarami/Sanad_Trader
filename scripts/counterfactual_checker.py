@@ -67,9 +67,9 @@ def run():
 
     try:
         from binance_client import get_price
-        from birdeye_client import get_token_price
-    except ImportError:
-        _log("Price clients not available — skipping")
+        from birdeye_client import get_token_overview
+    except ImportError as e:
+        _log(f"Price clients not available ({e}) — skipping")
         return
 
     # P1-3: Batch process oldest 50 unchecked entries
@@ -119,11 +119,13 @@ def run():
         
         if not current:
             try:
-                # Try Birdeye for DEX tokens
-                token = r.get("token", "")
-                birdeye_data = get_token_price(token)
-                if birdeye_data and "price" in birdeye_data:
-                    current = float(birdeye_data["price"])
+                # Try Birdeye for DEX tokens (needs contract address)
+                # Look up from token_profile if available
+                token_addr = r.get("token_address")
+                if token_addr:
+                    overview = get_token_overview(token_addr)
+                    if overview and overview.get("price"):
+                        current = float(overview["price"])
             except:
                 pass
         
