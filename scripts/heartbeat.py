@@ -423,6 +423,39 @@ def check_circuit_breakers():
     return {"status": "OK", "detail": "All closed"}
 
 
+def check_learning_backlog():
+    """Check if learning loop has a stale backlog (CLOSED + PENDING for >15min)."""
+    try:
+        import state_store
+        state_store.init_db()
+        with state_store.get_connection() as conn:
+            rows = conn.execute("""
+                SELECT COUNT(*) as cnt, MIN(learning_updated_at) as oldest
+                FROM positions
+                WHERE status = 'CLOSED'
+                  AND pnl_pct IS NOT NULL
+                  AND learning_status = 'PENDING'
+            """).fetchone()
+            cnt = rows["cnt"] or 0
+            if cnt == 0:
+                return {"status": "OK", "detail": "No learning backlog"}
+
+            oldest = rows["oldest"]
+            if oldest:
+                try:
+                    oldest_dt = datetime.fromisoformat(oldest.replace("Z", "+00:00"))
+                    age_min = (datetime.now(timezone.utc) - oldest_dt).total_seconds() / 60
+                    if age_min > 15:
+                        return {"status": "WARNING", "detail": f"{cnt} PENDING positions (oldest {age_min:.0f}min)"}
+                except Exception:
+                    pass
+
+            return {"status": "OK", "detail": f"{cnt} PENDING (recent)"}
+    except Exception as e:
+        log(f"Learning backlog check error: {e}")
+        return {"status": "OK", "detail": "Check error"}
+
+
 def check_openclaw_escalation():
     """
     Check if watchdog has escalated to OpenClaw (Tier 3.5).
@@ -541,6 +574,7 @@ def run_heartbeat():
     results["cron_health"] = check_cron_health()
     results["ntp_sync"] = check_ntp_sync()
     results["circuit_breakers"] = check_circuit_breakers()
+    results["learning_backlog"] = check_learning_backlog()
     results["openclaw_escalation"] = check_openclaw_escalation()
 
     # Determine overall status
