@@ -2,16 +2,14 @@
 """
 Test Learning Loop — Ticket 5 Validation
 
+ALL test identifiers use 'test_' prefix. Cleanup ONLY deletes 'test_%' rows.
+
 Verifies:
-1. Closed WIN position updates bandit_strategy_stats (alpha +1)
-2. Closed WIN position updates source_ucb_stats (reward_sum +1)
-3. Closed LOSS position updates bandit_strategy_stats (beta +1)
-4. Closed LOSS position updates source_ucb_stats (reward_sum unchanged)
-5. Multiple closures accumulate correctly
-6. Position marked learning_complete after processing
-7. scan_unprocessed_closures() skips already-processed positions
-8. OPEN positions are not processed
-9. Positions with NULL pnl_pct are not processed
+1. WIN updates bandit (alpha+1) and source (reward+1)
+2. LOSS updates bandit (beta+1) and source (reward unchanged)
+3. Multiple closures accumulate correctly (3W/2L)
+4. Already-processed positions are skipped (idempotent / exactly-once)
+5. OPEN positions and NULL pnl are rejected
 """
 
 import os
@@ -36,9 +34,9 @@ def assert_eq(label, expected, actual):
 
 
 def create_position(status="CLOSED", pnl_pct=0.05, pnl_usd=50.0,
-                     strategy_id="momentum_flip", regime_tag="trending",
-                     source_primary="birdeye", token="SOL"):
-    """Create a test position and return its ID."""
+                     strategy_id="test_strat_default", regime_tag="test_regime",
+                     source_primary="test_source_default", token="TEST_TOKEN"):
+    """Create a test position. ALL identifiers use test_ prefix."""
     position_id = str(uuid.uuid4())
     now_iso = datetime.now(timezone.utc).isoformat()
     
@@ -52,13 +50,13 @@ def create_position(status="CLOSED", pnl_pct=0.05, pnl_usd=50.0,
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ''', (
             position_id,
-            'TEST_' + position_id[:8],
+            'test_sig_' + position_id[:8],
             token,
             100.0,
             1000.0,
             'sol',
             strategy_id,
-            'dec_' + position_id[:8],
+            'test_dec_' + position_id[:8],
             status,
             now_iso,
             now_iso,
@@ -76,12 +74,12 @@ def create_position(status="CLOSED", pnl_pct=0.05, pnl_usd=50.0,
 
 
 def cleanup(position_ids):
-    """Remove test data."""
+    """Remove ONLY test_ prefixed data. Never touches production rows."""
     with get_connection() as conn:
         for pid in position_ids:
             conn.execute("DELETE FROM positions WHERE position_id = ?", (pid,))
-        conn.execute("DELETE FROM bandit_strategy_stats WHERE strategy_id LIKE 'test_%' OR strategy_id = 'momentum_flip'")
-        conn.execute("DELETE FROM source_ucb_stats WHERE source_id LIKE 'test_%' OR source_id IN ('birdeye', 'coingecko')")
+        conn.execute("DELETE FROM bandit_strategy_stats WHERE strategy_id LIKE 'test_%'")
+        conn.execute("DELETE FROM source_ucb_stats WHERE source_id LIKE 'test_%'")
         conn.commit()
 
 
@@ -95,13 +93,13 @@ def test_win_updates():
     print("=" * 60)
     
     pid = create_position(pnl_pct=0.12, strategy_id="test_strat_a",
-                          source_primary="test_source_x", regime_tag="trending")
+                          source_primary="test_source_x", regime_tag="test_trending")
     
     result = learning_loop.process_closed_position(pid)
     
     assert_eq("is_win", True, result["is_win"])
-    assert_eq("bandit alpha", 2.0, result["bandit"]["alpha"])  # prior 1 + 1 win
-    assert_eq("bandit beta", 1.0, result["bandit"]["beta"])    # prior 1 + 0 loss
+    assert_eq("bandit alpha", 2.0, result["bandit"]["alpha"])
+    assert_eq("bandit beta", 1.0, result["bandit"]["beta"])
     assert_eq("bandit n", 1, result["bandit"]["n"])
     assert_eq("source n", 1, result["source"]["n"])
     assert_eq("source reward_sum", 1.0, result["source"]["reward_sum"])
@@ -127,13 +125,13 @@ def test_loss_updates():
     print("=" * 60)
     
     pid = create_position(pnl_pct=-0.08, pnl_usd=-80.0, strategy_id="test_strat_b",
-                          source_primary="test_source_y", regime_tag="choppy")
+                          source_primary="test_source_y", regime_tag="test_choppy")
     
     result = learning_loop.process_closed_position(pid)
     
     assert_eq("is_win", False, result["is_win"])
-    assert_eq("bandit alpha", 1.0, result["bandit"]["alpha"])  # prior 1 + 0 win
-    assert_eq("bandit beta", 2.0, result["bandit"]["beta"])    # prior 1 + 1 loss
+    assert_eq("bandit alpha", 1.0, result["bandit"]["alpha"])
+    assert_eq("bandit beta", 2.0, result["bandit"]["beta"])
     assert_eq("bandit n", 1, result["bandit"]["n"])
     assert_eq("source n", 1, result["source"]["n"])
     assert_eq("source reward_sum", 0.0, result["source"]["reward_sum"])
@@ -144,46 +142,40 @@ def test_loss_updates():
 
 
 # ─────────────────────────────────────────────
-# TEST 3: Multiple closures accumulate
+# TEST 3: Multiple closures accumulate (3W/2L)
 # ─────────────────────────────────────────────
 
 def test_accumulation():
     print("\n" + "=" * 60)
-    print("TEST 3: Multiple Closures Accumulate Correctly")
+    print("TEST 3: Multiple Closures Accumulate Correctly (3W/2L)")
     print("=" * 60)
     
-    # Same strategy + source, 3 wins + 2 losses
     pids = []
     for pnl in [0.05, 0.10, -0.03, 0.08, -0.06]:
         pid = create_position(pnl_pct=pnl, pnl_usd=pnl*1000,
                               strategy_id="test_strat_accum",
                               source_primary="test_source_accum",
-                              regime_tag="trending")
+                              regime_tag="test_trending")
         pids.append(pid)
     
-    # Process all via run()
     results = learning_loop.run()
     assert_eq("Processed count", 5, len(results))
     
-    # Check bandit stats: 3 wins, 2 losses
     with get_connection() as conn:
-        row = conn.execute("""
+        row = dict(conn.execute("""
             SELECT alpha, beta, n FROM bandit_strategy_stats
-            WHERE strategy_id = 'test_strat_accum' AND regime_tag = 'trending'
-        """).fetchone()
-        row = dict(row)
+            WHERE strategy_id = 'test_strat_accum' AND regime_tag = 'test_trending'
+        """).fetchone())
     
     assert_eq("bandit alpha (1 + 3 wins)", 4.0, row["alpha"])
     assert_eq("bandit beta (1 + 2 losses)", 3.0, row["beta"])
     assert_eq("bandit n", 5, row["n"])
     
-    # Check source stats
     with get_connection() as conn:
-        row = conn.execute("""
+        row = dict(conn.execute("""
             SELECT n, reward_sum FROM source_ucb_stats
             WHERE source_id = 'test_source_accum'
-        """).fetchone()
-        row = dict(row)
+        """).fetchone())
     
     assert_eq("source n", 5, row["n"])
     assert_eq("source reward_sum (3 wins)", 3.0, row["reward_sum"])
@@ -193,30 +185,34 @@ def test_accumulation():
 
 
 # ─────────────────────────────────────────────
-# TEST 4: Already-processed positions are skipped
+# TEST 4: Idempotency (exactly-once)
 # ─────────────────────────────────────────────
 
 def test_idempotency():
     print("\n" + "=" * 60)
-    print("TEST 4: Already-Processed Positions Are Skipped")
+    print("TEST 4: Idempotency — Already-Processed Positions Skipped")
     print("=" * 60)
     
     pid = create_position(pnl_pct=0.05, strategy_id="test_strat_idem",
-                          source_primary="test_source_idem", regime_tag="trending")
+                          source_primary="test_source_idem", regime_tag="test_trending")
     
     # Process once
     learning_loop.process_closed_position(pid)
     
-    # Scan again — should not find this position
+    # Process again — should be skipped
+    result2 = learning_loop.process_closed_position(pid)
+    assert_eq("Second call skipped", True, result2.get("skipped"))
+    
+    # Scan — should not find it
     unprocessed = learning_loop.scan_unprocessed_closures()
     found = [u for u in unprocessed if u["position_id"] == pid]
     assert_eq("Not in unprocessed after learning", 0, len(found))
     
-    # Verify stats haven't doubled
+    # Stats not doubled
     with get_connection() as conn:
         row = conn.execute("""
             SELECT n FROM bandit_strategy_stats
-            WHERE strategy_id = 'test_strat_idem' AND regime_tag = 'trending'
+            WHERE strategy_id = 'test_strat_idem' AND regime_tag = 'test_trending'
         """).fetchone()
     assert_eq("bandit n still 1", 1, row["n"])
     
@@ -225,23 +221,23 @@ def test_idempotency():
 
 
 # ─────────────────────────────────────────────
-# TEST 5: OPEN positions and NULL pnl are not processed
+# TEST 5: Guards (OPEN rejected, NULL pnl rejected)
 # ─────────────────────────────────────────────
 
 def test_guards():
     print("\n" + "=" * 60)
-    print("TEST 5: OPEN Positions and NULL PnL Are Not Processed")
+    print("TEST 5: OPEN Positions and NULL PnL Rejected")
     print("=" * 60)
     
-    # OPEN position should not appear in scan
     pid_open = create_position(status="OPEN", strategy_id="test_strat_guard",
                                 source_primary="test_source_guard")
     
+    # OPEN not in scan
     unprocessed = learning_loop.scan_unprocessed_closures()
     found_open = [u for u in unprocessed if u["position_id"] == pid_open]
     assert_eq("OPEN position not in scan", 0, len(found_open))
     
-    # process_closed_position should reject OPEN
+    # process rejects OPEN
     try:
         learning_loop.process_closed_position(pid_open)
         print("❌ FAIL: Should have raised ValueError for OPEN position")
@@ -278,4 +274,4 @@ if __name__ == "__main__":
         sys.exit(1)
     finally:
         cleanup(all_pids)
-        print(f"\n✓ Cleaned up {len(all_pids)} test positions")
+        print(f"\n✓ Cleaned up {len(all_pids)} test positions (test_ prefixed only)")
