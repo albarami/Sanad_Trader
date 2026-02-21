@@ -129,6 +129,52 @@ if MODE == "LIVE":
     
     print(f"✅ LIVE SAFETY CHECK PASSED: trust={trust}, confidence={confidence}, sanad={sanad}")
 
+# Mode coherence invariant: Verify SYSTEM_MODE matches portfolio.mode
+def verify_mode_coherence():
+    """
+    Ensure SYSTEM_MODE environment variable matches portfolio.json mode.
+    
+    Prevents configuration mismatch where LIVE execution runs with PAPER config
+    (which would bypass LIVE threshold overlays and use relaxed baselines).
+    
+    Fail-closed: abort if mismatch detected.
+    """
+    system_mode = os.getenv("SYSTEM_MODE", "PAPER").upper()
+    
+    # Load portfolio mode
+    portfolio_path = STATE_DIR / "portfolio.json"
+    if not portfolio_path.exists():
+        # Portfolio doesn't exist yet (fresh start) - allow
+        return
+    
+    try:
+        with open(portfolio_path) as f:
+            portfolio = json.load(f)
+            portfolio_mode = portfolio.get("mode", "paper").upper()
+    except Exception as e:
+        print(f"⚠️ WARNING: Could not read portfolio.json mode: {e}")
+        return  # Fail open on read error (portfolio may be locked/corrupted)
+    
+    # Check coherence
+    if portfolio_mode == "LIVE" and system_mode != "LIVE":
+        print(f"❌ FATAL: Mode coherence violation!")
+        print(f"❌ portfolio.json mode: {portfolio_mode}")
+        print(f"❌ SYSTEM_MODE env var: {system_mode}")
+        print(f"❌ LIVE portfolio requires SYSTEM_MODE=LIVE (prevents relaxed threshold bypass)")
+        print(f"❌ Refusing to start. Set SYSTEM_MODE=LIVE or change portfolio.mode to paper.")
+        sys.exit(1)
+    
+    if system_mode == "LIVE" and portfolio_mode != "LIVE":
+        print(f"⚠️ WARNING: SYSTEM_MODE=LIVE but portfolio.mode={portfolio_mode}")
+        print(f"⚠️ This is allowed (can test LIVE thresholds in paper portfolio)")
+        print(f"⚠️ But verify this is intentional!")
+    
+    if system_mode == portfolio_mode:
+        print(f"✅ MODE COHERENCE OK: SYSTEM_MODE={system_mode}, portfolio.mode={portfolio_mode}")
+
+# Run mode coherence check at startup
+verify_mode_coherence()
+
 
 # ─────────────────────────────────────────────
 # PAPER_PROFILE THRESHOLD RESOLVER (v1.1)
