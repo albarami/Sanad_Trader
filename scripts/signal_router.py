@@ -199,6 +199,9 @@ def _load_open_tokens() -> set[str]:
         with state_store.get_connection() as conn:
             rows = conn.execute("SELECT token_address FROM positions WHERE status='OPEN'").fetchall()
             return {row["token_address"].upper() for row in rows}
+    except state_store.DBBusyError:
+        _log("DB busy loading open tokens - fail-closed (skip trading this cycle)")
+        raise  # Re-raise to abort trading cycle
     except Exception as e:
         _log(f"Error loading open tokens from DB: {e}")
         return set()
@@ -232,6 +235,9 @@ def _load_cooldown_tokens() -> dict[str, float]:
                     continue
             
             return cooldowns
+    except state_store.DBBusyError:
+        _log("DB busy loading cooldowns - fail-closed (skip trading this cycle)")
+        raise  # Re-raise to abort trading cycle
     except Exception as e:
         _log(f"Error loading cooldowns from DB: {e}")
         return {}

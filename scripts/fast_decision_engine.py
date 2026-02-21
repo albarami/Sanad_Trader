@@ -327,7 +327,7 @@ def stage_3_strategy_selection(signal, portfolio, runtime_state, timings, start_
 # STAGE 4: POLICY ENGINE
 # ============================================================================
 
-def stage_4_policy_engine(decision_packet, timings, start_time):
+def stage_4_policy_engine(decision_packet, portfolio, timings, start_time):
     """
     Stage 4: Policy Engine Gates 1-14 (<500ms target)
     
@@ -337,7 +337,17 @@ def stage_4_policy_engine(decision_packet, timings, start_time):
     
     # Call policy_engine module if available
     if HAS_POLICY:
-        result = policy_engine.evaluate_gates(decision_packet, gate_range=(1, 14))
+        # Build state_override from SQLite/portfolio (avoid stale JSON)
+        state_override = {
+            "portfolio": portfolio,
+            "trade_history": []  # TODO: Load from SQLite if needed
+        }
+        
+        result = policy_engine.evaluate_gates(
+            decision_packet,
+            gate_range=(1, 14),
+            state_override=state_override
+        )
         timings["stage_4_policy"] = elapsed_ms(stage_start)
         
         if result["result"] == "PASS":
@@ -655,7 +665,7 @@ def evaluate_signal_fast(
     )
     
     passed, gate_failed, evidence = stage_4_policy_engine(
-        decision_packet_for_policy, timings, start_time
+        decision_packet_for_policy, portfolio, timings, start_time
     )
     policy_data = {"gate_failed": gate_failed, "evidence": evidence}
     
