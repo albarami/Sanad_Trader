@@ -125,12 +125,17 @@ def _update_ucb1_score(source, win):
     _log(f"UCB1 updated: {source} → {entry['grade']} (WR={wr:.1%}, n={entry['total']})")
 
 
-def _update_thompson_state(strategy, win):
+def _update_thompson_state(strategy, win, pnl_pct=None):
     """
     Update Thompson Sampling (Beta distribution) for a strategy based on trade outcome.
     
     Alpha = wins + 1 (prior)
     Beta = losses + 1 (prior)
+    
+    Args:
+        strategy: Strategy name
+        win: Boolean, True if profitable
+        pnl_pct: Optional PnL percentage to accumulate in total_pnl_pct
     """
     THOMPSON_STATE.parent.mkdir(parents=True, exist_ok=True)
     
@@ -166,6 +171,10 @@ def _update_thompson_state(strategy, win):
     else:
         strat["losses"] += 1
         strat["beta"] += 1
+    
+    # Track cumulative PnL for reporting
+    if pnl_pct is not None:
+        strat["total_pnl_pct"] += pnl_pct
     
     strat["last_trade_at"] = datetime.utcnow().isoformat() + "Z"
     
@@ -224,7 +233,7 @@ def analyze_trade(trade):
     
     # Update Thompson Sampling state for strategy
     if strategy and strategy != "unknown":
-        _update_thompson_state(strategy, is_win)
+        _update_thompson_state(strategy, is_win, pnl_pct)
     
     # Save to genius memory
     category = "wins" if is_win else "losses"
