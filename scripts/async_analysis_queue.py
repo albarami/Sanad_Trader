@@ -161,6 +161,7 @@ def poll_pending_tasks():
                 SELECT task_id
                 FROM async_tasks
                 WHERE status = 'PENDING'
+                  AND task_type = 'ANALYZE_EXECUTED'
                   AND next_run_at <= ?
                 ORDER BY next_run_at ASC
                 LIMIT 10
@@ -194,6 +195,7 @@ def claim_task(task_id: str) -> dict:
                     updated_at = ?
                 WHERE task_id = ? 
                   AND status = 'PENDING'
+                  AND task_type = 'ANALYZE_EXECUTED'
                   AND next_run_at <= ?
             """, (now_iso, task_id, now_iso))
             
@@ -284,21 +286,21 @@ def mark_task_failed(task_id: str, error_code: str, error_msg: str, attempts_now
                 """, (full_error, now_iso, task_id))
                 
                 if cursor.rowcount == 0:
-                    _log(f"WARNING: mark_task_failed({task_id}) — task was not RUNNING (race?)")
+                    _log(f"WARNING: mark_task_failed({task_id}) — task was not RUNNING (race?), skipping position update")
                 else:
                     _log(f"Task {task_id} FAILED permanently after {attempts_now} attempts ({error_code})")
-                
-                # Mark position as permanently failed (if exists)
-                row = conn.execute("SELECT entity_id FROM async_tasks WHERE task_id = ?", (task_id,)).fetchone()
-                if row:
-                    pos_exists = conn.execute("SELECT 1 FROM positions WHERE position_id = ?", (row["entity_id"],)).fetchone()
-                    if pos_exists:
-                        conn.execute("""
-                            UPDATE positions
-                            SET risk_flag = 'FLAG_ASYNC_FAILED_PERMANENT'
-                            WHERE position_id = ?
-                        """, (row["entity_id"],))
-                        _log(f"Position {row['entity_id']} marked FLAG_ASYNC_FAILED_PERMANENT")
+                    
+                    # Only flag position if task update succeeded (rowcount==1)
+                    row = conn.execute("SELECT entity_id FROM async_tasks WHERE task_id = ?", (task_id,)).fetchone()
+                    if row:
+                        pos_exists = conn.execute("SELECT 1 FROM positions WHERE position_id = ?", (row["entity_id"],)).fetchone()
+                        if pos_exists:
+                            conn.execute("""
+                                UPDATE positions
+                                SET risk_flag = 'FLAG_ASYNC_FAILED_PERMANENT'
+                                WHERE position_id = ?
+                            """, (row["entity_id"],))
+                            _log(f"Position {row['entity_id']} marked FLAG_ASYNC_FAILED_PERMANENT")
             else:
                 # Retry — RUNNING → PENDING with backoff
                 delay_sec = RETRY_DELAYS[attempts_now - 1]

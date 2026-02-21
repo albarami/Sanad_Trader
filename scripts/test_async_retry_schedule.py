@@ -192,7 +192,50 @@ def test_retry_schedule():
 
 
 # ─────────────────────────────────────────────
-# TEST 2: Real task reaches DONE
+# TEST 2: Worker ignores non-ANALYZE_EXECUTED tasks
+# ─────────────────────────────────────────────
+
+def test_ignore_wrong_task_type():
+    """Prove worker ignores tasks with task_type != 'ANALYZE_EXECUTED'."""
+    print("\n" + "=" * 60)
+    print("TEST 2: Worker Ignores Non-ANALYZE_EXECUTED Tasks")
+    print("=" * 60)
+    
+    task_id = str(uuid.uuid4())
+    now_iso = datetime.now(timezone.utc).isoformat()
+    
+    with get_connection() as conn:
+        conn.execute("""
+            INSERT INTO async_tasks (
+                task_id, task_type, entity_id, status,
+                attempts, created_at, next_run_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        """, (
+            task_id, 'SOMETHING_ELSE', 'SOME_ENTITY',
+            'PENDING', 0, now_iso, now_iso, now_iso
+        ))
+        conn.commit()
+    
+    print(f"✓ Created task {task_id} with task_type='SOMETHING_ELSE'")
+    print("Running worker...")
+    
+    run_worker(test_mode=False)
+    
+    state = get_task_state(task_id)
+    assert_eq("Task still PENDING", "PENDING", state["status"])
+    assert_eq("Attempts unchanged", 0, state["attempts"])
+    
+    # Cleanup
+    with get_connection() as conn:
+        conn.execute("DELETE FROM async_tasks WHERE task_id = ?", (task_id,))
+        conn.commit()
+    
+    print(f"✓ Cleaned up test task")
+    print("\n✅ TEST 2 PASSED: Worker correctly ignores non-ANALYZE_EXECUTED tasks")
+
+
+# ─────────────────────────────────────────────
+# TEST 3: Real task reaches DONE
 # ─────────────────────────────────────────────
 
 def test_real_task_done():
@@ -272,7 +315,7 @@ def test_real_task_done():
         conn.commit()
     
     print(f"\n✓ Cleaned up test data")
-    print("\n✅ TEST 2 PASSED: Real task reached DONE with valid analysis JSON")
+    print("\n✅ TEST 3 PASSED: Real task reached DONE with valid analysis JSON")
 
 
 # ─────────────────────────────────────────────
@@ -282,6 +325,7 @@ def test_real_task_done():
 if __name__ == "__main__":
     try:
         test_retry_schedule()
+        test_ignore_wrong_task_type()
         test_real_task_done()
         
         print("\n" + "=" * 60)
