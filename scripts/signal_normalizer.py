@@ -322,13 +322,18 @@ def parse_attribution(signal_dict: Dict) -> Dict[str, any]:
     canonical = canonical_source(raw_source)
     source_primary = canonical.get("source_key", "unknown:general")
     
-    # Multi-source parsing (if cross_source_count exists)
-    sources_used = [source_primary]
-    cross_count = signal_dict.get("cross_source_count", 0)
-    if cross_count > 1:
-        # TODO: Parse actual cross-source list when available
-        # For now, just mark that multiple sources were involved
-        pass
+    # CRITICAL: If source_primary is an enricher, mark it as unknown (not a signal source)
+    if is_enricher(source_primary) or is_enricher(raw_source):
+        source_primary = "unknown:enricher_only"
+        sources_used = []
+    else:
+        # Multi-source parsing (if cross_source_count exists)
+        sources_used = [source_primary]
+        cross_count = signal_dict.get("cross_source_count", 0)
+        if cross_count > 1:
+            # TODO: Parse actual cross-source list when available
+            # For now, just mark that multiple sources were involved
+            pass
     
     # Detect enrichers from signal metadata
     enrichers_used = []
