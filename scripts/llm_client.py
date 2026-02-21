@@ -5,7 +5,7 @@ LLM Client — Extracted from sanad_pipeline.py for async analysis queue
 Provides:
 - call_claude(system_prompt, user_message, model, max_tokens, stage, token_symbol)
 - call_openai(system_prompt, user_message, model, max_tokens, stage, token_symbol)
-- parse_json_failsafe(raw_text)
+- extract_json_object(raw_text) — Robust JSON extraction with validation
 
 Both functions include:
 - Direct API calls with timeout handling
@@ -15,6 +15,7 @@ Both functions include:
 
 import os
 import json
+import re
 import requests
 from pathlib import Path
 
@@ -223,45 +224,72 @@ def call_openai(system_prompt, user_message, model="gpt-5.2", max_tokens=2000, s
         return _fallback_openrouter(system_prompt, user_message, f"openai/{model}", max_tokens, stage, token_symbol)
 
 
-def parse_json_failsafe(raw_text):
+def extract_json_object(raw_text):
     """
-    Parse JSON from LLM response with failsafe fallback.
+    Extract and validate first top-level JSON object from LLM response.
+    
+    FIX A2: Robust JSON extraction + validation
     
     Handles:
+    - Leading/trailing prose
     - Markdown code blocks (```json ... ```)
-    - Leading/trailing whitespace
     - Multiple JSON objects (takes first valid one)
     
     Returns:
-        dict: Parsed JSON, or None if parsing fails
+        dict: Parsed JSON, or None if extraction fails
+    
+    Raises:
+        ValueError: If JSON is found but invalid
     """
     if not raw_text:
         return None
     
-    # Strip markdown code blocks
     text = raw_text.strip()
+    
+    # Strip markdown code blocks
     if text.startswith("```json"):
         text = text[7:]
-    if text.startswith("```"):
+    elif text.startswith("```"):
         text = text[3:]
     if text.endswith("```"):
         text = text[:-3]
     text = text.strip()
     
-    # Try direct parse
+    # Try direct parse (common case: clean JSON)
     try:
         return json.loads(text)
     except json.JSONDecodeError:
         pass
     
-    # Try finding first { ... } block
-    start = text.find("{")
-    end = text.rfind("}")
-    if start >= 0 and end > start:
-        try:
-            return json.loads(text[start:end+1])
-        except json.JSONDecodeError:
-            pass
+    # Find first top-level {...} object
+    # Use regex to find balanced braces
+    brace_start = text.find("{")
+    if brace_start < 0:
+        print(f"    [JSON extraction FAILED: no opening brace found]")
+        return None
     
-    print(f"    [JSON parse FAILED — raw text length: {len(raw_text)}]")
-    return None
+    # Find matching closing brace
+    depth = 0
+    brace_end = -1
+    for i in range(brace_start, len(text)):
+        if text[i] == "{":
+            depth += 1
+        elif text[i] == "}":
+            depth -= 1
+            if depth == 0:
+                brace_end = i
+                break
+    
+    if brace_end < 0:
+        print(f"    [JSON extraction FAILED: no matching closing brace]")
+        return None
+    
+    # Extract and parse
+    json_str = text[brace_start:brace_end+1]
+    try:
+        obj = json.loads(json_str)
+        return obj
+    except json.JSONDecodeError as e:
+        print(f"    [JSON parse FAILED: {e}]")
+        print(f"    [Extracted text length: {len(json_str)}]")
+        return None

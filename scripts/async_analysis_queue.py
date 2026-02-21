@@ -10,7 +10,7 @@ Polls async_tasks table for PENDING tasks and processes them:
 Updates positions.async_analysis_json with results.
 
 Author: Sanad Trader v3.1
-Ticket 4 FIX: Real LLM calls, safe claiming, wall-clock timestamps, production catastrophic logic
+Ticket 4 FIX v2: Strict JSON contracts, consistent attempts, debuggable failures
 """
 
 import json
@@ -36,7 +36,9 @@ BASE_DIR = Path(os.environ.get("SANAD_HOME", "/data/.openclaw/workspace/trading"
 CONFIG_PATH = BASE_DIR / "config" / "thresholds.yaml"
 PROMPTS_DIR = BASE_DIR / "prompts"
 LOGS_DIR = BASE_DIR / "logs"
+LLM_RAW_DIR = LOGS_DIR / "llm_raw"
 LOGS_DIR.mkdir(parents=True, exist_ok=True)
+LLM_RAW_DIR.mkdir(parents=True, exist_ok=True)
 
 LOG_FILE = LOGS_DIR / "async_analysis_queue.log"
 
@@ -50,14 +52,19 @@ except Exception as e:
     sys.exit(1)
 
 # Cold path settings
-MODEL = COLD_PATH_CONFIG.get("model", "claude-opus-4-6")
+MODEL = COLD_PATH_CONFIG.get("model", "claude-haiku-4-5-20251001")
 JUDGE_MODEL = COLD_PATH_CONFIG.get("judge_model", "gpt-5.2")
 TIMEOUT_SECONDS = COLD_PATH_CONFIG.get("timeout_seconds", 300)
 MAX_RETRIES = COLD_PATH_CONFIG.get("max_retries", 3)
 PARALLEL_BULL_BEAR = COLD_PATH_CONFIG.get("parallel_bull_bear", True)
 CATASTROPHIC_THRESHOLD = COLD_PATH_CONFIG.get("catastrophic_confidence_threshold", 85)
 
-RETRY_DELAYS = [300, 900, 3600]  # 5m, 15m, 60m in seconds
+# FIX B: Exact backoff schedule
+RETRY_DELAYS = {
+    1: 300,   # 5 minutes
+    2: 900,   # 15 minutes
+    3: 3600,  # 60 minutes
+}
 
 
 # ─────────────────────────────────────────────
@@ -74,6 +81,25 @@ def _log(msg: str):
             f.write(line)
     except Exception:
         pass
+
+
+def _dump_raw_llm(task_id: str, stage: str, raw_text: str):
+    """
+    Dump raw LLM response to file for debugging.
+    
+    FIX C: Operational telemetry for parse failures
+    """
+    try:
+        filename = LLM_RAW_DIR / f"{stage}_{task_id}.txt"
+        with open(filename, "w") as f:
+            f.write(f"Task: {task_id}\n")
+            f.write(f"Stage: {stage}\n")
+            f.write(f"Timestamp: {datetime.now(timezone.utc).isoformat()}\n")
+            f.write("=" * 60 + "\n")
+            f.write(raw_text)
+        _log(f"Dumped raw {stage} response to {filename}")
+    except Exception as e:
+        _log(f"Failed to dump raw {stage} response: {e}")
 
 
 # ─────────────────────────────────────────────
@@ -97,6 +123,16 @@ try:
 except Exception as e:
     _log(f"ERROR: Failed to load prompts: {e}")
     sys.exit(1)
+
+
+# FIX A1: Strict JSON contract suffix
+JSON_CONTRACT = """
+
+CRITICAL OUTPUT FORMAT:
+Return ONLY a single JSON object.
+No markdown. No prose. No code fences.
+The JSON object must match the schema provided above exactly.
+"""
 
 
 # ─────────────────────────────────────────────
@@ -135,9 +171,9 @@ def claim_task(task_id: str) -> dict:
     """
     Atomically claim task by updating status to RUNNING.
     
-    Returns task dict with authoritative DB values if claimed, else None.
+    FIX B: Atomic claim + authoritative DB attempts value
     
-    FIX B: Safe claiming with single transaction
+    Returns task dict with authoritative DB values if claimed, else None.
     """
     try:
         with get_connection() as conn:
@@ -159,7 +195,7 @@ def claim_task(task_id: str) -> dict:
             if cursor.rowcount == 0:
                 return None
             
-            # Fetch authoritative DB values
+            # Fetch authoritative DB values AFTER claim
             row = conn.execute("""
                 SELECT task_id, entity_id, task_type, attempts, created_at
                 FROM async_tasks
@@ -199,28 +235,35 @@ def mark_task_done(task_id: str):
         _log(f"Error marking task {task_id} done: {e}")
 
 
-def mark_task_failed(task_id: str, error_msg: str, attempts: int):
+def mark_task_failed(task_id: str, error_code: str, error_msg: str, attempts: int):
     """
     Mark task as FAILED or schedule retry.
     
-    If attempts < MAX_RETRIES, reset to PENDING with backoff.
+    FIX B: Use authoritative attempts value from claim.
+    FIX C: Store error code for debugging.
     
-    FIX B: Use DB attempts value (already incremented at claim)
+    Backoff schedule:
+    - attempts == 1 → +300s
+    - attempts == 2 → +900s
+    - attempts == 3 → +3600s
+    - attempts >= 4 → FAILED permanently
     """
     try:
         with get_connection() as conn:
             now_iso = datetime.now(timezone.utc).isoformat()
             
+            # Determine if permanently failed
             if attempts >= MAX_RETRIES:
                 # Final failure
+                full_error = f"{error_code}: {error_msg}"
                 conn.execute("""
                     UPDATE async_tasks
                     SET status = 'FAILED',
                         last_error = ?,
                         updated_at = ?
                     WHERE task_id = ?
-                """, (error_msg, now_iso, task_id))
-                _log(f"Task {task_id} FAILED permanently after {attempts} attempts")
+                """, (full_error, now_iso, task_id))
+                _log(f"Task {task_id} FAILED permanently after {attempts} attempts ({error_code})")
                 
                 # Mark position as permanently failed
                 row = conn.execute("SELECT entity_id FROM async_tasks WHERE task_id = ?", (task_id,)).fetchone()
@@ -232,11 +275,12 @@ def mark_task_failed(task_id: str, error_msg: str, attempts: int):
                     """, (row["entity_id"],))
                     _log(f"Position {row['entity_id']} marked FLAG_ASYNC_FAILED_PERMANENT")
             else:
-                # Schedule retry with exponential backoff
-                delay_sec = RETRY_DELAYS[attempts - 1] if attempts <= len(RETRY_DELAYS) else RETRY_DELAYS[-1]
+                # Schedule retry with exact backoff
+                delay_sec = RETRY_DELAYS.get(attempts, RETRY_DELAYS[3])
                 next_run = datetime.now(timezone.utc) + timedelta(seconds=delay_sec)
                 next_run_iso = next_run.isoformat()
                 
+                full_error = f"{error_code}: {error_msg}"
                 conn.execute("""
                     UPDATE async_tasks
                     SET status = 'PENDING',
@@ -244,8 +288,8 @@ def mark_task_failed(task_id: str, error_msg: str, attempts: int):
                         next_run_at = ?,
                         updated_at = ?
                     WHERE task_id = ?
-                """, (error_msg, next_run_iso, now_iso, task_id))
-                _log(f"Task {task_id} retry scheduled in {delay_sec}s (attempt {attempts}/{MAX_RETRIES})")
+                """, (full_error, next_run_iso, now_iso, task_id))
+                _log(f"Task {task_id} retry scheduled in {delay_sec}s (attempt {attempts}/{MAX_RETRIES}, {error_code})")
             
             conn.commit()
     except Exception as e:
@@ -253,21 +297,22 @@ def mark_task_failed(task_id: str, error_msg: str, attempts: int):
 
 
 # ─────────────────────────────────────────────
-# ANALYSIS FUNCTIONS (FIX A: Real LLM calls)
+# ANALYSIS FUNCTIONS (FIX A: Strict JSON contracts)
 # ─────────────────────────────────────────────
 
-def run_sanad_verification(position_data: dict, signal_payload: dict) -> dict:
+def run_sanad_verification(position_data: dict, signal_payload: dict, task_id: str) -> dict:
     """
     Run Sanad verification (rugpull, sybil, trust).
     
-    FIX A: Real Claude API call with structured output parsing.
+    FIX A1: Strict JSON contract in prompt
+    FIX A2: Robust extraction + validation
     """
     position_id = position_data.get('position_id', '?')
     token_symbol = position_data.get('token_address', '?')
     
     _log(f"Running Sanad verification for position {position_id}")
     
-    # Build user message with token context
+    # Build user message with explicit schema
     user_msg = f"""
 Token: {position_data.get('token_address')}
 Chain: {position_data.get('chain')}
@@ -275,7 +320,9 @@ Entry price: {position_data.get('entry_price')}
 Size: ${position_data.get('size_usd')}
 Strategy: {position_data.get('strategy_id')}
 
-Analyze this token for Sanad verification. Return JSON only with this exact schema:
+Analyze this token for Sanad verification.
+
+Required JSON schema:
 {{
   "trust_score": <int 0-100>,
   "rugpull_flags": [<string list>],
@@ -287,7 +334,7 @@ Analyze this token for Sanad verification. Return JSON only with this exact sche
     
     try:
         raw = llm_client.call_claude(
-            SANAD_PROMPT + "\n\nReturn JSON only with the schema above.",
+            SANAD_PROMPT + JSON_CONTRACT,
             user_msg,
             model=MODEL,
             max_tokens=2000,
@@ -298,12 +345,19 @@ Analyze this token for Sanad verification. Return JSON only with this exact sche
         if not raw:
             raise RuntimeError("Sanad API call returned None")
         
-        parsed = llm_client.parse_json_failsafe(raw)
+        # FIX A2: Extract and validate
+        parsed = llm_client.extract_json_object(raw)
         if not parsed:
-            raise RuntimeError("Failed to parse Sanad JSON response")
+            _dump_raw_llm(task_id, "sanad", raw)
+            raise ValueError("Failed to extract JSON from Sanad response")
+        
+        # Validate required fields
+        if "trust_score" not in parsed:
+            _dump_raw_llm(task_id, "sanad", raw)
+            raise ValueError("Sanad JSON missing trust_score")
         
         return {
-            "raw": raw,
+            "raw": raw[:500] + "..." if len(raw) > 500 else raw,  # Truncate for storage
             "parsed": parsed,
             "model": MODEL,
             "timestamp": datetime.now(timezone.utc).isoformat()
@@ -313,18 +367,21 @@ Analyze this token for Sanad verification. Return JSON only with this exact sche
         raise
 
 
-def run_bull_analysis(signal_payload: dict, token_symbol: str) -> dict:
+def run_bull_analysis(signal_payload: dict, token_symbol: str, task_id: str) -> dict:
     """
     Run Bull argument (pro-trade).
     
-    FIX A: Real Claude API call with structured output parsing.
+    FIX A1: Strict JSON contract in prompt
+    FIX A2: Robust extraction + validation
     """
     _log("Running Bull analysis")
     
     user_msg = f"""
 {json.dumps(signal_payload, indent=2)}
 
-Argue FOR this trade as Al-Baqarah (Bull). Return JSON only:
+Argue FOR this trade as Al-Baqarah (Bull).
+
+Required JSON schema:
 {{
   "verdict": "<BUY|SKIP>",
   "confidence": <int 0-100>,
@@ -335,7 +392,7 @@ Argue FOR this trade as Al-Baqarah (Bull). Return JSON only:
     
     try:
         raw = llm_client.call_claude(
-            BULL_PROMPT + "\n\nReturn JSON only with the schema above.",
+            BULL_PROMPT + JSON_CONTRACT,
             user_msg,
             model=MODEL,
             max_tokens=2000,
@@ -346,12 +403,19 @@ Argue FOR this trade as Al-Baqarah (Bull). Return JSON only:
         if not raw:
             raise RuntimeError("Bull API call returned None")
         
-        parsed = llm_client.parse_json_failsafe(raw)
+        # FIX A2: Extract and validate
+        parsed = llm_client.extract_json_object(raw)
         if not parsed:
-            raise RuntimeError("Failed to parse Bull JSON response")
+            _dump_raw_llm(task_id, "bull", raw)
+            raise ValueError("Failed to extract JSON from Bull response")
+        
+        # Validate required fields
+        if "verdict" not in parsed or "confidence" not in parsed:
+            _dump_raw_llm(task_id, "bull", raw)
+            raise ValueError("Bull JSON missing verdict or confidence")
         
         return {
-            "raw": raw,
+            "raw": raw[:500] + "..." if len(raw) > 500 else raw,
             "parsed": parsed,
             "model": MODEL,
             "timestamp": datetime.now(timezone.utc).isoformat()
@@ -361,18 +425,21 @@ Argue FOR this trade as Al-Baqarah (Bull). Return JSON only:
         raise
 
 
-def run_bear_analysis(signal_payload: dict, token_symbol: str) -> dict:
+def run_bear_analysis(signal_payload: dict, token_symbol: str, task_id: str) -> dict:
     """
     Run Bear argument (anti-trade).
     
-    FIX A: Real Claude API call with structured output parsing.
+    FIX A1: Strict JSON contract in prompt
+    FIX A2: Robust extraction + validation
     """
     _log("Running Bear analysis")
     
     user_msg = f"""
 {json.dumps(signal_payload, indent=2)}
 
-Argue AGAINST this trade as Al-Dahhak (Bear). Return JSON only:
+Argue AGAINST this trade as Al-Dahhak (Bear).
+
+Required JSON schema:
 {{
   "verdict": "<SKIP|BUY>",
   "confidence": <int 0-100>,
@@ -383,7 +450,7 @@ Argue AGAINST this trade as Al-Dahhak (Bear). Return JSON only:
     
     try:
         raw = llm_client.call_claude(
-            BEAR_PROMPT + "\n\nReturn JSON only with the schema above.",
+            BEAR_PROMPT + JSON_CONTRACT,
             user_msg,
             model=MODEL,
             max_tokens=2000,
@@ -394,12 +461,19 @@ Argue AGAINST this trade as Al-Dahhak (Bear). Return JSON only:
         if not raw:
             raise RuntimeError("Bear API call returned None")
         
-        parsed = llm_client.parse_json_failsafe(raw)
+        # FIX A2: Extract and validate
+        parsed = llm_client.extract_json_object(raw)
         if not parsed:
-            raise RuntimeError("Failed to parse Bear JSON response")
+            _dump_raw_llm(task_id, "bear", raw)
+            raise ValueError("Failed to extract JSON from Bear response")
+        
+        # Validate required fields
+        if "verdict" not in parsed or "confidence" not in parsed:
+            _dump_raw_llm(task_id, "bear", raw)
+            raise ValueError("Bear JSON missing verdict or confidence")
         
         return {
-            "raw": raw,
+            "raw": raw[:500] + "..." if len(raw) > 500 else raw,
             "parsed": parsed,
             "model": MODEL,
             "timestamp": datetime.now(timezone.utc).isoformat()
@@ -409,11 +483,13 @@ Argue AGAINST this trade as Al-Dahhak (Bear). Return JSON only:
         raise
 
 
-def run_judge_verdict(signal_payload: dict, sanad: dict, bull: dict, bear: dict, token_symbol: str) -> dict:
+def run_judge_verdict(signal_payload: dict, sanad: dict, bull: dict, bear: dict, token_symbol: str, task_id: str) -> dict:
     """
     Run Judge verdict (GPT reviews full evidence).
     
-    FIX A: Real OpenAI API call with structured output parsing.
+    FIX A1: Strict JSON contract in prompt
+    FIX A2: Robust extraction + validation (ESPECIALLY confidence field)
+    FIX C: Dump raw response on parse failure
     """
     _log("Running Judge verdict")
     
@@ -432,7 +508,9 @@ Bull:
 Bear:
 {json.dumps(bear.get('parsed', {}), indent=2)}
 
-As Al-Muhasbi (Judge), provide your verdict. Return JSON only:
+As Al-Muhasbi (Judge), provide your verdict.
+
+Required JSON schema:
 {{
   "verdict": "<APPROVE|REJECT>",
   "confidence": <int 0-100>,
@@ -446,7 +524,7 @@ As Al-Muhasbi (Judge), provide your verdict. Return JSON only:
     
     try:
         raw = llm_client.call_openai(
-            JUDGE_PROMPT + "\n\nReturn JSON only with the schema above.",
+            JUDGE_PROMPT + JSON_CONTRACT,
             user_msg,
             model=JUDGE_MODEL,
             max_tokens=2000,
@@ -457,18 +535,39 @@ As Al-Muhasbi (Judge), provide your verdict. Return JSON only:
         if not raw:
             raise RuntimeError("Judge API call returned None")
         
-        parsed = llm_client.parse_json_failsafe(raw)
+        # FIX A2: Extract and validate
+        parsed = llm_client.extract_json_object(raw)
         if not parsed:
-            raise RuntimeError("Failed to parse Judge JSON response")
+            _dump_raw_llm(task_id, "judge", raw)
+            raise ValueError("ERR_JUDGE_PARSE: Failed to extract JSON from Judge response")
         
-        # Validate required fields
-        if "verdict" not in parsed or parsed["verdict"] not in ["APPROVE", "REJECT"]:
-            raise RuntimeError(f"Invalid Judge verdict: {parsed.get('verdict')}")
-        if "confidence" not in parsed or not isinstance(parsed["confidence"], int):
-            raise RuntimeError(f"Invalid Judge confidence: {parsed.get('confidence')}")
+        # FIX A2: Validate REQUIRED fields (especially confidence)
+        if "verdict" not in parsed:
+            _dump_raw_llm(task_id, "judge", raw)
+            raise ValueError("ERR_JUDGE_PARSE: Judge JSON missing verdict field")
+        
+        if parsed["verdict"] not in ["APPROVE", "REJECT"]:
+            _dump_raw_llm(task_id, "judge", raw)
+            raise ValueError(f"ERR_JUDGE_PARSE: Invalid verdict value: {parsed['verdict']}")
+        
+        if "confidence" not in parsed:
+            _dump_raw_llm(task_id, "judge", raw)
+            raise ValueError("ERR_JUDGE_PARSE: Judge JSON missing confidence field")
+        
+        if not isinstance(parsed["confidence"], (int, float)):
+            _dump_raw_llm(task_id, "judge", raw)
+            raise ValueError(f"ERR_JUDGE_PARSE: Invalid confidence type: {type(parsed['confidence'])}")
+        
+        confidence = int(parsed["confidence"])
+        if not (0 <= confidence <= 100):
+            _dump_raw_llm(task_id, "judge", raw)
+            raise ValueError(f"ERR_JUDGE_PARSE: confidence out of range: {confidence}")
+        
+        # Normalize confidence to int
+        parsed["confidence"] = confidence
         
         return {
-            "raw": raw,
+            "raw": raw[:500] + "..." if len(raw) > 500 else raw,
             "parsed": parsed,
             "model": JUDGE_MODEL,
             "timestamp": datetime.now(timezone.utc).isoformat()
@@ -484,17 +583,18 @@ def process_task(task: dict):
     
     Runs full Cold Path analysis and updates position record.
     
-    FIX C: Use wall-clock timestamps (not perf_counter)
-    FIX D: Production catastrophic logic from parsed Judge output
+    FIX B: Use authoritative DB attempts value
+    FIX C: Error codes for debuggability
+    FIX D: Catastrophic logic from Judge JSON only
     """
     task_id = task["task_id"]
     position_id = task["entity_id"]
     task_type = task["task_type"]
-    attempts = task["attempts"]  # FIX B: Use DB value
+    attempts = task["attempts"]  # FIX B: Authoritative from DB
     
     _log(f"Processing task {task_id} (type={task_type}, position={position_id}, attempt={attempts})")
     
-    # FIX C: Wall-clock timestamp for started_at
+    # Wall-clock timestamp for started_at
     started_at = datetime.now(timezone.utc).isoformat()
     perf_start = time.perf_counter()  # Only for duration
     
@@ -528,24 +628,24 @@ def process_task(task: dict):
         _log(f"Running Cold Path for {token_symbol}")
         
         # Step 1: Sanad verification
-        sanad_result = run_sanad_verification(position_data, signal_payload)
+        sanad_result = run_sanad_verification(position_data, signal_payload, task_id)
         
         # Step 2: Bull/Bear debate (parallel if configured)
         if PARALLEL_BULL_BEAR:
             with ThreadPoolExecutor(max_workers=2) as executor:
-                bull_future = executor.submit(run_bull_analysis, signal_payload, token_symbol)
-                bear_future = executor.submit(run_bear_analysis, signal_payload, token_symbol)
+                bull_future = executor.submit(run_bull_analysis, signal_payload, token_symbol, task_id)
+                bear_future = executor.submit(run_bear_analysis, signal_payload, token_symbol, task_id)
                 
                 bull_result = bull_future.result(timeout=TIMEOUT_SECONDS)
                 bear_result = bear_future.result(timeout=TIMEOUT_SECONDS)
         else:
-            bull_result = run_bull_analysis(signal_payload, token_symbol)
-            bear_result = run_bear_analysis(signal_payload, token_symbol)
+            bull_result = run_bull_analysis(signal_payload, token_symbol, task_id)
+            bear_result = run_bear_analysis(signal_payload, token_symbol, task_id)
         
         # Step 3: Judge verdict
-        judge_result = run_judge_verdict(signal_payload, sanad_result, bull_result, bear_result, token_symbol)
+        judge_result = run_judge_verdict(signal_payload, sanad_result, bull_result, bear_result, token_symbol, task_id)
         
-        # FIX C: Wall-clock timestamp for completed_at
+        # Wall-clock timestamp for completed_at
         completed_at = datetime.now(timezone.utc).isoformat()
         duration_sec = time.perf_counter() - perf_start
         
@@ -564,7 +664,7 @@ def process_task(task: dict):
             }
         }
         
-        # FIX D: Production catastrophic flagging from parsed Judge output
+        # FIX D: Catastrophic flagging from Judge JSON ONLY
         risk_flag = None
         judge_parsed = judge_result.get("parsed", {})
         verdict = judge_parsed.get("verdict")
@@ -594,13 +694,27 @@ def process_task(task: dict):
         # Mark task done
         mark_task_done(task_id)
         
+    except ValueError as e:
+        # Parse errors or validation failures
+        error_msg = str(e)
+        if "ERR_JUDGE_PARSE" in error_msg:
+            error_code = "ERR_JUDGE_PARSE"
+        elif "extract JSON" in error_msg or "missing" in error_msg:
+            error_code = "ERR_JSON_PARSE"
+        else:
+            error_code = "ERR_VALIDATION"
+        
+        _log(f"Task {task_id} failed: {error_code}: {error_msg}")
+        mark_task_failed(task_id, error_code, error_msg, attempts)
+        
     except Exception as e:
+        # API failures, timeouts, etc.
         _log(f"Task {task_id} failed: {e}")
         import traceback
         _log(traceback.format_exc())
         
-        # Mark failed (will retry if attempts < MAX_RETRIES)
-        mark_task_failed(task_id, str(e), attempts)
+        error_code = "ERR_WORKER"
+        mark_task_failed(task_id, error_code, str(e), attempts)
 
 
 # ─────────────────────────────────────────────
