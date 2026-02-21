@@ -714,7 +714,7 @@ def check_circuit_breakers(config, state):
 # MAIN ENGINE
 # ─────────────────────────────────────────────
 
-def evaluate_gates(decision_packet, gate_range=None):
+def evaluate_gates(decision_packet, gate_range=None, state_override=None):
     """
     Main entry point. Evaluates gates in order.
     First failure stops evaluation and returns BLOCK.
@@ -724,6 +724,9 @@ def evaluate_gates(decision_packet, gate_range=None):
         gate_range: optional tuple (start, end) inclusive.
                    If None, evaluates all gates (1-15).
                    Example: gate_range=(1, 14) skips Gate 15.
+        state_override: optional dict to overlay on loaded state.
+                       Used to inject SQLite-derived portfolio/trade_history
+                       without writing JSON files.
 
     Returns:
         dict with result, gates_passed, gate_failed, evidence
@@ -777,6 +780,10 @@ def evaluate_gates(decision_packet, gate_range=None):
 
     budget, _ = load_json_state("budget.json", required=False)
     state["budget"] = budget
+
+    # Apply state_override (v3.1: inject SQLite-derived state)
+    if state_override:
+        state.update(state_override)
 
     # Pre-gate: Circuit breaker check
     cb_ok, cb_evidence = check_circuit_breakers(config, state)

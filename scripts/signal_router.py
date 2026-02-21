@@ -194,27 +194,47 @@ def _latest_signal_file(directory: Path, exclude_names: set[str] | None = None) 
 # Load system state
 # ---------------------------------------------------------------------------
 def _load_open_tokens() -> set[str]:
-    pos = _load_json(POSITIONS_PATH, {"positions": []})
-    return {p["token"].upper() for p in pos.get("positions", []) if p.get("status") == "OPEN"}
+    """Load open tokens from SQLite (v3.1 source of truth)."""
+    try:
+        with state_store.get_connection() as conn:
+            rows = conn.execute("SELECT token_address FROM positions WHERE status='OPEN'").fetchall()
+            return {row["token_address"].upper() for row in rows}
+    except Exception as e:
+        _log(f"Error loading open tokens from DB: {e}")
+        return set()
 
 
 def _load_cooldown_tokens() -> dict[str, float]:
-    """Return {TOKEN: remaining_minutes} for tokens traded within cooldown period."""
-    hist = _load_json(TRADE_HISTORY_PATH, {"trades": []})
-    now = _now()
-    cooldowns: dict[str, float] = {}
-    for t in hist.get("trades", []):
-        ts_str = t.get("timestamp", "")
-        try:
-            ts = datetime.fromisoformat(ts_str)
-            elapsed = (now - ts).total_seconds() / 60
-            remaining = COOLDOWN_HOURS * 60 - elapsed
-            if remaining > 0:
-                token = t.get("token", "").upper()
-                cooldowns[token] = max(cooldowns.get(token, 0), remaining)
-        except Exception:
-            continue
-    return cooldowns
+    """Return {TOKEN: remaining_minutes} for tokens traded within cooldown period from SQLite."""
+    try:
+        with state_store.get_connection() as conn:
+            # Query closed positions
+            rows = conn.execute("""
+                SELECT token_address, closed_at 
+                FROM positions 
+                WHERE status='CLOSED' AND closed_at IS NOT NULL
+            """).fetchall()
+            
+            now = _now()
+            cooldowns: dict[str, float] = {}
+            
+            for row in rows:
+                token = row["token_address"].upper()
+                closed_at_str = row["closed_at"]
+                try:
+                    closed_at = datetime.fromisoformat(closed_at_str.replace("Z", "+00:00"))
+                    elapsed = (now - closed_at).total_seconds() / 60
+                    remaining = COOLDOWN_HOURS * 60 - elapsed
+                    
+                    if remaining > 0:
+                        cooldowns[token] = max(cooldowns.get(token, 0), remaining)
+                except Exception:
+                    continue
+            
+            return cooldowns
+    except Exception as e:
+        _log(f"Error loading cooldowns from DB: {e}")
+        return {}
 
 
 def _is_daily_loss_hit() -> bool:
