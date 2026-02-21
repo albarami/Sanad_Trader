@@ -23,6 +23,7 @@ GENIUS_PATTERNS = GENIUS_DIR / "patterns.json"
 
 TRADE_HISTORY = STATE_DIR / "trade_history.json"
 UCB1_STATE = STATE_DIR / "ucb1_source_grades.json"
+THOMPSON_STATE = STATE_DIR / "thompson_state.json"
 
 # --- HELPERS ---
 def _log(msg):
@@ -124,6 +125,74 @@ def _update_ucb1_score(source, win):
     _log(f"UCB1 updated: {source} → {entry['grade']} (WR={wr:.1%}, n={entry['total']})")
 
 
+def _update_thompson_state(strategy, win):
+    """
+    Update Thompson Sampling (Beta distribution) for a strategy based on trade outcome.
+    
+    Alpha = wins + 1 (prior)
+    Beta = losses + 1 (prior)
+    """
+    THOMPSON_STATE.parent.mkdir(parents=True, exist_ok=True)
+    
+    thompson = {}
+    if THOMPSON_STATE.exists():
+        try:
+            thompson = json.load(open(THOMPSON_STATE))
+        except:
+            thompson = {}
+    
+    # Initialize if needed
+    if "strategies" not in thompson:
+        thompson["strategies"] = {}
+    
+    if strategy not in thompson["strategies"]:
+        thompson["strategies"][strategy] = {
+            "alpha": 1,  # Prior
+            "beta": 1,   # Prior
+            "trades": 0,
+            "wins": 0,
+            "losses": 0,
+            "total_pnl_pct": 0.0,
+            "last_trade_at": None,
+            "status": "PAPER"
+        }
+    
+    strat = thompson["strategies"][strategy]
+    strat["trades"] += 1
+    
+    if win:
+        strat["wins"] += 1
+        strat["alpha"] += 1
+    else:
+        strat["losses"] += 1
+        strat["beta"] += 1
+    
+    strat["last_trade_at"] = datetime.utcnow().isoformat() + "Z"
+    
+    # Update totals
+    if "total_trades" not in thompson:
+        thompson["total_trades"] = 0
+    thompson["total_trades"] += 1
+    
+    if "first_trade_at" not in thompson:
+        thompson["first_trade_at"] = datetime.utcnow().isoformat() + "Z"
+    
+    # Atomic save
+    tmp = THOMPSON_STATE.with_suffix(".tmp")
+    try:
+        with open(tmp, "w") as f:
+            json.dump(thompson, f, indent=2)
+        os.replace(tmp, THOMPSON_STATE)
+    except Exception as e:
+        _log(f"ERROR saving Thompson state: {e}")
+        try:
+            tmp.unlink(missing_ok=True)
+        except:
+            pass
+    
+    _log(f"Thompson updated: {strategy} → alpha={strat['alpha']}, beta={strat['beta']} (WR={strat['wins']}/{strat['trades']})")
+
+
 def analyze_trade(trade):
     """Analyze a single closed trade."""
     _log(f"Analyzing: {trade.get('token')} (exit: {trade.get('exit_reason')})")
@@ -152,6 +221,10 @@ def analyze_trade(trade):
     
     # Update UCB1 source grade with canonical key
     _update_ucb1_score(source_key, is_win)
+    
+    # Update Thompson Sampling state for strategy
+    if strategy and strategy != "unknown":
+        _update_thompson_state(strategy, is_win)
     
     # Save to genius memory
     category = "wins" if is_win else "losses"
