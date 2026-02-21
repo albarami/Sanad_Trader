@@ -95,8 +95,8 @@ def now_utc_iso():
 
 
 def elapsed_ms(start_time):
-    """Milliseconds elapsed since start_time."""
-    return int((time.time() - start_time) * 1000)
+    """Milliseconds elapsed since start_time. Uses perf_counter for precision."""
+    return int((time.perf_counter() - start_time) * 1000)
 
 
 def build_decision_record(
@@ -179,7 +179,7 @@ def stage_1_hard_safety_gates(signal, timings, start_time):
     
     Returns: (passed: bool, reason_code: str or None, evidence: dict)
     """
-    stage_start = time.time()
+    stage_start = time.perf_counter()
     
     # Placeholder: call hard_gates module if available
     if HAS_HARD_GATES:
@@ -231,7 +231,7 @@ def stage_2_signal_scoring(signal, runtime_state, timings, start_time):
     
     Returns: (score_total: float, score_breakdown: dict)
     """
-    stage_start = time.time()
+    stage_start = time.perf_counter()
     
     # Placeholder: call signal_scorer module if available
     if HAS_SCORER:
@@ -299,7 +299,7 @@ def stage_3_strategy_selection(signal, portfolio, runtime_state, timings, start_
     
     Returns: (strategy_id: str or None, position_usd: float or None, eligible: list)
     """
-    stage_start = time.time()
+    stage_start = time.perf_counter()
     
     # Placeholder: call strategy_selector module if available
     if HAS_STRATEGY:
@@ -333,7 +333,7 @@ def stage_4_policy_engine(decision_packet, timings, start_time):
     
     Returns: (passed: bool, gate_failed: int or None, evidence: dict)
     """
-    stage_start = time.time()
+    stage_start = time.perf_counter()
     
     # Placeholder: call policy_engine module if available
     if HAS_POLICY:
@@ -365,7 +365,7 @@ def stage_5_execute(signal, decision_id, strategy_id, position_usd, timings, sta
     
     Returns: (success: bool, position: dict or None, error: str or None)
     """
-    stage_start = time.time()
+    stage_start = time.perf_counter()
     
     token = signal.get("token_address") or signal.get("token")
     
@@ -473,7 +473,7 @@ def evaluate_signal_fast(
     
     Performance guarantee: <3000ms total
     """
-    start_time = time.time()
+    start_time = time.perf_counter()
     timings = {}
     
     # Generate IDs

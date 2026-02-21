@@ -714,13 +714,16 @@ def check_circuit_breakers(config, state):
 # MAIN ENGINE
 # ─────────────────────────────────────────────
 
-def evaluate_gates(decision_packet):
+def evaluate_gates(decision_packet, gate_range=None):
     """
-    Main entry point. Evaluates all 15 gates in order.
+    Main entry point. Evaluates gates in order.
     First failure stops evaluation and returns BLOCK.
 
     Args:
         decision_packet: dict with all trade data
+        gate_range: optional tuple (start, end) inclusive.
+                   If None, evaluates all gates (1-15).
+                   Example: gate_range=(1, 14) skips Gate 15.
 
     Returns:
         dict with result, gates_passed, gate_failed, evidence
@@ -784,8 +787,18 @@ def evaluate_gates(decision_packet):
         result["gate_evidence"] = cb_evidence
         return result
 
+    # Determine gate range
+    start_gate = 1
+    end_gate = 15  # Default: all gates
+    if gate_range:
+        start_gate, end_gate = gate_range
+    
     # Evaluate gates in order — first failure stops
     for gate_num, gate_name, gate_func in GATES:
+        # Skip gates outside requested range
+        if gate_num < start_gate or gate_num > end_gate:
+            continue
+        
         try:
             passed, evidence = gate_func(config, decision_packet, state)
         except Exception as e:
@@ -802,7 +815,7 @@ def evaluate_gates(decision_packet):
 
         result["gates_passed"].append(gate_num)
 
-    # All 15 gates passed
+    # All requested gates passed
     result["result"] = "PASS"
     return result
 
