@@ -575,6 +575,28 @@ def close_position(position, current_price, reason, detail=""):
         import notifier
         emoji = "🟢" if net_pnl_usd >= 0 else "🔴"
         pnl_sign = "+" if net_pnl_usd >= 0 else ""
+
+        # Resolve strategy + score from SQLite (not position dict)
+        strategy_name = position.get('strategy_name') or position.get('strategy_id') or '?'
+        sanad_score = position.get('sanad_score') or '?'
+        try:
+            pid = position.get("position_id") or position.get("id")
+            if pid:
+                import state_store
+                with state_store.get_connection() as _conn:
+                    _prow = _conn.execute(
+                        "SELECT strategy_id, decision_id FROM positions WHERE position_id=?", (pid,)
+                    ).fetchone()
+                    if _prow:
+                        strategy_name = _prow["strategy_id"] or strategy_name
+                        _drow = _conn.execute(
+                            "SELECT score_total FROM decisions WHERE decision_id=?", (_prow["decision_id"],)
+                        ).fetchone()
+                        if _drow and _drow["score_total"] is not None:
+                            sanad_score = int(_drow["score_total"])
+        except Exception:
+            pass
+
         notifier.send(
             f"{emoji} SELL {position['token']}/USDT\n\n"
             f"Reason: {reason}\n"
@@ -582,8 +604,8 @@ def close_position(position, current_price, reason, detail=""):
             f"Exit: {current_price:,.4f}\n"
             f"PnL: {pnl_sign}{pnl_pct*100:.1f}% ({pnl_sign}{net_pnl_usd:.2f})\n"
             f"Hold: {hold_hours:.1f}h\n\n"
-            f"Strategy: {position.get('strategy_name', '?')}\n"
-            f"Sanad Score: {position.get('sanad_score', '?')}",
+            f"Strategy: {strategy_name}\n"
+            f"Sanad Score: {sanad_score}",
             level="L2",
             title=f"SELL {position['token']}"
         )

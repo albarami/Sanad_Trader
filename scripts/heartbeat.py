@@ -797,12 +797,30 @@ def _send_hourly_summary(portfolio, price_cache, overall):
         try:
             import state_store
             rows = state_store.get_open_positions()
+
+            # Load price cache for live prices (Binance symbols + any cached DEX prices)
+            _price_cache = {}
+            try:
+                _pc = load_state("price_cache.json") or {}
+                _price_cache = {k: v.get("price", 0) if isinstance(v, dict) else v for k, v in _pc.items()}
+            except Exception:
+                pass
+
             for r in rows:
+                token = r.get("token_address", "?")
+                symbol = r.get("symbol") or r.get("token_address", "?")
+                entry_price = r.get("entry_price") or 0
+
+                # Try to find live price: price_cache by symbol+USDT, then by token address
+                current = _price_cache.get(f"{symbol}USDT") or _price_cache.get(symbol) or _price_cache.get(token) or 0
+                if not current or current <= 0:
+                    current = entry_price  # fallback: entry price (no live data)
+
                 open_pos.append({
-                    "token": r.get("token_address", "?"),
+                    "token": token,
                     "status": "OPEN",
-                    "entry_price": r.get("entry_price") or 0,
-                    "current_price": r.get("entry_price") or 0,  # TODO: live price
+                    "entry_price": entry_price,
+                    "current_price": current,
                     "position_usd": r.get("size_usd") or 0,
                     "strategy": r.get("strategy_id") or "unknown",
                 })
@@ -823,7 +841,17 @@ def _send_hourly_summary(portfolio, price_cache, overall):
                 pnl_usd = (current - entry) / entry * size
                 total_unrealized += pnl_usd
                 sign = "+" if pnl_pct >= 0 else ""
-                pos_lines.append(f"  {p.get('token','?')} @ ${entry:,.2f} -> ${current:,.2f} ({sign}{pnl_pct:.1f}%)")
+                # Format micro-prices: use scientific for tiny values
+                def _fmt_price(p):
+                    if p <= 0:
+                        return "N/A"
+                    if p < 0.01:
+                        return f"${p:.6f}"
+                    if p < 1:
+                        return f"${p:.4f}"
+                    return f"${p:,.2f}"
+                live_tag = "" if current != entry else " ⚠️"
+                pos_lines.append(f"  {p.get('token','?')[:16]} @ {_fmt_price(entry)} -> {_fmt_price(current)} ({sign}{pnl_pct:.1f}%){live_tag}")
 
         balance = portfolio.get("current_balance_usd", 0)
 
