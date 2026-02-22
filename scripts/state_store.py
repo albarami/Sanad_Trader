@@ -739,6 +739,10 @@ def get_portfolio(db_path=None) -> dict:
         # current_drawdown_pct = max_drawdown_pct (alias for Gate 02)
         portfolio["current_drawdown_pct"] = portfolio.get("max_drawdown_pct", 0.0)
         
+        # DERIVED: open_position_count always computed from positions table (never trust stored value)
+        actual_count = conn.execute("SELECT COUNT(*) FROM positions WHERE status='OPEN'").fetchone()[0]
+        portfolio["open_position_count"] = actual_count
+        
         return portfolio
 
 
@@ -866,6 +870,10 @@ def sync_json_cache(db_path=None):
             portfolio_dict = dict(portfolio_row)
             # Remove 'id' from JSON output (internal SQLite key)
             portfolio_dict.pop("id", None)
+        
+        # DERIVED: open_position_count always from positions table
+        actual_open = conn.execute("SELECT COUNT(*) FROM positions WHERE status='OPEN'").fetchone()[0]
+        portfolio_dict["open_position_count"] = actual_open
     
     # Write to JSON atomically — use DB location's parent (state/) directory
     state_dir = _db.parent

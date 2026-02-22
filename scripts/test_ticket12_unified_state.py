@@ -154,7 +154,9 @@ def test_update_portfolio():
             portfolio = state_store.get_portfolio(db_path)
             assert portfolio["current_balance_usd"] == 12345.67, "Balance not updated"
             assert portfolio["mode"] == "live", "Mode not updated"
-            assert portfolio["open_position_count"] == 7, "Open count not updated"
+            # open_position_count is DERIVED from positions table, not stored
+            # With no open positions in DB, it should be 0 regardless of what we tried to set
+            assert portfolio["open_position_count"] == 0, "Open count should be derived (0 open positions)"
             assert portfolio["daily_pnl_usd"] == 250.5, "Daily PnL not updated"
             assert "invalid_key" not in portfolio, "Invalid key should be filtered"
             

@@ -143,9 +143,16 @@ def reconcile_positions():
         notify_whatsapp("Reconciliation FAILED: cannot load config", urgent=True)
         return result
 
-    # Load internal position state
-    portfolio = load_state("portfolio.json")
-    internal_positions = load_state("positions.json")
+    # Load internal position state — SQLite is SSOT, JSON fallback
+    try:
+        import state_store
+        portfolio = state_store.get_portfolio()
+        internal_positions = {"positions": state_store.get_open_positions()}
+        log("Reconciliation: reading from SQLite (SSOT)")
+    except Exception as e:
+        log(f"SQLite read failed ({e}), falling back to JSON")
+        portfolio = load_state("portfolio.json")
+        internal_positions = load_state("positions.json")
     mode = portfolio.get("mode", "PAPER")
 
     # In PAPER mode: no real exchange to check against
