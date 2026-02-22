@@ -1415,6 +1415,26 @@ def _run_router_impl():
                     
                     _log(f"Decision: EXECUTE - Position {position_id} opened @ ${entry_price:.6f} (${size_usd})")
                     
+                    # Telegram notification for EXECUTE
+                    try:
+                        from notifier import send as _notify
+                        token_sym = selected_token or selected.get("token", "?")
+                        score = selected_score or 0
+                        strategy = decision_record.get("strategy_id", "default")
+                        _notify(
+                            f"*BUY {token_sym}*\n"
+                            f"🟢 BUY {token_sym}/USDT\n\n"
+                            f"Entry: {entry_price:.8g}\n"
+                            f"Size: ${size_usd:.0f}\n"
+                            f"Score: {score}\n"
+                            f"Strategy: {strategy}\n"
+                            f"Source: {selected.get('source', '?')}",
+                            level="L2",
+                            title=f"BUY {token_sym}"
+                        )
+                    except Exception as e:
+                        _log(f"Trade notification failed: {e}")
+                    
                     # Update portfolio counters via SQLite (auto-syncs to JSON)
                     if HAS_V31_HOT_PATH:
                         try:
