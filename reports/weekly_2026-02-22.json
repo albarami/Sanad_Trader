@@ -1,0 +1,42 @@
+{
+  "week_ending": "2026-02-22",
+  "balance": 9971.28,
+  "cumulative_pnl": -28.719999999999345,
+  "weekly_trades": 22,
+  "weekly_win_rate": 59.09090909090909,
+  "weekly_pnl_usd": -28.721231686198937,
+  "total_trades": 22,
+  "all_time_win_rate": 59.09090909090909,
+  "drawdown": 0.003401,
+  "sharpe": "0.05",
+  "days_active": 0,
+  "strategy_stats": {
+    "unknown": {
+      "trades": 5,
+      "wins": 3,
+      "avg_pnl": -0.31359535488297685
+    },
+    "whale-following": {
+      "trades": 4,
+      "wins": 2,
+      "avg_pnl": 4.229031537585427
+    },
+    "sentiment-divergence": {
+      "trades": 1,
+      "wins": 0,
+      "avg_pnl": -3.389084507042259
+    },
+    "cex-listing-play": {
+      "trades": 2,
+      "wins": 2,
+      "avg_pnl": 0.9051679333067505
+    },
+    "meme-momentum": {
+      "trades": 10,
+      "wins": 6,
+      "avg_pnl": -0.03236716299025495
+    }
+  },
+  "cf_accuracy": 100.0,
+  "generated_at": "2026-02-22T05:00:06.913475+00:00"
+}

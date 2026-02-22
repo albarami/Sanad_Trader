@@ -73,15 +73,9 @@ try:
     MAX_POSITIONS = _cfg.get("risk", {}).get("max_positions", 5)
     MAX_DAILY_RUNS = _cfg.get("budget", {}).get("daily_pipeline_runs", 50)
     COOLDOWN_HOURS = _cfg.get("policy_gates", {}).get("cooldown_minutes", 30) / 60  # now 30min default
-    # Paper mode overrides
-    try:
-        with open(Path(os.environ.get("SANAD_HOME", Path(__file__).resolve().parent.parent)) / "state" / "portfolio.json") as _pf:
-            _is_paper = json.load(_pf).get("mode", "paper") == "paper"
-    except Exception:
-        _is_paper = True
-    if _is_paper:
-        MAX_DAILY_RUNS = max(MAX_DAILY_RUNS, 200)  # Paper: 200 runs/day
-        MAX_POSITIONS = max(MAX_POSITIONS, 10)  # Paper: 10 concurrent positions
+    # Paper mode overrides — defer to runtime check, not import time
+    # (state_store may not be initialized during module import)
+    _is_paper = True  # Default to paper; will be checked at runtime
 except Exception:
     MAX_POSITIONS = 5
     MAX_DAILY_RUNS = 50
@@ -135,6 +129,26 @@ def _load_skip_list():
 
 def _now() -> datetime:
     return datetime.now(timezone.utc)
+
+
+def _get_mode_params():
+    """Get mode-specific parameters (max positions, daily runs) from state_store."""
+    try:
+        if HAS_V31_HOT_PATH:
+            portfolio = state_store.get_portfolio()
+            is_paper = portfolio.get("mode", "paper") == "paper"
+        else:
+            # Fallback to JSON read if state_store not available
+            portfolio = _load_json(PORTFOLIO_PATH, {"mode": "paper"})
+            is_paper = portfolio.get("mode", "paper") == "paper"
+        
+        if is_paper:
+            return {"max_positions": max(MAX_POSITIONS, 10), "max_daily_runs": max(MAX_DAILY_RUNS, 200)}
+        else:
+            return {"max_positions": MAX_POSITIONS, "max_daily_runs": MAX_DAILY_RUNS}
+    except Exception:
+        # Fail-safe: assume paper mode defaults
+        return {"max_positions": 10, "max_daily_runs": 200}
 
 
 # ---------------------------------------------------------------------------
@@ -244,7 +258,13 @@ def _load_cooldown_tokens() -> dict[str, float]:
 
 
 def _is_daily_loss_hit() -> bool:
-    pf = _load_json(PORTFOLIO_PATH, {})
+    try:
+        if HAS_V31_HOT_PATH:
+            pf = state_store.get_portfolio()
+        else:
+            pf = _load_json(PORTFOLIO_PATH, {})
+    except Exception:
+        pf = {}
     # If daily PnL is worse than -5%, stop
     daily_pnl = pf.get("daily_pnl_pct", 0)
     return daily_pnl <= -5.0
@@ -1119,9 +1139,13 @@ def _run_router_impl():
 
     # --- Select top signals (batch up to 3 for paper mode) ---
     try:
-        with open(STATE_DIR / "portfolio.json") as _pf:
-            _portfolio = json.load(_pf)
-        is_paper_mode = _portfolio.get("mode", "paper") == "paper"
+        if HAS_V31_HOT_PATH:
+            portfolio = state_store.get_portfolio()
+            is_paper_mode = portfolio.get("mode", "paper") == "paper"
+        else:
+            # Fallback to JSON if state_store unavailable
+            portfolio = _load_json(PORTFOLIO_PATH, {"mode": "paper"})
+            is_paper_mode = portfolio.get("mode", "paper") == "paper"
     except Exception:
         is_paper_mode = True
 
@@ -1286,13 +1310,24 @@ def _run_router_impl():
         
         POLICY_VERSION = "v3.1.0"
         try:
-            # Load portfolio state
-            portfolio = _load_json(PORTFOLIO_PATH, default={
-                "cash_balance_usd": 10000,
-                "open_position_count": 0,
-                "total_exposure_pct": 0,
-                "mode": "paper"
-            })
+            # Load portfolio state from SQLite (single source of truth)
+            if HAS_V31_HOT_PATH:
+                try:
+                    portfolio = state_store.get_portfolio()
+                except Exception as e:
+                    _log(f"Warning: state_store.get_portfolio failed ({e}), using defaults")
+                    portfolio = {
+                        "current_balance_usd": 10000,
+                        "open_position_count": 0,
+                        "mode": "paper"
+                    }
+            else:
+                # Fallback to JSON if state_store unavailable
+                portfolio = _load_json(PORTFOLIO_PATH, default={
+                    "current_balance_usd": 10000,
+                    "open_position_count": 0,
+                    "mode": "paper"
+                })
             
             # Build runtime state — stats from SQLite (single source of truth)
             # Mode-specific min_score from thresholds.yaml
@@ -1379,10 +1414,23 @@ def _run_router_impl():
                     
                     _log(f"Decision: EXECUTE - Position {position_id} opened @ ${entry_price:.6f} (${size_usd})")
                     
-                    # Update portfolio counters
-                    portfolio["open_position_count"] += 1
-                    portfolio["daily_trades"] = portfolio.get("daily_trades", 0) + 1
-                    _save_json_atomic(PORTFOLIO_PATH, portfolio)
+                    # Update portfolio counters via SQLite (auto-syncs to JSON)
+                    if HAS_V31_HOT_PATH:
+                        try:
+                            state_store.update_portfolio({
+                                "open_position_count": portfolio.get("open_position_count", 0) + 1,
+                                "daily_trades": portfolio.get("daily_trades", 0) + 1
+                            })
+                        except Exception as e:
+                            _log(f"Warning: portfolio update failed ({e}), JSON fallback")
+                            portfolio["open_position_count"] += 1
+                            portfolio["daily_trades"] = portfolio.get("daily_trades", 0) + 1
+                            _save_json_atomic(PORTFOLIO_PATH, portfolio)
+                    else:
+                        # Fallback to JSON write
+                        portfolio["open_position_count"] += 1
+                        portfolio["daily_trades"] = portfolio.get("daily_trades", 0) + 1
+                        _save_json_atomic(PORTFOLIO_PATH, portfolio)
                     
                     pipeline_reason = f"position={position_id} price=${entry_price:.6f}"
                 

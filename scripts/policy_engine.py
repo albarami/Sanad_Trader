@@ -35,6 +35,15 @@ KILL_SWITCH_PATH = BASE_DIR / "config" / "kill_switch.flag"
 STATE_DIR = BASE_DIR / "state"
 EXECUTION_LOGS_DIR = BASE_DIR / "execution-logs"
 
+# Import state_store for unified state management (Ticket 12)
+SCRIPT_DIR = Path(__file__).resolve().parent
+sys.path.insert(0, str(SCRIPT_DIR))
+try:
+    import state_store
+    HAS_STATE_STORE = True
+except ImportError:
+    HAS_STATE_STORE = False
+
 
 def load_config():
     """Load thresholds.yaml. BLOCK if missing or corrupt."""
@@ -48,6 +57,23 @@ def load_config():
         return None, "thresholds.yaml not found"
     except yaml.YAMLError as e:
         return None, f"thresholds.yaml parse error: {e}"
+
+
+def _is_paper_mode():
+    """Check if system is in paper mode (single source of truth: SQLite)."""
+    if HAS_STATE_STORE:
+        try:
+            portfolio = state_store.get_portfolio()
+            return portfolio.get("mode", "paper") == "paper"
+        except Exception:
+            pass
+    # Fallback to JSON
+    try:
+        portfolio_path = STATE_DIR / "portfolio.json"
+        with open(portfolio_path) as f:
+            return json.load(f).get("mode", "paper") == "paper"
+    except Exception:
+        return True  # Default to paper mode
     except Exception as e:
         return None, f"thresholds.yaml read error: {e}"
 
@@ -229,14 +255,7 @@ def gate_05_rugpull_safety(config, decision_packet, state):
                 return False, f"Rugpull HARD flags: {', '.join(hard_hits)}"
 
             # Paper mode: allow soft flags through with warning
-            portfolio_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "state", "portfolio.json")
-            try:
-                with open(portfolio_path) as f:
-                    is_paper = json.load(f).get("mode", "paper") == "paper"
-            except Exception:
-                is_paper = True
-
-            if is_paper:
+            if _is_paper_mode():
                 return True, f"PAPER MODE: soft rugpull flags allowed: {', '.join(rugpull_flags)}"
             return False, f"Rugpull flags triggered: {', '.join(rugpull_flags)}"
 
@@ -262,10 +281,13 @@ def gate_06_liquidity(config, decision_packet, state):
 
         # Paper mode: DEX tokens without slippage estimates use on-chain liquidity
         if estimated_slippage_bps is None:
-            portfolio_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "state", "portfolio.json")
             try:
-                with open(portfolio_path) as f:
-                    portfolio = json.load(f)
+                if HAS_STATE_STORE:
+                    portfolio = state_store.get_portfolio()
+                else:
+                    portfolio_path = STATE_DIR / "portfolio.json"
+                    with open(portfolio_path) as f:
+                        portfolio = json.load(f)
                 is_paper = portfolio.get("mode", "paper") == "paper"
             except Exception:
                 is_paper = True
@@ -292,14 +314,7 @@ def gate_06_liquidity(config, decision_packet, state):
         depth_sufficient = market.get("depth_sufficient")
         if depth_sufficient is False:
             # Paper mode DEX: depth_sufficient may be unset — allow if slippage is OK
-            portfolio_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "state", "portfolio.json")
-            try:
-                with open(portfolio_path) as f:
-                    portfolio = json.load(f)
-                is_paper = portfolio.get("mode", "paper") == "paper"
-            except Exception:
-                is_paper = True
-            if is_paper and venue == "DEX":
+            if _is_paper_mode() and venue == "DEX":
                 return True, f"DEX paper mode: slippage OK ({estimated_slippage_bps}bps), depth check skipped"
             return False, "Order book / pool depth insufficient for position size"
 
@@ -352,13 +367,7 @@ def gate_08_preflight_simulation(config, decision_packet, state):
         preflight = decision_packet.get("preflight_simulation", {})
         if not preflight:
             # Paper mode: no on-chain simulation available — allow with warning
-            portfolio_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "state", "portfolio.json")
-            try:
-                with open(portfolio_path) as f:
-                    is_paper = json.load(f).get("mode", "paper") == "paper"
-            except Exception:
-                is_paper = True
-            if is_paper:
+            if _is_paper_mode():
                 return True, "DEX paper mode: pre-flight simulation skipped (no on-chain access)"
             return False, "Pre-flight simulation results missing for DEX trade"
 
@@ -757,7 +766,17 @@ def evaluate_gates(decision_packet, gate_range=None, state_override=None):
     # Load state files
     state = {}
 
-    portfolio, err = load_json_state("portfolio.json")
+    # Load portfolio from SQLite (single source of truth)
+    if HAS_STATE_STORE:
+        try:
+            portfolio = state_store.get_portfolio()
+            err = None
+        except Exception as e:
+            portfolio = None
+            err = f"state_store.get_portfolio failed: {e}"
+    else:
+        portfolio, err = load_json_state("portfolio.json")
+    
     if err:
         result["gate_failed"] = 0
         result["gate_failed_name"] = "STATE"

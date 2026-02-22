@@ -34,6 +34,14 @@ SCRIPTS_DIR = BASE_DIR / "scripts"
 
 sys.path.insert(0, str(SCRIPTS_DIR))
 
+# Import state_store for unified state management (Ticket 12)
+try:
+    import state_store
+    HAS_STATE_STORE = True
+except ImportError:
+    HAS_STATE_STORE = False
+    print("[POSITION MONITOR] WARNING: state_store not available, using JSON fallback")
+
 # ─────────────────────────────────────────────
 # HELPERS
 # ─────────────────────────────────────────────
@@ -656,9 +664,18 @@ def close_position(position, current_price, reason, detail=""):
 
 def update_portfolio(positions_data, closed_pnls):
     """Recalculate portfolio after closes. Balance always derived from trade_history.json."""
-    portfolio = load_json(STATE_DIR / "portfolio.json")
+    # Load portfolio from SQLite (single source of truth)
+    if HAS_STATE_STORE:
+        try:
+            portfolio = state_store.get_portfolio()
+        except Exception as e:
+            print(f"[POSITION MONITOR] WARNING: state_store.get_portfolio failed ({e}), using JSON fallback")
+            portfolio = load_json(STATE_DIR / "portfolio.json")
+    else:
+        portfolio = load_json(STATE_DIR / "portfolio.json")
+    
     if not portfolio:
-        print("[POSITION MONITOR] ERROR: Cannot load portfolio.json for update")
+        print("[POSITION MONITOR] ERROR: Cannot load portfolio for update")
         return
 
     all_positions = positions_data.get("positions", [])
@@ -725,18 +742,53 @@ def update_portfolio(positions_data, closed_pnls):
         for t in trades if isinstance(t, dict)
         and (t.get("closed_at", t.get("timestamp", "")) >= daily_reset_at)
     )
-    portfolio["daily_pnl_usd"] = round(daily_pnl_usd, 2)
-    portfolio["daily_pnl_pct"] = round(daily_pnl_usd / starting, 6) if starting > 0 else 0
-    portfolio["current_drawdown_pct"] = round((peak - total_equity) / peak, 6) if peak > 0 else 0
-    portfolio["meme_allocation_pct"] = round(meme_usd / total_equity, 4) if total_equity > 0 else 0
-    portfolio["total_exposure_pct"] = round(total_exposure_usd / total_equity, 4) if total_equity > 0 else 0
-    portfolio["token_exposure_pct"] = {k: round(v, 4) for k, v in token_exposure.items()}
-    portfolio["updated_at"] = now_iso()
-
-    save_json_atomic(STATE_DIR / "portfolio.json", portfolio)
+    # Build updates dict for state_store
+    updates = {
+        "current_balance_usd": round(total_equity, 2),
+        "open_position_count": len(open_positions),
+        "daily_pnl_usd": round(daily_pnl_usd, 2),
+        "max_drawdown_pct": round((peak - total_equity) / peak, 6) if peak > 0 else 0,
+    }
+    
+    # Update via SQLite (auto-syncs to JSON cache)
+    if HAS_STATE_STORE:
+        try:
+            state_store.update_portfolio(updates)
+        except Exception as e:
+            print(f"[POSITION MONITOR] WARNING: state_store.update_portfolio failed ({e}), using JSON fallback")
+            # Fallback to JSON write with all fields
+            portfolio["cash_balance_usd"] = round(current, 2)
+            portfolio["unrealized_pnl_usd"] = round(unrealized_pnl, 2)
+            portfolio["current_balance_usd"] = round(total_equity, 2)
+            portfolio["peak_balance_usd"] = round(peak, 2)
+            portfolio["open_position_count"] = len(open_positions)
+            portfolio["daily_pnl_usd"] = round(daily_pnl_usd, 2)
+            portfolio["daily_pnl_pct"] = round(daily_pnl_usd / starting, 6) if starting > 0 else 0
+            portfolio["current_drawdown_pct"] = round((peak - total_equity) / peak, 6) if peak > 0 else 0
+            portfolio["meme_allocation_pct"] = round(meme_usd / total_equity, 4) if total_equity > 0 else 0
+            portfolio["total_exposure_pct"] = round(total_exposure_usd / total_equity, 4) if total_equity > 0 else 0
+            portfolio["token_exposure_pct"] = {k: round(v, 4) for k, v in token_exposure.items()}
+            portfolio["updated_at"] = now_iso()
+            save_json_atomic(STATE_DIR / "portfolio.json", portfolio)
+    else:
+        # No state_store, use JSON
+        portfolio["cash_balance_usd"] = round(current, 2)
+        portfolio["unrealized_pnl_usd"] = round(unrealized_pnl, 2)
+        portfolio["current_balance_usd"] = round(total_equity, 2)
+        portfolio["peak_balance_usd"] = round(peak, 2)
+        portfolio["open_position_count"] = len(open_positions)
+        portfolio["daily_pnl_usd"] = round(daily_pnl_usd, 2)
+        portfolio["daily_pnl_pct"] = round(daily_pnl_usd / starting, 6) if starting > 0 else 0
+        portfolio["current_drawdown_pct"] = round((peak - total_equity) / peak, 6) if peak > 0 else 0
+        portfolio["meme_allocation_pct"] = round(meme_usd / total_equity, 4) if total_equity > 0 else 0
+        portfolio["total_exposure_pct"] = round(total_exposure_usd / total_equity, 4) if total_equity > 0 else 0
+        portfolio["token_exposure_pct"] = {k: round(v, 4) for k, v in token_exposure.items()}
+        portfolio["updated_at"] = now_iso()
+        save_json_atomic(STATE_DIR / "portfolio.json", portfolio)
+    
     unr_sign = "+" if unrealized_pnl >= 0 else ""
     print(f"  [PORTFOLIO] Equity: ${total_equity:,.2f} (cash ${current:,.2f} {unr_sign}${unrealized_pnl:.2f} unrealized) | "
-          f"Open: {len(open_positions)} | Drawdown: {portfolio['current_drawdown_pct']*100:.2f}%")
+          f"Open: {len(open_positions)} | Drawdown: {updates['max_drawdown_pct']*100:.2f}%")
 
 
 # ─────────────────────────────────────────────
@@ -748,10 +800,19 @@ def run_monitor():
     print(f"\n[POSITION MONITOR] {now_iso()}")
     print(f"{'='*60}")
 
-    # ── Load state ──
-    positions_data = load_json(STATE_DIR / "positions.json")
+    # ── Load state from SQLite (single source of truth) ──
+    if HAS_STATE_STORE:
+        try:
+            all_positions = state_store.get_all_positions()
+            positions_data = {"positions": all_positions}
+        except Exception as e:
+            print(f"[POSITION MONITOR] WARNING: state_store failed ({e}), using JSON fallback")
+            positions_data = load_json(STATE_DIR / "positions.json")
+    else:
+        positions_data = load_json(STATE_DIR / "positions.json")
+    
     if positions_data is None:
-        print("[POSITION MONITOR] FATAL: Cannot read positions.json — aborting")
+        print("[POSITION MONITOR] FATAL: Cannot read positions — aborting")
         return
 
     price_cache = load_json(STATE_DIR / "price_cache.json")
@@ -820,8 +881,9 @@ def run_monitor():
             print(f"[POSITION MONITOR] Birdeye client not available: {e}")
     
     for position in open_positions:
-        symbol = position["symbol"]
-        token = position["token"]
+        # Handle both legacy (symbol/token) and v3.1 (token_address) formats
+        symbol = position.get("symbol") or position.get("token_address", "UNKNOWN")
+        token = position.get("token") or symbol
         entry = position["entry_price"]
         current_price = price_cache.get(symbol)
 
@@ -930,7 +992,10 @@ def run_monitor():
             continue
 
     # ── Save state ──
-    save_json_atomic(STATE_DIR / "positions.json", positions_data)
+    # NOTE: Positions are auto-synced to JSON by state_store.sync_json_cache()
+    # Only save if state_store not available (backward compat)
+    if not HAS_STATE_STORE:
+        save_json_atomic(STATE_DIR / "positions.json", positions_data)
     save_trailing_stops(trailing_stops)
 
     # Always update portfolio with mark-to-market (not just on closes)

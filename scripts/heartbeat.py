@@ -34,6 +34,15 @@ STATE_DIR = BASE_DIR / "state"
 LOGS_DIR = BASE_DIR / "execution-logs"
 HEARTBEAT_LOG = LOGS_DIR / "heartbeat.log"
 
+# Import state_store for unified state management (Ticket 12)
+SCRIPT_DIR = Path(__file__).resolve().parent
+sys.path.insert(0, str(SCRIPT_DIR))
+try:
+    import state_store
+    HAS_STATE_STORE = True
+except ImportError:
+    HAS_STATE_STORE = False
+
 
 def load_config():
     """Load thresholds.yaml. Return None on failure."""
@@ -46,7 +55,22 @@ def load_config():
 
 
 def load_state(filename):
-    """Load a JSON state file. Return empty dict on failure."""
+    """Load a JSON state file. Return empty dict on failure.
+    
+    For portfolio.json and positions.json, use SQLite (single source of truth).
+    """
+    # Use state_store for portfolio and positions
+    if HAS_STATE_STORE:
+        try:
+            if filename == "portfolio.json":
+                return state_store.get_portfolio()
+            elif filename == "positions.json":
+                all_positions = state_store.get_all_positions()
+                return {"positions": all_positions}
+        except Exception as e:
+            log(f"WARNING: state_store failed for {filename} ({e}), using JSON fallback")
+    
+    # Fallback to JSON
     try:
         with open(STATE_DIR / filename, "r") as f:
             return json.load(f)
@@ -55,7 +79,25 @@ def load_state(filename):
 
 
 def save_state(filename, data):
-    """Save a JSON state file."""
+    """Save a JSON state file.
+    
+    For portfolio.json, use SQLite via state_store (auto-syncs to JSON).
+    """
+    # Use state_store for portfolio
+    if HAS_STATE_STORE and filename == "portfolio.json":
+        try:
+            # Extract only updatable fields
+            updates = {k: v for k, v in data.items() if k in {
+                "current_balance_usd", "mode", "open_position_count",
+                "daily_pnl_usd", "max_drawdown_pct", "daily_trades"
+            }}
+            if updates:
+                state_store.update_portfolio(updates)
+                return
+        except Exception as e:
+            log(f"WARNING: state_store.update_portfolio failed ({e}), using JSON fallback")
+    
+    # Fallback to JSON
     try:
         with open(STATE_DIR / filename, "w") as f:
             json.dump(data, f, indent=2)

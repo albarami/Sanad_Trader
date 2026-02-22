@@ -30,8 +30,14 @@ def _add_column_if_missing(conn, table, column, coltype):
         conn.execute(f"ALTER TABLE {table} ADD COLUMN {column} {coltype}")
 
 
+def ensure_tables(db_path=None):
+    """Ensure all tables exist. Alias for init_db for clarity."""
+    init_db(db_path or DB_PATH)
+
+
 def init_db(db_path=DB_PATH):
     """Initialize SQLite DB with schema. Idempotent."""
+    db_path = Path(db_path)
     db_path.parent.mkdir(parents=True, exist_ok=True)
     
     conn = sqlite3.connect(db_path)
@@ -152,6 +158,58 @@ def init_db(db_path=DB_PATH):
             last_updated TEXT NOT NULL
         )
     """)
+    
+    # portfolio table (Ticket 12 — unified state)
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS portfolio (
+            id INTEGER PRIMARY KEY,
+            current_balance_usd REAL NOT NULL,
+            mode TEXT NOT NULL,
+            open_position_count INTEGER NOT NULL DEFAULT 0,
+            daily_pnl_usd REAL NOT NULL DEFAULT 0,
+            max_drawdown_pct REAL NOT NULL DEFAULT 0,
+            daily_trades INTEGER NOT NULL DEFAULT 0,
+            updated_at TEXT NOT NULL
+        )
+    """)
+    
+    # Migration: seed portfolio from JSON if table is empty
+    count = conn.execute("SELECT COUNT(*) FROM portfolio").fetchone()[0]
+    if count == 0:
+        # Resolve portfolio.json path relative to DB location
+        portfolio_json_path = db_path.parent / "portfolio.json"
+        migrated = False
+        
+        if portfolio_json_path.exists():
+            try:
+                import json as _json
+                portfolio_data = _json.loads(portfolio_json_path.read_text())
+                conn.execute("""
+                    INSERT INTO portfolio (
+                        id, current_balance_usd, mode, open_position_count,
+                        daily_pnl_usd, max_drawdown_pct, daily_trades, updated_at
+                    ) VALUES (1, ?, ?, ?, ?, ?, ?, ?)
+                """, (
+                    portfolio_data.get("current_balance_usd", 10000.0),
+                    portfolio_data.get("mode", "paper"),
+                    portfolio_data.get("open_position_count", 0),
+                    portfolio_data.get("daily_pnl_usd", 0.0),
+                    portfolio_data.get("max_drawdown_pct", 0.0),
+                    portfolio_data.get("daily_trades", 0),
+                    portfolio_data.get("updated_at", datetime.now(timezone.utc).isoformat())
+                ))
+                migrated = True
+            except Exception:
+                pass
+        
+        # If no JSON or migration failed, insert default row
+        if not migrated:
+            conn.execute("""
+                INSERT INTO portfolio (
+                    id, current_balance_usd, mode, open_position_count,
+                    daily_pnl_usd, max_drawdown_pct, daily_trades, updated_at
+                ) VALUES (1, 10000.0, 'paper', 0, 0.0, 0.0, 0, ?)
+            """, (datetime.now(timezone.utc).isoformat(),))
     
     conn.commit()
     conn.close()
@@ -350,7 +408,12 @@ def try_open_position_atomic(decision: dict, price: float, position_payload: dic
             }
             _enqueue_task_internal(conn, task)
             
-            return position, {"already_existed": False, "error": None}
+            # Sync JSON cache after mutation
+            result = (position, {"already_existed": False, "error": None})
+        
+        # Call sync outside transaction context
+        sync_json_cache()
+        return result
     
     except DBBusyError:
         raise
@@ -358,10 +421,11 @@ def try_open_position_atomic(decision: dict, price: float, position_payload: dic
         return None, {"already_existed": False, "error": str(e)}
 
 
-def update_position_close(position_id: str, exit_payload: dict):
-    """Update position to CLOSED with exit data."""
+def update_position_close(position_id: str, exit_payload: dict, db_path=None):
+    """Update position to CLOSED with exit data. Auto-syncs JSON cache."""
+    _db = db_path or DB_PATH
     try:
-        with get_connection() as conn:
+        with get_connection(_db) as conn:
             now_iso = datetime.now(timezone.utc).isoformat()
             conn.execute("""
                 UPDATE positions SET
@@ -386,6 +450,9 @@ def update_position_close(position_id: str, exit_payload: dict):
                 now_iso,
                 position_id
             ))
+        
+        # Sync JSON cache after mutation
+        sync_json_cache(db_path=_db)
     except DBBusyError:
         raise
 
@@ -482,19 +549,30 @@ def ensure_and_close_position(position_dict: dict, exit_payload: dict, db_path=N
                     f"(position missing) for {position_id}"
                 )
         
+        # Sync JSON cache after mutation
+        sync_json_cache(db_path=_db)
         return position_id
     except DBBusyError:
         raise
 
 
-def get_open_positions(db_conn=None):
-    """Get all open positions."""
+def get_open_positions(db_path=None, db_conn=None) -> list[dict]:
+    """Get all OPEN positions from SQLite.
+    
+    Args:
+        db_path: Path to database (default: DB_PATH)
+        db_conn: Optional existing connection (for use within transactions)
+    
+    Returns: list of position dicts with status='OPEN'
+    """
     if db_conn:
         rows = db_conn.execute("SELECT * FROM positions WHERE status = 'OPEN'").fetchall()
         return [dict(row) for row in rows]
     else:
-        with get_connection() as conn:
-            return get_open_positions(conn)
+        _db = db_path or DB_PATH
+        with get_connection(_db) as conn:
+            rows = conn.execute("SELECT * FROM positions WHERE status = 'OPEN'").fetchall()
+            return [dict(row) for row in rows]
 
 
 def get_batch_size(db_conn=None):
@@ -544,3 +622,146 @@ def get_bandit_stats(db_path=None):
         }
         for row in rows
     }
+
+
+# ============================================================================
+# UNIFIED STATE API (Ticket 12 — SQLite as single source of truth)
+# ============================================================================
+
+def get_portfolio(db_path=None) -> dict:
+    """Get portfolio state from SQLite (single row, id=1).
+    
+    Returns: dict with keys: current_balance_usd, mode, open_position_count,
+             daily_pnl_usd, max_drawdown_pct, daily_trades, updated_at
+    Raises: RuntimeError if portfolio row doesn't exist (DB not initialized)
+    """
+    _db = db_path or DB_PATH
+    with get_connection(_db) as conn:
+        row = conn.execute("SELECT * FROM portfolio WHERE id = 1").fetchone()
+        if not row:
+            raise RuntimeError("Portfolio row missing — run init_db() or ensure_tables()")
+        return dict(row)
+
+
+def update_portfolio(updates: dict, db_path=None):
+    """Atomic UPDATE of portfolio (id=1).
+    
+    Args:
+        updates: dict with any subset of columns: current_balance_usd, mode,
+                 open_position_count, daily_pnl_usd, max_drawdown_pct, daily_trades
+    
+    Auto-sets updated_at to current UTC timestamp.
+    """
+    _db = db_path or DB_PATH
+    if not updates:
+        return
+    
+    # Build SET clause dynamically
+    allowed = {
+        "current_balance_usd", "mode", "open_position_count",
+        "daily_pnl_usd", "max_drawdown_pct", "daily_trades"
+    }
+    updates_filtered = {k: v for k, v in updates.items() if k in allowed}
+    if not updates_filtered:
+        return
+    
+    updates_filtered["updated_at"] = datetime.now(timezone.utc).isoformat()
+    
+    set_clause = ", ".join(f"{k} = ?" for k in updates_filtered.keys())
+    values = list(updates_filtered.values())
+    
+    with get_connection(_db) as conn:
+        conn.execute(f"UPDATE portfolio SET {set_clause} WHERE id = 1", values)
+    
+    # Auto-sync to JSON cache
+    sync_json_cache(db_path=_db)
+
+
+def get_all_positions(db_path=None) -> list[dict]:
+    """Get all positions (OPEN and CLOSED) from SQLite.
+    
+    Returns: list of position dicts, ordered by created_at DESC
+    """
+    _db = db_path or DB_PATH
+    with get_connection(_db) as conn:
+        rows = conn.execute(
+            "SELECT * FROM positions ORDER BY created_at DESC"
+        ).fetchall()
+        return [dict(row) for row in rows]
+
+
+def update_position_price(position_id: str, current_price: float, db_path=None):
+    """Update current_price for a position (used by position monitor).
+    
+    NOTE: This is a lightweight update for monitoring. Does NOT recalculate PnL
+    or trigger JSON sync. Use update_position_close() for closing positions.
+    """
+    _db = db_path or DB_PATH
+    now_iso = datetime.now(timezone.utc).isoformat()
+    
+    # Add current_price column if missing (dynamic schema evolution)
+    with get_connection(_db) as conn:
+        _add_column_if_missing(conn, "positions", "current_price", "REAL")
+        conn.execute("""
+            UPDATE positions
+            SET current_price = ?, updated_at = ?
+            WHERE position_id = ?
+        """, (current_price, now_iso, position_id))
+
+
+def sync_json_cache(db_path=None):
+    """Write current SQLite state to positions.json and portfolio.json.
+    
+    This is WRITE-ONLY: scripts should NEVER read these JSON files.
+    They exist only for backward compat and debugging.
+    
+    Called automatically after mutations (open_position, close_position, update_portfolio).
+    """
+    _db = Path(db_path or DB_PATH)
+    
+    with get_connection(_db) as conn:
+        # Fetch all positions
+        positions_rows = conn.execute(
+            "SELECT * FROM positions ORDER BY created_at DESC"
+        ).fetchall()
+        positions_list = [dict(row) for row in positions_rows]
+        
+        # Fetch portfolio
+        portfolio_row = conn.execute("SELECT * FROM portfolio WHERE id = 1").fetchone()
+        if not portfolio_row:
+            portfolio_dict = {
+                "mode": "paper",
+                "current_balance_usd": 10000.0,
+                "open_position_count": 0,
+                "daily_pnl_usd": 0.0,
+                "max_drawdown_pct": 0.0,
+                "daily_trades": 0,
+                "updated_at": datetime.now(timezone.utc).isoformat()
+            }
+        else:
+            portfolio_dict = dict(portfolio_row)
+            # Remove 'id' from JSON output (internal SQLite key)
+            portfolio_dict.pop("id", None)
+    
+    # Write to JSON atomically — use DB location's parent (state/) directory
+    state_dir = _db.parent
+    positions_path = state_dir / "positions.json"
+    portfolio_path = state_dir / "portfolio.json"
+    
+    state_dir.mkdir(parents=True, exist_ok=True)
+    
+    # Atomic write via temp file
+    import tempfile
+    
+    # positions.json
+    positions_json = {"positions": positions_list}
+    with tempfile.NamedTemporaryFile(mode="w", dir=state_dir, delete=False) as tmp:
+        json.dump(positions_json, tmp, indent=2, default=str)
+        tmp_path_pos = Path(tmp.name)
+    tmp_path_pos.replace(positions_path)
+    
+    # portfolio.json
+    with tempfile.NamedTemporaryFile(mode="w", dir=state_dir, delete=False) as tmp:
+        json.dump(portfolio_dict, tmp, indent=2, default=str)
+        tmp_path_port = Path(tmp.name)
+    tmp_path_port.replace(portfolio_path)

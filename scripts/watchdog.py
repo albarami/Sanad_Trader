@@ -34,6 +34,14 @@ GENIUS_DIR = BASE_DIR / "genius-memory" / "watchdog-actions"
 WATCHDOG_LOG = LOGS_DIR / "watchdog.log"
 ACTIONS_LOG = GENIUS_DIR / "actions.jsonl"
 
+# Import state_store for unified state management (Ticket 12)
+sys.path.insert(0, str(SCRIPTS_DIR))
+try:
+    import state_store
+    HAS_STATE_STORE = True
+except ImportError:
+    HAS_STATE_STORE = False
+
 # Thresholds (adjusted to reduce noise)
 CONSECUTIVE_ERROR_THRESHOLD = 3
 ROUTER_STALL_MIN = 30
@@ -1018,11 +1026,22 @@ def check_router_stall():
 def check_position_freshness():
     """Check if open positions have stale prices (>5 min old)."""
     try:
-        portfolio_file = STATE_DIR / "portfolio.json"
-        if not portfolio_file.exists():
-            return []
+        # Load portfolio from SQLite (single source of truth)
+        if HAS_STATE_STORE:
+            try:
+                portfolio = state_store.get_portfolio()
+            except Exception as e:
+                _log(f"state_store.get_portfolio failed: {e}, using JSON fallback")
+                portfolio_file = STATE_DIR / "portfolio.json"
+                if not portfolio_file.exists():
+                    return []
+                portfolio = json.load(open(portfolio_file))
+        else:
+            portfolio_file = STATE_DIR / "portfolio.json"
+            if not portfolio_file.exists():
+                return []
+            portfolio = json.load(open(portfolio_file))
         
-        portfolio = json.load(open(portfolio_file))
         positions = portfolio.get("positions", {})
         
         stale = []
