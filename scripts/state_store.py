@@ -1013,6 +1013,134 @@ def update_position_analysis(position_id: str, analysis_dict: dict, db_path=None
         raise
 
 
+# ============================================================
+# V4: Fee/Slippage/Reward helpers + record_fill + meta functions
+# ============================================================
+
+def _fee_usd(notional_usd: float, fee_bps: float) -> float:
+    """Compute fee in USD from notional and basis points."""
+    return float(notional_usd) * (float(fee_bps) / 10000.0)
+
+
+def _clamp(x: float, lo: float, hi: float) -> float:
+    """Clamp x to [lo, hi]."""
+    return max(lo, min(hi, x))
+
+
+def compute_reward(net_pnl_usd: float, net_pnl_pct: float, version: str = "v1"):
+    """
+    Compute reward from net PnL.
+
+    Units contract:
+    - net_pnl_pct is a DECIMAL FRACTION (e.g. -0.3092 == -30.92%)
+    - reward_bin: binary (1=win, 0=loss) for Thompson/UCB1
+    - reward_real: clamped fraction [-1.0, +1.0] for future continuous learning
+
+    Returns: (reward_bin, reward_real, version)
+    """
+    reward_bin = 1 if (net_pnl_usd or 0.0) > 0 else 0
+    reward_real = _clamp(float(net_pnl_pct or 0.0), -1.0, 1.0)
+    return reward_bin, reward_real, version
+
+
+def record_fill(
+    position_id: str,
+    side: str,
+    venue: str,
+    expected_price: float = None,
+    exec_price: float = 0.0,
+    qty_base: float = 0.0,
+    fee_bps: float = 0.0,
+    fee_usd: float = None,
+    slippage_bps: float = 0.0,
+    tx_hash: str = None,
+    created_at: str = None,
+    db_path=None,
+    db_conn=None,
+) -> str:
+    """
+    Insert a fill row. Returns fill_id (uuid4).
+    notional_usd = qty_base * exec_price.
+    fee_usd computed from notional * fee_bps if None.
+    
+    If db_conn is provided, uses it (for transactional grouping with position ops).
+    Otherwise opens own connection.
+    """
+    import uuid
+    fill_id = str(uuid.uuid4())
+    notional_usd = float(qty_base) * float(exec_price)
+    if fee_usd is None:
+        fee_usd = _fee_usd(notional_usd, fee_bps)
+    if created_at is None:
+        created_at = datetime.now(timezone.utc).isoformat()
+
+    sql = """
+        INSERT INTO fills (fill_id, position_id, side, venue, expected_price,
+                           exec_price, qty_base, notional_usd, fee_usd, fee_bps,
+                           slippage_bps, tx_hash, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    """
+    params = (fill_id, position_id, side, venue, expected_price,
+              exec_price, qty_base, notional_usd, fee_usd, fee_bps,
+              slippage_bps, tx_hash, created_at)
+
+    if db_conn is not None:
+        db_conn.execute(sql, params)
+    else:
+        _db = db_path or DB_PATH
+        with get_connection(_db) as conn:
+            conn.execute(sql, params)
+    return fill_id
+
+
+def get_meta(key: str, default: str = None, db_path=None) -> str:
+    """Read a value from the meta key/value store."""
+    _db = db_path or DB_PATH
+    with get_connection(_db) as conn:
+        row = conn.execute("SELECT value FROM meta WHERE key=?", (key,)).fetchone()
+        return row["value"] if row else default
+
+
+def set_meta(key: str, value: str, db_path=None):
+    """Write a value to the meta key/value store."""
+    _db = db_path or DB_PATH
+    now = datetime.now(timezone.utc).isoformat()
+    with get_connection(_db) as conn:
+        conn.execute(
+            "INSERT OR REPLACE INTO meta(key, value, updated_at) VALUES (?, ?, ?)",
+            (key, value, now)
+        )
+
+
+def get_active_policy_version(db_path=None) -> str:
+    """Get the currently active policy version. Defaults to 'main'."""
+    return get_meta("active_policy_version", default="main", db_path=db_path) or "main"
+
+
+def set_active_policy_version(new_version: str, reason: str = "", eval_id: str = None, db_path=None):
+    """Set the active policy version in meta store."""
+    set_meta("active_policy_version", new_version, db_path=db_path)
+
+
+def get_policy_config(policy_version: str = None, db_path=None) -> dict:
+    """
+    Load config_json from policy_configs for the given version.
+    If policy_version is None, uses active policy version.
+    Raises KeyError if missing (fail closed).
+    """
+    _db = db_path or DB_PATH
+    if policy_version is None:
+        policy_version = get_active_policy_version(db_path=_db)
+    with get_connection(_db) as conn:
+        row = conn.execute(
+            "SELECT config_json FROM policy_configs WHERE policy_version=?",
+            (policy_version,)
+        ).fetchone()
+        if row is None:
+            raise KeyError(f"Policy config '{policy_version}' not found — fail closed")
+        return json.loads(row["config_json"])
+
+
 def sync_json_cache(db_path=None):
     """Write current SQLite state to positions.json and portfolio.json.
     
