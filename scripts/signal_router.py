@@ -525,6 +525,7 @@ def _to_pipeline_signal(signal: dict, cross_sources: list[str] | None = None) ->
     result = {
         "token": token,
         "source": source_str,
+        "source_primary": signal.get("source", "unknown"),
         "thesis": signal.get("thesis", ""),
         "venue": venue,
         "exchange": exchange,
@@ -533,6 +534,28 @@ def _to_pipeline_signal(signal: dict, cross_sources: list[str] | None = None) ->
         result["chain"] = chain
     if address:
         result["token_address"] = address
+
+    # Pass through scoring-critical fields (set by rugcheck, scanners, enrichment)
+    passthrough_keys = [
+        "rugcheck_score", "rugcheck_level", "rugcheck_risks",
+        "volume_24h", "liquidity_usd", "market_cap",
+        "current_price", "price", "price_change_24h_pct",
+        "cross_source_count", "cross_sources", "corroboration_level",
+        "signal_type", "confidence",
+        "holder_count", "top10_holder_pct", "smart_money_signal",
+        "pair_age_hours", "token_age_hours", "deployment_timestamp",
+        "onchain_evidence", "regime_tag",
+        "buys_24h", "sells_24h", "buy_sell_ratio",
+        "solscan_holder_count", "solscan_verified",
+    ]
+    for k in passthrough_keys:
+        v = signal.get(k)
+        if v is not None:
+            result[k] = v
+
+    # Ensure price field is set (scorer may use either)
+    if not result.get("price") and result.get("current_price"):
+        result["price"] = result["current_price"]
 
     return result
 
