@@ -318,6 +318,17 @@ def init_db(db_path=DB_PATH):
         CREATE INDEX IF NOT EXISTS idx_fills_created_at ON fills(created_at);
     """)
 
+    # === V4 revised: add missing fills columns (idempotent) ===
+    _add_column_if_missing(conn, "fills", "token_address", "TEXT")
+    _add_column_if_missing(conn, "fills", "chain", "TEXT")
+    _add_column_if_missing(conn, "fills", "symbol", "TEXT")
+    _add_column_if_missing(conn, "fills", "order_type", "TEXT")
+    _add_column_if_missing(conn, "fills", "qty_token", "REAL")
+    _add_column_if_missing(conn, "fills", "gas_usd", "REAL DEFAULT 0")
+    _add_column_if_missing(conn, "fills", "raw_json", "TEXT")
+    # Rename-safe index (covers token queries on fills)
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_fills_token_time ON fills(token_address, created_at)")
+
     # === V4: positions cost/reward/attribution columns (idempotent) ===
     _add_column_if_missing(conn, "positions", "entry_fill_id", "TEXT")
     _add_column_if_missing(conn, "positions", "exit_fill_id", "TEXT")
@@ -332,6 +343,8 @@ def init_db(db_path=DB_PATH):
     _add_column_if_missing(conn, "positions", "fees_usd_total", "REAL")
     _add_column_if_missing(conn, "positions", "pnl_gross_usd", "REAL")
     _add_column_if_missing(conn, "positions", "pnl_gross_pct", "REAL")
+    _add_column_if_missing(conn, "positions", "gas_total_usd", "REAL")
+    _add_column_if_missing(conn, "positions", "cost_total_usd", "REAL")
     _add_column_if_missing(conn, "positions", "reward_bin", "INTEGER")
     _add_column_if_missing(conn, "positions", "reward_real", "REAL")
     _add_column_if_missing(conn, "positions", "reward_version", "TEXT")
@@ -360,16 +373,48 @@ def init_db(db_path=DB_PATH):
             updated_at TEXT NOT NULL
         );
 
+        CREATE TABLE IF NOT EXISTS eval_runs (
+            run_id              TEXT PRIMARY KEY,
+            created_at          TEXT NOT NULL,
+            candidate_policy    TEXT NOT NULL,
+            baseline_policy     TEXT NOT NULL,
+            train_days          INTEGER NOT NULL,
+            test_days           INTEGER NOT NULL,
+            step_days           INTEGER NOT NULL,
+            start_ts            TEXT NOT NULL,
+            end_ts              TEXT NOT NULL,
+            min_trades          INTEGER NOT NULL,
+            status              TEXT NOT NULL CHECK (status IN ('RUNNING','DONE','FAILED')),
+            decision_json       TEXT,
+            error               TEXT
+        );
+        CREATE INDEX IF NOT EXISTS idx_eval_runs_created ON eval_runs(created_at);
+
+        CREATE TABLE IF NOT EXISTS eval_folds (
+            run_id                  TEXT NOT NULL,
+            fold_idx                INTEGER NOT NULL,
+            train_start             TEXT NOT NULL,
+            train_end               TEXT NOT NULL,
+            test_start              TEXT NOT NULL,
+            test_end                TEXT NOT NULL,
+            baseline_metrics_json   TEXT NOT NULL,
+            candidate_metrics_json  TEXT NOT NULL,
+            pass                    INTEGER NOT NULL,
+            PRIMARY KEY(run_id, fold_idx)
+        );
+        CREATE INDEX IF NOT EXISTS idx_eval_folds_run ON eval_folds(run_id);
+
+        -- Keep legacy table for backward compat (won't break existing tests)
         CREATE TABLE IF NOT EXISTS eval_walkforward_runs (
             eval_id                  TEXT PRIMARY KEY,
             created_at               TEXT NOT NULL,
-            horizon_days             INTEGER NOT NULL,
-            train_days               INTEGER NOT NULL,
-            test_days                INTEGER NOT NULL,
-            step_days                INTEGER NOT NULL,
-            candidate_key            TEXT NOT NULL,
-            results_json             TEXT NOT NULL,
-            promotion_decision       TEXT NOT NULL CHECK (promotion_decision IN ('PROMOTE','HOLD','ROLLBACK')),
+            horizon_days             INTEGER NOT NULL DEFAULT 0,
+            train_days               INTEGER NOT NULL DEFAULT 0,
+            test_days                INTEGER NOT NULL DEFAULT 0,
+            step_days                INTEGER NOT NULL DEFAULT 0,
+            candidate_key            TEXT NOT NULL DEFAULT '',
+            results_json             TEXT NOT NULL DEFAULT '{}',
+            promotion_decision       TEXT NOT NULL DEFAULT 'HOLD' CHECK (promotion_decision IN ('PROMOTE','HOLD','ROLLBACK')),
             promoted_policy_version  TEXT,
             promotion_reason         TEXT
         );
@@ -1156,6 +1201,7 @@ def close_position(
     exit_slippage_bps: float = 0.0,
     exit_fee_bps: float = 0.0,
     exit_fee_usd: float = None,
+    exit_gas_usd: float = 0.0,
     venue: str = "paper",
     tx_hash: str = None,
     db_path=None,
@@ -1204,8 +1250,10 @@ def close_position(
         if exit_fee_usd is None:
             exit_fee_usd = _fee_usd(gross_exit_notional, exit_fee_bps)
         fees_usd_total = entry_fee + exit_fee_usd
+        gas_total_usd = exit_gas_usd  # entry gas tracked separately if needed
+        cost_total_usd = fees_usd_total + gas_total_usd
 
-        pnl_net_usd = pnl_gross_usd - fees_usd_total
+        pnl_net_usd = pnl_gross_usd - cost_total_usd
         pnl_net_pct = pnl_net_usd / size_usd  # fraction
 
         reward_bin, reward_real, reward_version = compute_reward(pnl_net_usd, pnl_net_pct, "v1")
@@ -1232,7 +1280,7 @@ def close_position(
                 updated_at=?,
                 exit_fill_id=?, exit_expected_price=?, exit_slippage_bps=?,
                 exit_fee_usd=?, exit_fee_bps=?,
-                fees_usd_total=?,
+                fees_usd_total=?, gas_total_usd=?, cost_total_usd=?,
                 pnl_gross_usd=?, pnl_gross_pct=?,
                 pnl_usd=?, pnl_pct=?,
                 reward_bin=?, reward_real=?, reward_version=?,
@@ -1243,7 +1291,7 @@ def close_position(
             now_iso,
             exit_fill_id, exit_expected_price, exit_slippage_bps,
             exit_fee_usd, exit_fee_bps,
-            fees_usd_total,
+            fees_usd_total, gas_total_usd, cost_total_usd,
             pnl_gross_usd, pnl_gross_pct,
             pnl_net_usd, pnl_net_pct,
             reward_bin, reward_real, reward_version,
@@ -1255,6 +1303,13 @@ def close_position(
 # ============================================================
 # V4: Fee/Slippage/Reward helpers + record_fill + meta functions
 # ============================================================
+
+def compute_slippage_bps(expected_price: float, fill_price: float) -> float:
+    """Compute slippage in basis points from expected vs actual fill price."""
+    if not expected_price or expected_price <= 0 or not fill_price:
+        return 0.0
+    return (fill_price - expected_price) / expected_price * 10000.0
+
 
 def _fee_usd(notional_usd: float, fee_bps: float) -> float:
     """Compute fee in USD from notional and basis points."""
@@ -1291,9 +1346,16 @@ def record_fill(
     qty_base: float = 0.0,
     fee_bps: float = 0.0,
     fee_usd: float = None,
-    slippage_bps: float = 0.0,
+    slippage_bps: float = None,
     tx_hash: str = None,
     created_at: str = None,
+    token_address: str = None,
+    chain: str = None,
+    symbol: str = None,
+    order_type: str = None,
+    qty_token: float = None,
+    gas_usd: float = 0.0,
+    raw: dict = None,
     db_path=None,
     db_conn=None,
 ) -> str:
@@ -1301,6 +1363,7 @@ def record_fill(
     Insert a fill row. Returns fill_id (uuid4).
     notional_usd = qty_base * exec_price.
     fee_usd computed from notional * fee_bps if None.
+    slippage_bps computed from expected vs exec if None.
     
     If db_conn is provided, uses it (for transactional grouping with position ops).
     Otherwise opens own connection.
@@ -1310,18 +1373,25 @@ def record_fill(
     notional_usd = float(qty_base) * float(exec_price)
     if fee_usd is None:
         fee_usd = _fee_usd(notional_usd, fee_bps)
+    if slippage_bps is None:
+        slippage_bps = compute_slippage_bps(expected_price, exec_price)
     if created_at is None:
         created_at = datetime.now(timezone.utc).isoformat()
 
     sql = """
         INSERT INTO fills (fill_id, position_id, side, venue, expected_price,
                            exec_price, qty_base, notional_usd, fee_usd, fee_bps,
-                           slippage_bps, tx_hash, created_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                           slippage_bps, tx_hash, created_at,
+                           token_address, chain, symbol, order_type, qty_token,
+                           gas_usd, raw_json)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     """
+    raw_json = json.dumps(raw) if raw else None
     params = (fill_id, position_id, side, venue, expected_price,
               exec_price, qty_base, notional_usd, fee_usd, fee_bps,
-              slippage_bps, tx_hash, created_at)
+              slippage_bps, tx_hash, created_at,
+              token_address, chain, symbol, order_type, qty_token,
+              gas_usd, raw_json)
 
     if db_conn is not None:
         db_conn.execute(sql, params)
