@@ -149,6 +149,40 @@ The JSON object must match the schema provided above exactly.
 #   - All downstream code uses attempts_now from claim SELECT
 # ─────────────────────────────────────────────
 
+def reclaim_stuck_tasks():
+    """
+    Reclaim tasks stuck in RUNNING state beyond TIMEOUT_SECONDS.
+    RUNNING → PENDING (if retries remain) or RUNNING → FAILED.
+    Called at start of each worker cycle.
+    """
+    try:
+        with get_connection() as conn:
+            cutoff = (datetime.now(timezone.utc) - timedelta(seconds=TIMEOUT_SECONDS + 60)).isoformat()
+            stuck = conn.execute("""
+                SELECT task_id, attempts FROM async_tasks
+                WHERE status = 'RUNNING' AND updated_at < ?
+            """, (cutoff,)).fetchall()
+            for row in stuck:
+                tid = row["task_id"]
+                attempts = row["attempts"]
+                if attempts >= MAX_ATTEMPTS:
+                    conn.execute("""
+                        UPDATE async_tasks SET status='FAILED', last_error='stuck_timeout_reclaim',
+                               updated_at=? WHERE task_id=? AND status='RUNNING'
+                    """, (datetime.now(timezone.utc).isoformat(), tid))
+                    _log(f"Reclaimed stuck task {tid} → FAILED (max attempts {attempts})")
+                else:
+                    conn.execute("""
+                        UPDATE async_tasks SET status='PENDING', last_error='stuck_timeout_reclaim',
+                               updated_at=?, next_run_at=?
+                        WHERE task_id=? AND status='RUNNING'
+                    """, (datetime.now(timezone.utc).isoformat(),
+                          datetime.now(timezone.utc).isoformat(), tid))
+                    _log(f"Reclaimed stuck task {tid} → PENDING (attempt {attempts}/{MAX_ATTEMPTS})")
+    except Exception as e:
+        _log(f"Error reclaiming stuck tasks: {e}")
+
+
 def poll_pending_tasks():
     """
     Poll async_tasks for PENDING tasks ready to run.
@@ -676,6 +710,9 @@ def main():
     _log("=" * 60)
     _log(f"Async Analysis Queue Worker START (model={MODEL}, judge={JUDGE_MODEL})")
     
+    # Reclaim any tasks stuck in RUNNING from crashed previous runs
+    reclaim_stuck_tasks()
+
     # Poll returns only task_ids (not full rows)
     task_ids = poll_pending_tasks()
     
