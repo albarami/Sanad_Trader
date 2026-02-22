@@ -1203,6 +1203,9 @@ def _run_router_impl():
         selected_token = selected.get("token", "?")
         _log(f"[{batch_idx+1}/{len(batch)}] Selected: {selected_token} (score {selected_score}) → feeding to pipeline")
 
+        # Per-token deadline: 120s max per token to prevent one bad token stalling the run
+        _token_deadline = time.time() + 120
+
         # --- Tradeability Gate (Phase 3) ---
         try:
             # Enrich signal with real-time market data before scoring
@@ -1295,6 +1298,11 @@ def _run_router_impl():
         pipeline_signal["corroboration_level"] = corr["corroboration_level"]
         pipeline_signal["corroboration_quality"] = corr.get("corroboration_quality", "STRONG")
 
+        # Per-token deadline check
+        if time.time() > _token_deadline:
+            _log(f"  SKIP {selected_token}: per-token deadline exceeded (120s)")
+            continue
+
         # --- Active Solscan enrichment (on-chain verification) ---
         if pipeline_signal.get("contract_address") or pipeline_signal.get("address") or pipeline_signal.get("token_address"):
             try:
@@ -1325,11 +1333,16 @@ def _run_router_impl():
             except Exception as e:
                 _log(f"Solscan enrichment failed: {e}")
 
+        # Per-token deadline check
+        if time.time() > _token_deadline:
+            _log(f"  SKIP {selected_token}: per-token deadline exceeded before hot path (120s)")
+            continue
+
         # --- v3.1 Hot Path: Call fast_decision_engine directly ---
         _log(f"Calling v3.1 Hot Path (fast_decision_engine)...")
         pipeline_start = time.time()
         
-        POLICY_VERSION = "v3.1.0"
+        # policy_version resolved dynamically by fast_decision_engine from SQLite
         try:
             # Load portfolio state from SQLite (single source of truth)
             if HAS_V31_HOT_PATH:
@@ -1403,7 +1416,7 @@ def _run_router_impl():
                     signal=pipeline_signal,
                     portfolio=portfolio,
                     runtime_state=runtime_state,
-                    policy_version=POLICY_VERSION
+                    # policy_version=None → resolved from SQLite by evaluate_signal_fast
                 )
                 
                 pipeline_duration = time.time() - pipeline_start
