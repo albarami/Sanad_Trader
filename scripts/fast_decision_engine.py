@@ -74,7 +74,19 @@ except ImportError:
 # CONSTANTS
 # ============================================================================
 
-POLICY_VERSION = "v3.1.0"
+POLICY_VERSION_DEFAULT = "v3.1.0"
+
+
+def get_active_policy_version():
+    """Load active policy from SQLite; fall back to default if unavailable."""
+    try:
+        return state_store.get_active_policy_version() or POLICY_VERSION_DEFAULT
+    except Exception:
+        return POLICY_VERSION_DEFAULT
+
+
+# Module-level constant kept for backward compat (tests, imports)
+POLICY_VERSION = POLICY_VERSION_DEFAULT
 HOT_PATH_TIMEOUT_MS = 3000
 STAGE_BUDGETS_MS = {
     "stage_1_safety": 100,
@@ -505,7 +517,8 @@ def stage_4_policy_engine(decision_packet, portfolio, timings, start_time):
 # ============================================================================
 
 def stage_5_execute(signal, decision_id, strategy_id, position_usd,
-                    score_data, policy_data, timings, start_time):
+                    score_data, policy_data, timings, start_time,
+                    policy_version=None):
     """
     Stage 5: Execute Paper Trade (<1000ms target)
     
@@ -521,6 +534,8 @@ def stage_5_execute(signal, decision_id, strategy_id, position_usd,
     
     Returns: (success: bool, position: dict or None, error: str or None)
     """
+    if policy_version is None:
+        policy_version = get_active_policy_version()
     stage_start = time.perf_counter()
     
     token = signal.get("token_address") or signal.get("token")
@@ -578,7 +593,7 @@ def stage_5_execute(signal, decision_id, strategy_id, position_usd,
         "entry_slippage_bps": _paper_slip_bps,
         "entry_fee_bps": _paper_fee_bps,
         "venue": "paper",
-        "policy_version": POLICY_VERSION,
+        "policy_version": policy_version,
     }
     
     # Execute via try_open_position_atomic
@@ -599,7 +614,7 @@ def stage_5_execute(signal, decision_id, strategy_id, position_usd,
         decision_for_db = build_decision_record(
             signal_id=signal_id,
             decision_id=decision_id,
-            policy_version=POLICY_VERSION,
+            policy_version=policy_version,
             result="EXECUTE",
             stage="STAGE_5_EXECUTE",
             reason_code="EXECUTE",
@@ -712,7 +727,7 @@ def evaluate_signal_fast(
     signal: dict,
     portfolio: dict,
     runtime_state: dict,
-    policy_version: str = POLICY_VERSION
+    policy_version: str = None,
 ) -> dict:
     """
     Hot Path: Evaluate signal and return decision in <3 seconds.
@@ -738,6 +753,9 @@ def evaluate_signal_fast(
     
     Performance guarantee: <3000ms total
     """
+    if policy_version is None:
+        policy_version = get_active_policy_version()
+
     start_time = time.perf_counter()
     timings = {}
     
@@ -870,7 +888,8 @@ def evaluate_signal_fast(
     
     success, position, error = stage_5_execute(
         signal, decision_id, strategy_id, position_usd,
-        score_data, policy_data, timings, start_time
+        score_data, policy_data, timings, start_time,
+        policy_version=policy_version,
     )
     
     if not success:
