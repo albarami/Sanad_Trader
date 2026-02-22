@@ -125,8 +125,34 @@ def run_eval(args):
     start_ts = now - timedelta(days=args.horizon_days)
 
     run_id = str(uuid.uuid4())
+    baseline = args.baseline
+    if not baseline or baseline == "auto":
+        baseline = state_store.get_active_policy_version(db_path=db_path)
+
     candidate = args.candidate
-    baseline = args.baseline or state_store.get_active_policy_version(db_path=db_path)
+    if candidate == "auto":
+        # Find all policy versions with closed positions, pick best non-baseline
+        with state_store.get_connection(db_path) as conn:
+            rows = conn.execute("""
+                SELECT DISTINCT policy_version FROM positions
+                WHERE status='CLOSED' AND policy_version IS NOT NULL
+                  AND policy_version != ? AND reward_real IS NOT NULL
+            """, (baseline,)).fetchall()
+            candidates = [r["policy_version"] for r in rows]
+        if not candidates:
+            _log(f"No candidate policies found (baseline={baseline}). Nothing to evaluate.")
+            return {"decision": "HOLD", "reason": "no_candidates"}
+        # Pick the one with most closed trades
+        best_n = 0
+        candidate = candidates[0]
+        with state_store.get_connection(db_path) as conn:
+            for c in candidates:
+                n = conn.execute(
+                    "SELECT COUNT(*) FROM positions WHERE status='CLOSED' AND policy_version=?", (c,)
+                ).fetchone()[0]
+                if n > best_n:
+                    best_n = n
+                    candidate = c
 
     _log(f"Run {run_id[:8]}: candidate={candidate} vs baseline={baseline}")
     _log(f"Window: {start_ts.isoformat()} → {end_ts.isoformat()}")
@@ -301,7 +327,7 @@ def run_eval(args):
 def main():
     parser = argparse.ArgumentParser(description="Walk-forward evaluation")
     parser.add_argument("--db", type=str, default=None)
-    parser.add_argument("--candidate", type=str, required=True)
+    parser.add_argument("--candidate", type=str, default="auto")
     parser.add_argument("--baseline", type=str, default=None, help="Default: active policy")
     parser.add_argument("--horizon-days", type=int, default=30)
     parser.add_argument("--train-days", type=int, default=14)
