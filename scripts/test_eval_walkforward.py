@@ -226,6 +226,54 @@ def test_eval_persistence_tables_written():
         assert "trades" in cm and "net_pnl_usd" in cm, "candidate metrics missing keys"
 
 
+def test_eval_uses_net_not_gross():
+    """Candidate has positive GROSS but negative NET (fees dominate) → must NOT promote."""
+    _, db = _mkdb()
+    _seed_policies(db, active="pvA")
+    now = datetime(2026, 2, 23, 0, 0, 0, tzinfo=timezone.utc)
+
+    for d in range(1, 10):
+        t = now - timedelta(days=10 - d)
+        # pvA: flat (0 pnl)
+        _make_trade(db, f"a{d}", "pvA", t, pnl_usd=0.0)
+        # pvB: tiny gross profit but large fees → net negative
+        state_store.open_position(
+            position_id=f"b{d}", token_address=f"Tb{d}", chain="SOL",
+            entry_price=1.0, size_usd=100.0, strategy_id="default",
+            regime_tag="TEST", source_primary="unknown:general",
+            decision_id=f"dec_b{d}", policy_version="pvB",
+            entry_fee_bps=500.0,  # 5% fee! Huge
+            venue="paper", db_path=db,
+        )
+        # Close at 1.02 → gross +2%, but 5% entry + 5% exit fees = -8% net
+        state_store.close_position(
+            position_id=f"b{d}", close_reason="MANUAL_CLOSE",
+            close_price=1.02, exit_fee_bps=500.0,
+            venue="paper", db_path=db,
+        )
+        with state_store.get_connection(db) as conn:
+            conn.execute("UPDATE positions SET closed_at=? WHERE position_id=?",
+                          (_iso(t), f"b{d}"))
+
+    # Verify pvB has negative net pnl despite positive gross
+    with state_store.get_connection(db) as conn:
+        row = conn.execute(
+            "SELECT SUM(pnl_gross_usd) g, SUM(pnl_usd) n FROM positions WHERE policy_version='pvB'"
+        ).fetchone()
+        assert row["g"] > 0, f"Setup failed: gross should be positive, got {row['g']}"
+        assert row["n"] < 0, f"Setup failed: net should be negative, got {row['n']}"
+
+    args = _make_args(
+        db=str(db), now_iso=_iso(now),
+        promote_if_pass=True, min_trades=2,
+    )
+    result = eval_walkforward.run_eval(args)
+
+    assert result["decision"] == "HOLD", f"Should HOLD when net is negative despite positive gross: {result}"
+    active = state_store.get_active_policy_version(db_path=db)
+    assert active == "pvA", "Active should remain pvA"
+
+
 # ========== HARNESS ==========
 
 def main():
@@ -235,6 +283,7 @@ def main():
         test_promotion_triggers_when_candidate_better,
         test_no_promotion_if_insufficient_trades,
         test_eval_persistence_tables_written,
+        test_eval_uses_net_not_gross,
     ]
     ok = fails = 0
     print("=" * 60)
