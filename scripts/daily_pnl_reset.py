@@ -74,14 +74,27 @@ def reset():
     except Exception as e:
         _log(f"Error archiving: {e}")
 
-    # Reset daily counters
-    portfolio["daily_pnl_pct"] = 0.0
-    portfolio["daily_pnl_usd"] = 0.0
-    portfolio["daily_trades"] = 0
-    portfolio["daily_reset_at"] = now.isoformat()
-    _save_json(PORTFOLIO_PATH, portfolio)
-
-    _log(f"Daily PnL reset to 0. New day: {now.strftime('%Y-%m-%d')}")
+    # Reset daily counters — SQLite is SSOT, JSON is cache
+    try:
+        import sys
+        sys.path.insert(0, str(BASE_DIR / "scripts"))
+        import state_store
+        state_store.update_portfolio({
+            "daily_pnl_pct": 0.0,
+            "daily_pnl_usd": 0.0,
+            "daily_trades": 0,
+            "starting_balance_usd": balance,  # Today's starting balance = yesterday's closing
+        })
+        state_store.sync_json_cache()
+        _log(f"Daily PnL reset to 0 (SQLite + JSON). New day: {now.strftime('%Y-%m-%d')}")
+    except Exception as e:
+        _log(f"SQLite reset failed ({e}), falling back to JSON-only")
+        portfolio["daily_pnl_pct"] = 0.0
+        portfolio["daily_pnl_usd"] = 0.0
+        portfolio["daily_trades"] = 0
+        portfolio["daily_reset_at"] = now.isoformat()
+        _save_json(PORTFOLIO_PATH, portfolio)
+        _log(f"Daily PnL reset to 0 (JSON only). New day: {now.strftime('%Y-%m-%d')}")
 
 
 if __name__ == "__main__":
