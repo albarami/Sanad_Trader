@@ -751,7 +751,11 @@ def update_portfolio(updates: dict, db_path=None):
     
     Args:
         updates: dict with any subset of columns: current_balance_usd, mode,
-                 open_position_count, daily_pnl_usd, max_drawdown_pct, daily_trades
+                 daily_pnl_usd, max_drawdown_pct, daily_trades,
+                 starting_balance_usd
+    
+    NOTE: open_position_count is DERIVED from positions table. Do not set it.
+          Any attempt to set it is silently ignored.
     
     Auto-sets updated_at to current UTC timestamp.
     """
@@ -760,9 +764,11 @@ def update_portfolio(updates: dict, db_path=None):
         return
     
     # Build SET clause dynamically
+    # open_position_count is DERIVED — never accept it as an update
     allowed = {
-        "current_balance_usd", "mode", "open_position_count",
-        "daily_pnl_usd", "max_drawdown_pct", "daily_trades"
+        "current_balance_usd", "mode",
+        "daily_pnl_usd", "max_drawdown_pct", "daily_trades",
+        "starting_balance_usd", "daily_pnl_pct", "current_drawdown_pct"
     }
     updates_filtered = {k: v for k, v in updates.items() if k in allowed}
     if not updates_filtered:
