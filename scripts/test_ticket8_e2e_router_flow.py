@@ -281,7 +281,8 @@ def test_execute_path():
         pos = positions[0]
         assert_eq("Position status", "OPEN", pos["status"])
         assert_eq("Position token", "EXEC_TOKEN_E2E", pos["token_address"])
-        assert_eq("Entry price", 2.5, pos["entry_price"])
+        # V4: entry_price is exec price (mid + slippage), mid=2.5 with 5bps slip → ~2.50125
+        assert_true("Entry price close to 2.5", abs(pos["entry_price"] - 2.5) < 0.01)
 
         # Verify: async task exists
         task = db.query_one("SELECT * FROM async_tasks WHERE entity_id=?", (pos["position_id"],))
@@ -563,7 +564,8 @@ def test_dex_first_no_binance():
 
         # Entry price should be the DEX price
         pos = db.query_one("SELECT entry_price FROM positions WHERE decision_id=?", (decision["decision_id"],))
-        assert_eq("Entry price from DEX", 1.23, pos["entry_price"])
+        # V4: entry_price is exec price (mid + slippage), mid=1.23 with 5bps slip
+        assert_true("Entry price close to 1.23", abs(pos["entry_price"] - 1.23) < 0.01)
 
         print("\n✅ TEST 6 PASSED")
     finally:

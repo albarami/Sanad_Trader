@@ -184,3 +184,11 @@ cold_path:
   max_attempts: 4  # Total attempts: 1st try + 3 retries (5m/15m/60m)
   parallel_bull_bear: true
   catastrophic_confidence_threshold: 85
+
+# V4: Execution cost model
+execution_costs:
+  paper_fee_bps: 10           # 0.10% per side (realistic taker fee)
+  paper_slippage_bps: 5       # 0.05% adverse slippage
+  binance_taker_fee_bps: 10   # for live mode later
+  dex_fee_bps: 30             # DEX swap fee estimate
+  dex_slippage_bps: 50        # DEX slippage estimate

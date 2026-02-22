@@ -461,13 +461,46 @@ def _insert_decision_internal(conn, decision: dict):
 
 
 def _insert_position_internal(conn, position: dict):
-    """Insert position using existing connection. Returns rowcount."""
+    """Insert position using existing connection. Returns rowcount.
+    Supports V4 cost/attribution fields (optional, backward compat).
+    """
+    # Compute entry fill if V4 cost fields present
+    entry_fill_id = None
+    entry_price = position["entry_price"]
+    size_usd = position["size_usd"]
+    entry_expected = position.get("entry_expected_price")
+    entry_slip = position.get("entry_slippage_bps", 0.0)
+    entry_fee_bps = position.get("entry_fee_bps", 0.0)
+    venue = position.get("venue", "paper")
+    policy_ver = position.get("policy_version")
+
+    entry_fee_usd = None
+    if entry_expected is not None and entry_price and entry_price > 0 and size_usd and size_usd > 0:
+        qty_base = size_usd / entry_price
+        notional = qty_base * entry_price
+        entry_fee_usd = _fee_usd(notional, entry_fee_bps)
+        entry_fill_id = record_fill(
+            position_id=position["position_id"],
+            side="BUY", venue=venue,
+            expected_price=entry_expected,
+            exec_price=entry_price,
+            qty_base=qty_base,
+            fee_bps=entry_fee_bps,
+            fee_usd=entry_fee_usd,
+            slippage_bps=entry_slip,
+            created_at=position["created_at"],
+            db_conn=conn,
+        )
+
     cursor = conn.execute("""
         INSERT OR IGNORE INTO positions (
             position_id, decision_id, signal_id, created_at, updated_at,
             status, token_address, chain, strategy_id, entry_price,
-            size_usd, size_token, regime_tag, source_primary, features_json
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            size_usd, size_token, regime_tag, source_primary, features_json,
+            entry_fill_id, entry_expected_price, entry_slippage_bps,
+            entry_fee_usd, entry_fee_bps, policy_version,
+            learning_status
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     """, (
         position["position_id"],
         position["decision_id"],
@@ -478,12 +511,19 @@ def _insert_position_internal(conn, position: dict):
         position["token_address"],
         position["chain"],
         position["strategy_id"],
-        position["entry_price"],
-        position["size_usd"],
+        entry_price,
+        size_usd,
         position.get("size_token"),
         position.get("regime_tag"),
         position.get("source_primary"),
-        json.dumps(position.get("features"))
+        json.dumps(position.get("features")),
+        entry_fill_id,
+        entry_expected,
+        entry_slip,
+        entry_fee_usd,
+        entry_fee_bps,
+        policy_ver,
+        "PENDING",
     ))
     return cursor.rowcount
 
@@ -544,7 +584,7 @@ def try_open_position_atomic(decision: dict, price: float, position_payload: dic
             # Insert decision (idempotent)
             _insert_decision_internal(conn, decision)
             
-            # Build position record
+            # Build position record (V4: include cost fields from payload)
             position = {
                 "position_id": position_id,
                 "decision_id": decision["decision_id"],
@@ -559,7 +599,13 @@ def try_open_position_atomic(decision: dict, price: float, position_payload: dic
                 "size_token": position_payload.get("size_token"),
                 "regime_tag": position_payload.get("regime_tag"),
                 "source_primary": decision.get("source_primary"),
-                "features": position_payload.get("features")
+                "features": position_payload.get("features"),
+                # V4 cost/attribution fields (optional)
+                "entry_expected_price": position_payload.get("entry_expected_price"),
+                "entry_slippage_bps": position_payload.get("entry_slippage_bps", 0.0),
+                "entry_fee_bps": position_payload.get("entry_fee_bps", 0.0),
+                "venue": position_payload.get("venue", "paper"),
+                "policy_version": position_payload.get("policy_version"),
             }
             
             # Try insert (idempotent via decision_id UNIQUE constraint)

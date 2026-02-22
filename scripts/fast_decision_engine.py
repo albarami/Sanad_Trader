@@ -547,16 +547,38 @@ def stage_5_execute(signal, decision_id, strategy_id, position_usd,
         timings["stage_5_execute"] = elapsed_ms(stage_start)
         return False, None, f"SKIP_PRICE_TIMEOUT: {e}"
     
-    # Build position payload
+    # Build position payload with V4 cost fields
     position_id = ids.make_position_id(decision_id, execution_ordinal=1)
+    
+    # Load execution cost config from thresholds.yaml
+    try:
+        import yaml as _yaml
+        _thresholds_path = BASE_DIR / "config" / "thresholds.yaml"
+        _config = _yaml.safe_load(_thresholds_path.read_text()) if _thresholds_path.exists() else {}
+    except Exception:
+        _config = {}
+    _exec_costs = _config.get("execution_costs", {})
+    _paper_fee_bps = float(_exec_costs.get("paper_fee_bps", 10))
+    _paper_slip_bps = float(_exec_costs.get("paper_slippage_bps", 5))
+    
+    # Paper BUY exec price = mid * (1 + slippage/10000) — adverse
+    mid_price = price
+    exec_entry_price = mid_price * (1 + _paper_slip_bps / 10000.0)
+    
     position_payload = {
         "position_id": position_id,
-        "size_token": position_usd / price if price > 0 else 0,
+        "size_token": position_usd / exec_entry_price if exec_entry_price > 0 else 0,
         "regime_tag": signal.get("regime_tag", "NEUTRAL"),
         "features": {
             "entry_signal": signal,
             "strategy_id": strategy_id
-        }
+        },
+        # V4 cost fields
+        "entry_expected_price": mid_price,
+        "entry_slippage_bps": _paper_slip_bps,
+        "entry_fee_bps": _paper_fee_bps,
+        "venue": "paper",
+        "policy_version": POLICY_VERSION,
     }
     
     # Execute via try_open_position_atomic
@@ -590,7 +612,7 @@ def stage_5_execute(signal, decision_id, strategy_id, position_usd,
         )
         
         position, metadata = state_store.try_open_position_atomic(
-            decision_for_db, price, position_payload
+            decision_for_db, exec_entry_price, position_payload
         )
         
         timings["stage_5_execute"] = elapsed_ms(stage_start)
