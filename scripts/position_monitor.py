@@ -37,6 +37,7 @@ sys.path.insert(0, str(SCRIPTS_DIR))
 # Import state_store for unified state management (Ticket 12)
 try:
     import state_store
+    state_store.install_ssot_guard()
     HAS_STATE_STORE = True
 except ImportError:
     HAS_STATE_STORE = False
@@ -839,6 +840,8 @@ def run_monitor():
             p["exchange"] = "raydium" if p.get("chain") == "solana" else "binance"
         if "position_usd" not in p:
             p["position_usd"] = p.get("size_usd", 0)
+        if "quantity" not in p and "size_token" in p:
+            p["quantity"] = p["size_token"]
         if "stop_loss_pct" not in p:
             p["stop_loss_pct"] = 0.15
         if "take_profit_pct" not in p:

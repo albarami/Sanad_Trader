@@ -38,6 +38,7 @@ ACTIONS_LOG = GENIUS_DIR / "actions.jsonl"
 sys.path.insert(0, str(SCRIPTS_DIR))
 try:
     import state_store
+    state_store.install_ssot_guard()
     HAS_STATE_STORE = True
 except ImportError:
     HAS_STATE_STORE = False

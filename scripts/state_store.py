@@ -18,6 +18,81 @@ _BASE_DIR = Path(os.environ.get("SANAD_HOME", str(_SCRIPT_DIR.parent)))
 DB_PATH = Path(os.environ["SANAD_DB_PATH"]) if os.environ.get("SANAD_DB_PATH") else _BASE_DIR / "state" / "sanad_trader.db"
 
 
+# ═══════════════════════════════════════════════════════════
+# RUNTIME SSOT GUARD — prevents split-brain at syscall boundary
+# ═══════════════════════════════════════════════════════════
+
+import builtins
+import inspect
+
+_ORIG_OPEN = builtins.open
+_ORIG_REPLACE = os.replace
+_ORIG_RENAME = os.rename
+_SSOT_GUARD_INSTALLED = False
+
+
+def _forbidden_paths():
+    """Canonical JSON cache paths that only sync_json_cache may write."""
+    sd = DB_PATH.parent
+    return {
+        (sd / "portfolio.json").resolve(),
+        (sd / "positions.json").resolve(),
+    }
+
+
+def _is_forbidden(p):
+    try:
+        return Path(p).resolve() in _forbidden_paths()
+    except Exception:
+        return False
+
+
+def _called_from_sync_json_cache():
+    """Check if caller is sync_json_cache in state_store.py."""
+    for frame in inspect.stack()[2:12]:
+        if frame.function == "sync_json_cache" and frame.filename.endswith("state_store.py"):
+            return True
+    return False
+
+
+def install_ssot_guard(strict_reads=False):
+    """Install runtime guard blocking direct writes to JSON state files.
+    
+    Args:
+        strict_reads: If True, also block reads (for decision-critical scripts).
+    
+    Once installed, only sync_json_cache() can write portfolio.json/positions.json.
+    Any other code attempting to write raises PermissionError.
+    """
+    global _SSOT_GUARD_INSTALLED
+    if _SSOT_GUARD_INSTALLED:
+        return
+    _SSOT_GUARD_INSTALLED = True
+
+    def guarded_open(file, mode="r", *args, **kwargs):
+        if _is_forbidden(file):
+            write_mode = any(m in str(mode) for m in ("w", "a", "+", "x"))
+            if write_mode and not _called_from_sync_json_cache():
+                raise PermissionError(f"SSOT guard: direct write forbidden: {file} (mode={mode})")
+            if strict_reads and "r" in str(mode) and not _called_from_sync_json_cache():
+                raise PermissionError(f"SSOT guard: direct read forbidden: {file}")
+        return _ORIG_OPEN(file, mode, *args, **kwargs)
+
+    def guarded_replace(src, dst, *args, **kwargs):
+        if _is_forbidden(dst) and not _called_from_sync_json_cache():
+            raise PermissionError(f"SSOT guard: replace forbidden: {dst}")
+        return _ORIG_REPLACE(src, dst, *args, **kwargs)
+
+    def guarded_rename(src, dst, *args, **kwargs):
+        if _is_forbidden(dst) and not _called_from_sync_json_cache():
+            raise PermissionError(f"SSOT guard: rename forbidden: {dst}")
+        return _ORIG_RENAME(src, dst, *args, **kwargs)
+
+    builtins.open = guarded_open
+    os.replace = guarded_replace
+    os.rename = guarded_rename
+
+
 class DBBusyError(Exception):
     """Raised when database is locked beyond acceptable timeout."""
     pass

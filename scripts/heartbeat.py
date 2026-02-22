@@ -39,6 +39,7 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(SCRIPT_DIR))
 try:
     import state_store
+    state_store.install_ssot_guard()
     HAS_STATE_STORE = True
 except ImportError:
     HAS_STATE_STORE = False
@@ -795,21 +796,16 @@ def _send_hourly_summary(portfolio, price_cache, overall):
         open_pos = []
         try:
             import state_store
-            db_path = state_store.DB_PATH
-            import sqlite3
-            con = sqlite3.connect(db_path)
-            con.row_factory = sqlite3.Row
-            rows = con.execute("SELECT * FROM positions WHERE status='OPEN'").fetchall()
+            rows = state_store.get_open_positions()
             for r in rows:
                 open_pos.append({
-                    "token": r["token_address"],
+                    "token": r.get("token_address", "?"),
                     "status": "OPEN",
-                    "entry_price": r["entry_price"] or 0,
-                    "current_price": r["entry_price"] or 0,  # TODO: live price
-                    "position_usd": r["size_usd"] or 0,
-                    "strategy": r["strategy_id"] or "unknown",
+                    "entry_price": r.get("entry_price") or 0,
+                    "current_price": r.get("entry_price") or 0,  # TODO: live price
+                    "position_usd": r.get("size_usd") or 0,
+                    "strategy": r.get("strategy_id") or "unknown",
                 })
-            con.close()
         except Exception as e:
             log(f"SQLite position load failed ({e}), falling back to JSON")
             positions_data = load_state("positions.json") or {}
@@ -834,13 +830,13 @@ def _send_hourly_summary(portfolio, price_cache, overall):
         # Funnel — augment with SQLite decision counts
         funnel = get_funnel()
         try:
-            con = sqlite3.connect(db_path)
-            today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-            row = con.execute("SELECT COUNT(*) c FROM decisions WHERE result='EXECUTE' AND created_at LIKE ?", (today+'%',)).fetchone()
-            funnel["executed"] = max(funnel.get("executed", 0), row[0] if row else 0)
-            row2 = con.execute("SELECT COUNT(*) c FROM decisions WHERE created_at LIKE ?", (today+'%',)).fetchone()
-            funnel["signals_ingested"] = max(funnel.get("signals_ingested", 0), row2[0] if row2 else 0)
-            con.close()
+            from state_store import get_connection, DB_PATH as _db
+            with get_connection(_db) as con:
+                today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+                row = con.execute("SELECT COUNT(*) c FROM decisions WHERE result='EXECUTE' AND created_at LIKE ?", (today+'%',)).fetchone()
+                funnel["executed"] = max(funnel.get("executed", 0), row[0] if row else 0)
+                row2 = con.execute("SELECT COUNT(*) c FROM decisions WHERE created_at LIKE ?", (today+'%',)).fetchone()
+                funnel["signals_ingested"] = max(funnel.get("signals_ingested", 0), row2[0] if row2 else 0)
         except Exception:
             pass
 

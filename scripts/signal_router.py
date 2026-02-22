@@ -38,6 +38,7 @@ except ImportError:
 try:
     import fast_decision_engine
     import state_store
+    state_store.install_ssot_guard()
     import ids
     HAS_V31_HOT_PATH = True
 except ImportError:

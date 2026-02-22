@@ -112,6 +112,31 @@ def main():
         if hits:
             failures.append(("READ", script_name, hits, 0))
 
+    # ── SINGLE-DB GUARD ──
+    # No script except state_store.py should call sqlite3.connect() directly
+    DB_ALLOWLIST = {"state_store.py", "smoke_imports.py", "learning_loop.py"}
+    DB_LEGACY_TOLERANCE = {
+        "signal_router.py": 0,       # Uses state_store
+        "reconciliation.py": 0,
+        "sanad_pipeline.py": 5,      # Legacy v3.0
+        "system_audit.py": 2,        # Audit tool
+        "console_api.py": 2,         # Manual tool
+    }
+    DB_PATTERNS = [r'sqlite3\.connect\s*\(']
+
+    for script in scripts:
+        name = script.name
+        if name.startswith("test_"):
+            continue
+        if name in DB_ALLOWLIST:
+            continue
+        hits = scan_file(script, DB_PATTERNS)
+        if not hits:
+            continue
+        max_tolerated = DB_LEGACY_TOLERANCE.get(name, 0)
+        if len(hits) > max_tolerated:
+            failures.append(("DB_CONNECT", name, hits, max_tolerated))
+
     # ── REPORT ──
     print(f"{'=' * 60}")
     print(f"CI GUARD: SSOT Invariant Enforcement")
@@ -119,7 +144,8 @@ def main():
 
     if failures:
         for kind, name, hits, tolerance in failures:
-            label = "FORBIDDEN WRITE" if kind == "WRITE" else "FORBIDDEN READ (decision-critical)"
+            labels = {"WRITE": "FORBIDDEN WRITE", "READ": "FORBIDDEN READ (decision-critical)", "DB_CONNECT": "FORBIDDEN sqlite3.connect (use state_store)"}
+            label = labels.get(kind, kind)
             print(f"\n❌ {name} — {label}:")
             for line_no, text in hits:
                 print(f"   L{line_no}: {text}")
@@ -133,6 +159,7 @@ def main():
         total = len(scripts)
         print(f"\n✅ WRITE guard: {total} scripts clean (allowlist: {len(WRITE_ALLOWLIST)} files)")
         print(f"✅ READ guard: {len(DECISION_CRITICAL_SCRIPTS)} decision-critical scripts clean")
+        print(f"✅ DB guard: sqlite3.connect only via state_store (allowlist: {len(DB_ALLOWLIST)} files)")
         print(f"{'=' * 60}")
 
 
