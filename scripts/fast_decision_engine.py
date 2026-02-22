@@ -89,6 +89,27 @@ STAGE_BUDGETS_MS = {
 # HELPER FUNCTIONS
 # ============================================================================
 
+# Known Binance-tradeable majors (short symbols, not contract addresses)
+BINANCE_MAJORS = {
+    "BTC", "ETH", "SOL", "BNB", "XRP", "ADA", "DOGE", "AVAX", "DOT", "MATIC",
+    "LINK", "UNI", "ATOM", "LTC", "NEAR", "APT", "ARB", "OP", "FIL", "PEPE",
+    "SHIB", "WIF", "BONK", "FLOKI", "SUI", "SEI", "TIA", "JUP", "RENDER",
+    "FET", "INJ", "STX", "IMX", "MANA", "SAND", "AXS", "GALA",
+}
+
+
+def _is_binance_symbol(symbol: str) -> bool:
+    """Check if symbol looks like a Binance-tradeable asset (not a contract address)."""
+    if not symbol:
+        return False
+    s = symbol.upper().rstrip("USDT")
+    # Contract addresses are long hex/base58 strings
+    if len(symbol) > 20:
+        return False
+    # Direct match or ends with USDT
+    return s in BINANCE_MAJORS or symbol.upper().endswith("USDT")
+
+
 def now_utc_iso():
     """Current UTC timestamp as ISO string."""
     return datetime.now(timezone.utc).isoformat()
@@ -390,14 +411,20 @@ def stage_5_execute(signal, decision_id, strategy_id, position_usd,
     stage_start = time.perf_counter()
     
     token = signal.get("token_address") or signal.get("token")
+    symbol = signal.get("symbol", token or "")
     
-    # Fetch live price (hard timeout 500ms)
+    # Price selection: DEX/enriched price first, Binance fallback only for CEX symbols
     try:
-        if HAS_BINANCE:
-            price = binance_client.get_price(token, timeout=0.5)
+        # 1. If signal already has a valid price (DEX/Pump.fun/Raydium), use it directly
+        signal_price = signal.get("price")
+        if signal_price and float(signal_price) > 0:
+            price = float(signal_price)
+        # 2. Binance fallback: only for known CEX symbols
+        elif HAS_BINANCE and _is_binance_symbol(symbol):
+            binance_symbol = symbol.upper() if symbol.upper().endswith("USDT") else f"{symbol.upper()}USDT"
+            price = binance_client.get_price(binance_symbol, timeout=0.5)
         else:
-            # Fallback: mock price
-            price = signal.get("price", 1.0)
+            price = None
         
         if not price:
             timings["stage_5_execute"] = elapsed_ms(stage_start)

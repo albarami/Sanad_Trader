@@ -290,10 +290,9 @@ def test_execute_path():
         assert_eq("Task status", "PENDING", task["status"])
         assert_eq("Task attempts", 0, task["attempts"])
 
-        # Verify: binance stub was called with timeout=0.5
+        # DEX-first: signal has price=2.50, so binance should NOT be called
         binance_calls = [c for c in _get_price_calls if "EXEC_TOKEN_E2E" in c["symbol"]]
-        assert_true("Binance stub called", len(binance_calls) > 0)
-        assert_eq("Binance timeout", 0.5, binance_calls[-1]["timeout"])
+        assert_eq("Binance NOT called (DEX-first)", 0, len(binance_calls))
 
         # Store for subsequent tests
         test_execute_path.decision = decision
@@ -524,6 +523,99 @@ def test_close_to_learn():
 
 
 # ─────────────────────────────────────────────
+# TEST 6: DEX-first — signal price used, no Binance call
+# ─────────────────────────────────────────────
+
+def test_dex_first_no_binance():
+    print("\n" + "=" * 60)
+    print("TEST 6: DEX-first — Solana contract address + signal price → no Binance call")
+    print("=" * 60)
+
+    db = IsolatedDB()
+    try:
+        _get_price_calls.clear()
+
+        # Long Solana-like contract address — NOT a Binance symbol
+        signal = {
+            "token_address": "7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU",
+            "token": "7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU",
+            "symbol": "MEMECOIN",
+            "chain": "sol",
+            "source_primary": "telegram:alpha",
+            "source": "telegram:alpha",
+            "signal_type": "whale_accumulation",
+            "rugcheck_score": 80,
+            "cross_source_count": 3,
+            "volume_24h": 5_000_000,
+            "price": 1.23,  # DEX price from enrichment
+            "onchain_evidence": {},
+            "regime_tag": "BULLISH",
+            "deployment_timestamp": DEPLOY_TS,
+        }
+        portfolio = make_portfolio()
+        runtime = make_runtime_state(min_score=40)
+
+        decision = fde.evaluate_signal_fast(signal, portfolio, runtime)
+        assert_eq("Result", "EXECUTE", decision["result"])
+
+        # Binance should NOT have been called
+        assert_eq("Binance call count", 0, len(_get_price_calls))
+
+        # Entry price should be the DEX price
+        pos = db.query_one("SELECT entry_price FROM positions WHERE decision_id=?", (decision["decision_id"],))
+        assert_eq("Entry price from DEX", 1.23, pos["entry_price"])
+
+        print("\n✅ TEST 6 PASSED")
+    finally:
+        db.cleanup()
+
+
+# ─────────────────────────────────────────────
+# TEST 7: Binance fallback — no signal price, known CEX symbol
+# ─────────────────────────────────────────────
+
+def test_binance_fallback():
+    print("\n" + "=" * 60)
+    print("TEST 7: Binance fallback — no signal price + BTCUSDT → Binance called")
+    print("=" * 60)
+
+    db = IsolatedDB()
+    try:
+        _get_price_calls.clear()
+
+        signal = {
+            "token_address": "BTCUSDT",
+            "token": "BTCUSDT",
+            "symbol": "BTCUSDT",
+            "chain": "eth",
+            "source_primary": "telegram:alpha",
+            "source": "telegram:alpha",
+            "signal_type": "whale_accumulation",
+            "rugcheck_score": 80,
+            "cross_source_count": 3,
+            "volume_24h": 100_000_000,
+            # NO price field — forces Binance fallback
+            "onchain_evidence": {},
+            "regime_tag": "BULLISH",
+            "deployment_timestamp": DEPLOY_TS,
+        }
+        portfolio = make_portfolio()
+        runtime = make_runtime_state(min_score=40)
+
+        decision = fde.evaluate_signal_fast(signal, portfolio, runtime)
+        assert_eq("Result", "EXECUTE", decision["result"])
+
+        # Binance SHOULD have been called
+        assert_true("Binance called", len(_get_price_calls) > 0)
+        assert_eq("Binance timeout", 0.5, _get_price_calls[-1]["timeout"])
+        assert_true("Called with BTCUSDT", "BTCUSDT" in _get_price_calls[-1]["symbol"])
+
+        print("\n✅ TEST 7 PASSED")
+    finally:
+        db.cleanup()
+
+
+# ─────────────────────────────────────────────
 # MAIN
 # ─────────────────────────────────────────────
 
@@ -534,10 +626,13 @@ if __name__ == "__main__":
         test_idempotency()
         test_cold_path_stubbed()
         test_close_to_learn()
+        test_dex_first_no_binance()
+        test_binance_fallback()
 
         print("\n" + "=" * 60)
-        print("✅ ALL 5 TESTS PASSED — True E2E lifecycle validated")
+        print("✅ ALL 7 TESTS PASSED — True E2E lifecycle validated")
         print("  evaluate_signal_fast() → Decision → Position → Async → Close → Learn")
+        print("  + DEX-first price selection + Binance fallback")
         print("  (isolated temp DB, no real APIs, no real LLMs)")
         print("=" * 60)
     except SystemExit:
