@@ -456,6 +456,85 @@ def check_learning_backlog():
         return {"status": "OK", "detail": "Check error"}
 
 
+def check_async_queue_backlog():
+    """
+    Check async analysis queue for stale tasks.
+    
+    WARNING: any PENDING task older than 15 min
+    CRITICAL: any RUNNING task older than (TIMEOUT_SECONDS + 60s)
+              OR PENDING backlog > 50
+    """
+    try:
+        import state_store
+        import yaml as _yaml
+        state_store.init_db()
+
+        # Load timeout from config
+        try:
+            with open(CONFIG_PATH, "r") as f:
+                _cfg = _yaml.safe_load(f)
+            timeout_sec = _cfg.get("cold_path", {}).get("timeout_seconds", 300)
+        except Exception:
+            timeout_sec = 300
+
+        with state_store.get_connection() as conn:
+            now = datetime.now(timezone.utc)
+
+            # Check PENDING backlog count + staleness
+            pending = conn.execute("""
+                SELECT COUNT(*) as cnt, MIN(next_run_at) as oldest_next
+                FROM async_tasks
+                WHERE status = 'PENDING'
+                  AND task_type = 'ANALYZE_EXECUTED'
+            """).fetchone()
+            pending_cnt = pending["cnt"] or 0
+
+            # Check RUNNING tasks (stuck?)
+            running = conn.execute("""
+                SELECT COUNT(*) as cnt, MIN(updated_at) as oldest_updated
+                FROM async_tasks
+                WHERE status = 'RUNNING'
+                  AND task_type = 'ANALYZE_EXECUTED'
+            """).fetchone()
+            running_cnt = running["cnt"] or 0
+
+            alerts = []
+
+            # CRITICAL: PENDING backlog > 50
+            if pending_cnt > 50:
+                alerts.append(f"CRITICAL: {pending_cnt} PENDING tasks (backlog > 50)")
+                return {"status": "CRITICAL", "detail": "; ".join(alerts)}
+
+            # CRITICAL: RUNNING task older than timeout + 60s
+            if running_cnt > 0 and running["oldest_updated"]:
+                try:
+                    oldest_dt = datetime.fromisoformat(running["oldest_updated"].replace("Z", "+00:00"))
+                    running_age_sec = (now - oldest_dt).total_seconds()
+                    if running_age_sec > (timeout_sec + 60):
+                        alerts.append(f"CRITICAL: {running_cnt} RUNNING task(s) stuck ({running_age_sec:.0f}s, timeout={timeout_sec}s)")
+                        return {"status": "CRITICAL", "detail": "; ".join(alerts)}
+                except Exception:
+                    pass
+
+            # WARNING: PENDING task with next_run_at older than 15 min
+            if pending_cnt > 0 and pending["oldest_next"]:
+                try:
+                    oldest_next_dt = datetime.fromisoformat(pending["oldest_next"].replace("Z", "+00:00"))
+                    age_min = (now - oldest_next_dt).total_seconds() / 60
+                    if age_min > 15:
+                        alerts.append(f"{pending_cnt} PENDING task(s) overdue (oldest {age_min:.0f}min)")
+                        return {"status": "WARNING", "detail": "; ".join(alerts)}
+                except Exception:
+                    pass
+
+            detail = f"{pending_cnt} PENDING, {running_cnt} RUNNING"
+            return {"status": "OK", "detail": detail}
+
+    except Exception as e:
+        log(f"Async queue backlog check error: {e}")
+        return {"status": "OK", "detail": f"Check error: {e}"}
+
+
 def check_openclaw_escalation():
     """
     Check if watchdog has escalated to OpenClaw (Tier 3.5).
@@ -575,6 +654,7 @@ def run_heartbeat():
     results["ntp_sync"] = check_ntp_sync()
     results["circuit_breakers"] = check_circuit_breakers()
     results["learning_backlog"] = check_learning_backlog()
+    results["async_queue_backlog"] = check_async_queue_backlog()
     results["openclaw_escalation"] = check_openclaw_escalation()
 
     # Determine overall status
