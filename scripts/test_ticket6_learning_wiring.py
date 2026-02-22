@@ -253,6 +253,66 @@ def test_existing_position():
 
 
 # ─────────────────────────────────────────────
+# TEST 5: Collision — insert ignored, close fails closed
+# ─────────────────────────────────────────────
+
+def test_collision_fails_closed():
+    print("\n" + "=" * 60)
+    print("TEST 5: Collision — Insert Ignored → RuntimeError (fail-closed)")
+    print("=" * 60)
+
+    db = IsolatedDB()
+    
+    # Create an existing position with a specific decision_id
+    collision_decision_id = "legacy_decision_COLLISION"
+    existing_pid = str(uuid.uuid4())
+    now_iso = datetime.now(timezone.utc).isoformat()
+    c = db.conn()
+    c.execute("""
+        INSERT INTO positions (
+            position_id, signal_id, token_address, entry_price, size_usd,
+            chain, strategy_id, decision_id, status, created_at, updated_at,
+            regime_tag, source_primary, learning_status
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'OPEN', ?, ?, ?, ?, 'PENDING')
+    """, (existing_pid, 'sig_existing', 'EXISTING_TOKEN', 100.0, 1000.0, 'sol',
+          'test_strat', collision_decision_id, now_iso, now_iso,
+          'test_regime', 'test_source'))
+    c.commit()
+    c.close()
+
+    # Now try to close a DIFFERENT position whose decision_id collides
+    new_pid = str(uuid.uuid4())
+    pos_dict = {
+        "id": new_pid,
+        "token": "NEW_TOKEN",
+        "decision_id": collision_decision_id,  # COLLISION!
+        "entry_price": 100.0,
+    }
+
+    try:
+        ensure_and_close_position(pos_dict, {
+            "exit_price": 110.0, "exit_reason": "TAKE_PROFIT",
+            "pnl_usd": 100.0, "pnl_pct": 0.10
+        }, db_path=db.db_path)
+        print("❌ FAIL: Should have raised RuntimeError")
+        sys.exit(1)
+    except RuntimeError as e:
+        assert_eq("Error mentions collision", True, "still missing" in str(e))
+        print(f"  Caught expected error: {e}")
+
+    # Verify new_pid NOT in DB
+    row = db.query_one("SELECT * FROM positions WHERE position_id=?", (new_pid,))
+    assert_eq("Colliding position not created", None, row)
+
+    # Verify existing position untouched
+    row = db.query_one("SELECT status FROM positions WHERE position_id=?", (existing_pid,))
+    assert_eq("Existing position still OPEN", "OPEN", row["status"])
+
+    print("\n✅ TEST 5 PASSED")
+    db.cleanup()
+
+
+# ─────────────────────────────────────────────
 # MAIN
 # ─────────────────────────────────────────────
 
@@ -262,9 +322,10 @@ if __name__ == "__main__":
         test_cron_fallback()
         test_no_backlog()
         test_existing_position()
+        test_collision_fails_closed()
 
         print("\n" + "=" * 60)
-        print("✅ ALL 4 TESTS PASSED (isolated temp DB, no production data touched)")
+        print("✅ ALL 5 TESTS PASSED (isolated temp DB, no production data touched)")
         print("=" * 60)
     except SystemExit:
         raise

@@ -428,8 +428,8 @@ def ensure_and_close_position(position_dict: dict, exit_payload: dict, db_path=N
                     ) VALUES (?, ?, ?, ?, ?, 'OPEN', ?, ?, ?, ?, ?, ?, ?)
                 """, (
                     position_id,
-                    position_dict.get("decision_id", f"legacy_{position_id[:16]}"),
-                    position_dict.get("signal_id", f"legacy_sig_{position_id[:16]}"),
+                    position_dict.get("decision_id", f"legacy_decision_{position_id}"),
+                    position_dict.get("signal_id", f"legacy_signal_{position_id}"),
                     position_dict.get("opened_at", now_iso),
                     now_iso,
                     position_dict.get("token_address", position_dict.get("token", "UNKNOWN")),
@@ -440,9 +440,20 @@ def ensure_and_close_position(position_dict: dict, exit_payload: dict, db_path=N
                     position_dict.get("regime_tag", "unknown"),
                     position_dict.get("source_primary", position_dict.get("signal_source_canonical", "unknown")),
                 ))
+                
+                # Verify row exists (fail-closed: INSERT OR IGNORE may silently skip)
+                verify = conn.execute(
+                    "SELECT position_id FROM positions WHERE position_id = ?",
+                    (position_id,)
+                ).fetchone()
+                if not verify:
+                    raise RuntimeError(
+                        f"ensure_and_close_position: insert ignored and position still missing "
+                        f"(possible decision_id collision) for {position_id}"
+                    )
             
-            # Now close it
-            conn.execute("""
+            # Close it — check rowcount
+            cur = conn.execute("""
                 UPDATE positions SET
                     status = 'CLOSED',
                     updated_at = ?,
@@ -465,6 +476,11 @@ def ensure_and_close_position(position_dict: dict, exit_payload: dict, db_path=N
                 now_iso,
                 position_id
             ))
+            if cur.rowcount != 1:
+                raise RuntimeError(
+                    f"ensure_and_close_position: close UPDATE affected {cur.rowcount} rows "
+                    f"(position missing) for {position_id}"
+                )
         
         return position_id
     except DBBusyError:
