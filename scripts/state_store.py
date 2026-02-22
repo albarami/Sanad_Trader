@@ -297,6 +297,99 @@ def init_db(db_path=DB_PATH):
                 ) VALUES (1, 10000.0, 'paper', 0, 0.0, 0.0, 0, ?)
             """, (datetime.now(timezone.utc).isoformat(),))
     
+    # === V4: fills table ===
+    conn.executescript("""
+        CREATE TABLE IF NOT EXISTS fills (
+            fill_id         TEXT PRIMARY KEY,
+            position_id     TEXT NOT NULL,
+            side            TEXT NOT NULL CHECK (side IN ('BUY','SELL')),
+            venue           TEXT NOT NULL,
+            expected_price  REAL,
+            exec_price      REAL NOT NULL,
+            qty_base        REAL NOT NULL,
+            notional_usd    REAL NOT NULL,
+            fee_usd         REAL NOT NULL DEFAULT 0,
+            fee_bps         REAL NOT NULL DEFAULT 0,
+            slippage_bps    REAL NOT NULL DEFAULT 0,
+            tx_hash         TEXT,
+            created_at      TEXT NOT NULL
+        );
+        CREATE INDEX IF NOT EXISTS idx_fills_position_id ON fills(position_id);
+        CREATE INDEX IF NOT EXISTS idx_fills_created_at ON fills(created_at);
+    """)
+
+    # === V4: positions cost/reward/attribution columns (idempotent) ===
+    _add_column_if_missing(conn, "positions", "entry_fill_id", "TEXT")
+    _add_column_if_missing(conn, "positions", "exit_fill_id", "TEXT")
+    _add_column_if_missing(conn, "positions", "entry_expected_price", "REAL")
+    _add_column_if_missing(conn, "positions", "entry_slippage_bps", "REAL")
+    _add_column_if_missing(conn, "positions", "entry_fee_usd", "REAL")
+    _add_column_if_missing(conn, "positions", "entry_fee_bps", "REAL")
+    _add_column_if_missing(conn, "positions", "exit_expected_price", "REAL")
+    _add_column_if_missing(conn, "positions", "exit_slippage_bps", "REAL")
+    _add_column_if_missing(conn, "positions", "exit_fee_usd", "REAL")
+    _add_column_if_missing(conn, "positions", "exit_fee_bps", "REAL")
+    _add_column_if_missing(conn, "positions", "fees_usd_total", "REAL")
+    _add_column_if_missing(conn, "positions", "pnl_gross_usd", "REAL")
+    _add_column_if_missing(conn, "positions", "pnl_gross_pct", "REAL")
+    _add_column_if_missing(conn, "positions", "reward_bin", "INTEGER")
+    _add_column_if_missing(conn, "positions", "reward_real", "REAL")
+    _add_column_if_missing(conn, "positions", "reward_version", "TEXT")
+    _add_column_if_missing(conn, "positions", "policy_version", "TEXT")
+    _add_column_if_missing(conn, "positions", "decision_id", "TEXT")
+
+    # === V4: performance indexes ===
+    conn.executescript("""
+        CREATE INDEX IF NOT EXISTS idx_positions_status_closed_at ON positions(status, closed_at);
+        CREATE INDEX IF NOT EXISTS idx_positions_policy_closed_at ON positions(policy_version, closed_at);
+        CREATE INDEX IF NOT EXISTS idx_positions_strategy_closed_at ON positions(strategy_id, closed_at);
+    """)
+
+    # === V4: eval + promotion tables ===
+    conn.executescript("""
+        CREATE TABLE IF NOT EXISTS policy_configs (
+            policy_version TEXT PRIMARY KEY,
+            config_json    TEXT NOT NULL,
+            created_at     TEXT NOT NULL,
+            notes          TEXT
+        );
+
+        CREATE TABLE IF NOT EXISTS meta (
+            key        TEXT PRIMARY KEY,
+            value      TEXT NOT NULL,
+            updated_at TEXT NOT NULL
+        );
+
+        CREATE TABLE IF NOT EXISTS eval_walkforward_runs (
+            eval_id                  TEXT PRIMARY KEY,
+            created_at               TEXT NOT NULL,
+            horizon_days             INTEGER NOT NULL,
+            train_days               INTEGER NOT NULL,
+            test_days                INTEGER NOT NULL,
+            step_days                INTEGER NOT NULL,
+            candidate_key            TEXT NOT NULL,
+            results_json             TEXT NOT NULL,
+            promotion_decision       TEXT NOT NULL CHECK (promotion_decision IN ('PROMOTE','HOLD','ROLLBACK')),
+            promoted_policy_version  TEXT,
+            promotion_reason         TEXT
+        );
+        CREATE INDEX IF NOT EXISTS idx_eval_walkforward_runs_created ON eval_walkforward_runs(created_at);
+    """)
+
+    # === V4 Fix 6: Seed meta + policy_configs for fresh DB ===
+    _seed_row = conn.execute("SELECT value FROM meta WHERE key='active_policy_version'").fetchone()
+    if _seed_row is None:
+        conn.execute(
+            "INSERT OR IGNORE INTO meta(key, value, updated_at) VALUES ('active_policy_version', 'main', ?)",
+            (datetime.now(timezone.utc).isoformat(),)
+        )
+    _seed_policy = conn.execute("SELECT policy_version FROM policy_configs WHERE policy_version='main'").fetchone()
+    if _seed_policy is None:
+        conn.execute(
+            "INSERT OR IGNORE INTO policy_configs(policy_version, config_json, created_at, notes) VALUES ('main', '{}', ?, 'auto-seeded at init')",
+            (datetime.now(timezone.utc).isoformat(),)
+        )
+
     conn.commit()
     conn.close()
 
