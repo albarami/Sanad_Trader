@@ -506,3 +506,41 @@ def get_batch_size(db_conn=None):
             count = conn.execute("SELECT COUNT(*) FROM positions").fetchone()[0]
     
     return 10 if count >= 50 else 5
+
+
+# ============================================================================
+# READ-ONLY STAT LOADERS (Ticket 10 — DB-backed hot path stats)
+# ============================================================================
+
+def get_source_ucb_stats(db_path=None):
+    """Load all source UCB1 stats from SQLite.
+    
+    Returns: dict[source_id] = {"n": int, "reward_sum": float}
+    Empty dict if table is empty. DBBusyError propagates.
+    """
+    with get_connection(db_path) as conn:
+        rows = conn.execute(
+            "SELECT source_id, n, reward_sum FROM source_ucb_stats"
+        ).fetchall()
+    return {
+        row["source_id"]: {"n": row["n"], "reward_sum": row["reward_sum"]}
+        for row in rows
+    }
+
+
+def get_bandit_stats(db_path=None):
+    """Load all bandit (Thompson) strategy stats from SQLite.
+    
+    Returns: dict[(strategy_id, regime_tag)] = {"alpha": float, "beta": float, "n": int}
+    Empty dict if table is empty. DBBusyError propagates.
+    """
+    with get_connection(db_path) as conn:
+        rows = conn.execute(
+            "SELECT strategy_id, regime_tag, alpha, beta, n FROM bandit_strategy_stats"
+        ).fetchall()
+    return {
+        (row["strategy_id"], row["regime_tag"]): {
+            "alpha": row["alpha"], "beta": row["beta"], "n": row["n"]
+        }
+        for row in rows
+    }

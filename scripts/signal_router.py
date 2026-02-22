@@ -442,14 +442,16 @@ def _score_signal(signal: dict, age_minutes: float, is_cross_source: bool) -> in
     except Exception:
         pass  # Sentiment unavailable — no penalty
 
-    # ── UCB1 SOURCE WEIGHTING (Tier 1 wiring) ──
+    # ── UCB1 SOURCE WEIGHTING (from SQLite — single source of truth) ──
     # Sources with better track records get a scoring bonus
     try:
-        from ucb1_scorer import get_source_score
+        from state_store import get_source_ucb_stats
         source_key = signal.get("source", "unknown")
-        ucb1 = get_source_score(source_key)
-        if not ucb1.get("cold_start", True):
-            ucb1_score = ucb1.get("score", 50)
+        ucb_stats = get_source_ucb_stats()
+        src = ucb_stats.get(source_key)
+        if src and src["n"] > 0:
+            win_rate = src["reward_sum"] / src["n"]
+            ucb1_score = win_rate * 100
             if ucb1_score >= 80:
                 score += 15  # Grade A source — proven winner
             elif ucb1_score >= 60:
@@ -1269,12 +1271,45 @@ def _run_router_impl():
                 "mode": "paper"
             })
             
-            # Build runtime state
+            # Build runtime state — stats from SQLite (single source of truth)
             runtime_state = {
                 "min_score": 40,
                 "regime_tag": "NEUTRAL",  # TODO: integrate regime_classifier
-                "kill_switch": False
+                "kill_switch": False,
             }
+            
+            # Load UCB1 source grades from DB (replaces JSON file reads)
+            try:
+                from state_store import get_source_ucb_stats, get_bandit_stats
+                
+                # UCB1 grades: compute from source_ucb_stats table
+                ucb_raw = get_source_ucb_stats()
+                ucb1_grades = {}
+                for src_id, stats in ucb_raw.items():
+                    n = stats["n"]
+                    if n == 0:
+                        ucb1_grades[src_id] = {"grade": "C", "score": 50, "cold_start": True}
+                    else:
+                        win_rate = stats["reward_sum"] / n
+                        # UCB1 score: win_rate * 100 (simplified — no exploration bonus in hot path)
+                        score = win_rate * 100
+                        grade = "A" if score >= 80 else "B" if score >= 60 else "C" if score >= 40 else "D"
+                        ucb1_grades[src_id] = {"grade": grade, "score": score, "cold_start": False, "n": n}
+                runtime_state["ucb1_grades"] = ucb1_grades
+                
+                # Thompson state: from bandit_strategy_stats table
+                bandit_raw = get_bandit_stats()
+                thompson_state = {}
+                for (strat_id, regime), stats in bandit_raw.items():
+                    thompson_state.setdefault(strat_id, {})[regime] = {
+                        "alpha": stats["alpha"], "beta": stats["beta"], "n": stats["n"]
+                    }
+                runtime_state["thompson_state"] = thompson_state
+                
+            except Exception as e:
+                _log(f"WARNING: Failed to load DB stats for hot path: {e}")
+                runtime_state["ucb1_grades"] = {}
+                runtime_state["thompson_state"] = {}
             
             # Call v3.1 Hot Path
             if HAS_V31_HOT_PATH:
