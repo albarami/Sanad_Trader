@@ -1014,6 +1014,199 @@ def update_position_analysis(position_id: str, analysis_dict: dict, db_path=None
 
 
 # ============================================================
+# V4: open_position / close_position with costs + reward
+# ============================================================
+
+def open_position(
+    position_id: str,
+    token_address: str,
+    chain: str,
+    entry_price: float,
+    size_usd: float,
+    strategy_id: str = "default",
+    regime_tag: str = None,
+    source_primary: str = None,
+    decision_id: str = None,
+    policy_version: str = None,
+    entry_expected_price: float = None,
+    entry_slippage_bps: float = 0.0,
+    entry_fee_bps: float = 0.0,
+    entry_fee_usd: float = None,
+    venue: str = "paper",
+    tx_hash: str = None,
+    signal_id: str = None,
+    features: dict = None,
+    db_path=None,
+):
+    """
+    Open a position with entry cost tracking and fill linkage.
+    All new args optional for backward compat.
+
+    Fix 4: Raises ValueError if entry_price <= 0 or size_usd <= 0.
+    Fix 3: Fill insert + position insert in one transaction.
+    """
+    if entry_price is None or entry_price <= 0:
+        raise ValueError(f"entry_price must be > 0, got {entry_price}")
+    if size_usd is None or size_usd <= 0:
+        raise ValueError(f"size_usd must be > 0, got {size_usd}")
+
+    _db = db_path or DB_PATH
+    now_iso = datetime.now(timezone.utc).isoformat()
+    qty_base = size_usd / entry_price
+    notional_usd = qty_base * entry_price  # ≈ size_usd
+
+    if entry_fee_usd is None:
+        entry_fee_usd = _fee_usd(notional_usd, entry_fee_bps)
+
+    # Ensure NOT NULL constraints are satisfied
+    import uuid as _uuid
+    if decision_id is None:
+        decision_id = f"dec_{_uuid.uuid4()}"
+    if signal_id is None:
+        signal_id = f"sig_{_uuid.uuid4()}"
+
+    with get_connection(_db) as conn:
+        # Insert fill (BUY) inside same transaction
+        fill_id = record_fill(
+            position_id=position_id,
+            side="BUY",
+            venue=venue,
+            expected_price=entry_expected_price,
+            exec_price=entry_price,
+            qty_base=qty_base,
+            fee_bps=entry_fee_bps,
+            fee_usd=entry_fee_usd,
+            slippage_bps=entry_slippage_bps,
+            tx_hash=tx_hash,
+            created_at=now_iso,
+            db_conn=conn,
+        )
+
+        # Insert position row
+        conn.execute("""
+            INSERT OR IGNORE INTO positions (
+                position_id, decision_id, signal_id, created_at, updated_at,
+                status, token_address, chain, strategy_id, entry_price,
+                size_usd, regime_tag, source_primary, features_json,
+                entry_fill_id, entry_expected_price, entry_slippage_bps,
+                entry_fee_usd, entry_fee_bps, policy_version,
+                learning_status
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (
+            position_id, decision_id, signal_id, now_iso, now_iso,
+            "OPEN", token_address, chain, strategy_id, entry_price,
+            size_usd, regime_tag, source_primary, json.dumps(features) if features else None,
+            fill_id, entry_expected_price, entry_slippage_bps,
+            entry_fee_usd, entry_fee_bps, policy_version,
+            "PENDING",
+        ))
+
+
+def close_position(
+    position_id: str,
+    close_reason: str,
+    close_price: float,
+    exit_expected_price: float = None,
+    exit_slippage_bps: float = 0.0,
+    exit_fee_bps: float = 0.0,
+    exit_fee_usd: float = None,
+    venue: str = "paper",
+    tx_hash: str = None,
+    db_path=None,
+):
+    """
+    Close a position with exit cost tracking, gross/net PnL, and reward computation.
+    All cost args optional for backward compat.
+
+    Units contract: all *_pct fields are DECIMAL FRACTIONS (0.10 = +10%).
+    Fix 3: Exit fill + position update in one transaction.
+    Fix 4: If entry_price <= 0 or size_usd <= 0, set pnl to 0.0, reward_bin=0.
+    """
+    _db = db_path or DB_PATH
+    now_iso = datetime.now(timezone.utc).isoformat()
+
+    with get_connection(_db) as conn:
+        pos = conn.execute(
+            "SELECT entry_price, size_usd, entry_fee_usd FROM positions WHERE position_id = ?",
+            (position_id,)
+        ).fetchone()
+        if not pos:
+            raise ValueError(f"Position {position_id} not found")
+
+        entry_price = pos["entry_price"] or 0.0
+        size_usd = pos["size_usd"] or 0.0
+        entry_fee = pos["entry_fee_usd"] or 0.0
+
+        # Fix 4: guard against bad data
+        if entry_price <= 0 or size_usd <= 0:
+            conn.execute("""
+                UPDATE positions SET
+                    status='CLOSED', close_reason=?, close_price=?, closed_at=?,
+                    updated_at=?, pnl_usd=0.0, pnl_pct=0.0, pnl_gross_usd=0.0,
+                    pnl_gross_pct=0.0, fees_usd_total=0.0, reward_bin=0,
+                    reward_real=0.0, reward_version='v1',
+                    learning_status='PENDING', learning_updated_at=?, learning_error=NULL
+                WHERE position_id=?
+            """, (close_reason, close_price, now_iso, now_iso, now_iso, position_id))
+            return
+
+        qty_base = size_usd / entry_price
+        gross_exit_notional = qty_base * close_price
+        pnl_gross_usd = gross_exit_notional - size_usd
+        pnl_gross_pct = pnl_gross_usd / size_usd  # fraction
+
+        if exit_fee_usd is None:
+            exit_fee_usd = _fee_usd(gross_exit_notional, exit_fee_bps)
+        fees_usd_total = entry_fee + exit_fee_usd
+
+        pnl_net_usd = pnl_gross_usd - fees_usd_total
+        pnl_net_pct = pnl_net_usd / size_usd  # fraction
+
+        reward_bin, reward_real, reward_version = compute_reward(pnl_net_usd, pnl_net_pct, "v1")
+
+        # Insert exit fill inside same transaction
+        exit_fill_id = record_fill(
+            position_id=position_id,
+            side="SELL",
+            venue=venue,
+            expected_price=exit_expected_price,
+            exec_price=close_price,
+            qty_base=qty_base,
+            fee_bps=exit_fee_bps,
+            fee_usd=exit_fee_usd,
+            slippage_bps=exit_slippage_bps,
+            tx_hash=tx_hash,
+            created_at=now_iso,
+            db_conn=conn,
+        )
+
+        conn.execute("""
+            UPDATE positions SET
+                status='CLOSED', close_reason=?, close_price=?, closed_at=?,
+                updated_at=?,
+                exit_fill_id=?, exit_expected_price=?, exit_slippage_bps=?,
+                exit_fee_usd=?, exit_fee_bps=?,
+                fees_usd_total=?,
+                pnl_gross_usd=?, pnl_gross_pct=?,
+                pnl_usd=?, pnl_pct=?,
+                reward_bin=?, reward_real=?, reward_version=?,
+                learning_status='PENDING', learning_updated_at=?, learning_error=NULL
+            WHERE position_id=?
+        """, (
+            close_reason, close_price, now_iso,
+            now_iso,
+            exit_fill_id, exit_expected_price, exit_slippage_bps,
+            exit_fee_usd, exit_fee_bps,
+            fees_usd_total,
+            pnl_gross_usd, pnl_gross_pct,
+            pnl_net_usd, pnl_net_pct,
+            reward_bin, reward_real, reward_version,
+            now_iso,
+            position_id,
+        ))
+
+
+# ============================================================
 # V4: Fee/Slippage/Reward helpers + record_fill + meta functions
 # ============================================================
 
