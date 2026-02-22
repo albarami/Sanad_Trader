@@ -19,7 +19,7 @@ sanad:
 sizing:
   kelly_fraction: 0.5
   kelly_min_trades: 30
-  kelly_default_pct: 0.075
+  kelly_default_pct: 0.02
   max_position_pct: 0.1
   paper_regime_floor: 0.7
   live_kelly_default_pct: 0.02

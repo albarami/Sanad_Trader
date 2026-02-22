@@ -121,7 +121,7 @@ def make_runtime(thompson_state=None):
 
 def test_cold_start():
     print("=" * 60)
-    print("TEST 1: Cold start (<30 trades) → default 7.5% sizing")
+    print("TEST 1: Cold start (<30 trades) → conservative 2% sizing")
     print("=" * 60)
 
     portfolio = make_portfolio(10000)
@@ -129,14 +129,15 @@ def test_cold_start():
 
     pos_usd, info = fde.kelly_position_size("default", "NEUTRAL", portfolio, runtime)
     assert_eq("Method", "kelly_default", info["method"])
-    assert_close("Position USD", 750.0, pos_usd)  # 10000 * 0.075
+    assert_close("Position USD", 200.0, pos_usd)  # 10000 * 0.02
     assert_eq("n", 0, info["n"])
+    assert_eq("Mode", "PAPER", info["mode"])
 
     # Also test with some trades but below threshold
     runtime2 = make_runtime({"default": {"NEUTRAL": {"alpha": 10, "beta": 5, "n": 14}}})
     pos_usd2, info2 = fde.kelly_position_size("default", "NEUTRAL", portfolio, runtime2)
     assert_eq("Method (14 trades)", "kelly_default", info2["method"])
-    assert_close("Position USD (14 trades)", 750.0, pos_usd2)
+    assert_close("Position USD (14 trades)", 200.0, pos_usd2)
 
     print("\n✅ TEST 1 PASSED")
 
@@ -147,7 +148,7 @@ def test_cold_start():
 
 def test_kelly_active():
     print("\n" + "=" * 60)
-    print("TEST 2: Kelly active (70% win, 35 trades) → half-Kelly sizing")
+    print("TEST 2: Kelly active (70% win, 35 trades) → half-Kelly capped at 5% (PAPER)")
     print("=" * 60)
 
     portfolio = make_portfolio(10000)
@@ -155,17 +156,18 @@ def test_kelly_active():
     # win_rate = 25/37 ≈ 0.6757
     # kelly_full = 2*0.6757 - 1 = 0.3514
     # half_kelly = 0.3514 * 0.5 = 0.1757
-    # capped at max_position_pct=0.10
-    # position = 10000 * 0.10 = 1000
+    # capped at paper_max_position_pct=0.05
+    # position = 10000 * 0.05 = 500
     runtime = make_runtime({"default": {"NEUTRAL": {"alpha": 25.0, "beta": 12.0, "n": 35}}})
 
     pos_usd, info = fde.kelly_position_size("default", "NEUTRAL", portfolio, runtime)
     assert_eq("Method", "kelly_active", info["method"])
     assert_true("Win rate > 0.6", info["win_rate"] > 0.6)
     assert_true("Kelly full > 0.3", info["kelly_full"] > 0.3)
-    # half-Kelly = 0.175 > max 0.10 → capped
-    assert_close("Kelly pct (capped)", 0.10, info["kelly_pct"], tol=0.001)
-    assert_close("Position USD (capped)", 1000.0, pos_usd)
+    # half-Kelly = 0.175 > paper max 0.05 → capped
+    assert_close("Kelly pct (capped at 5%)", 0.05, info["kelly_pct"], tol=0.001)
+    assert_close("Position USD (capped)", 500.0, pos_usd)
+    assert_eq("Mode", "PAPER", info["mode"])
 
     print("\n✅ TEST 2 PASSED")
 
@@ -176,24 +178,24 @@ def test_kelly_active():
 
 def test_kelly_moderate():
     print("\n" + "=" * 60)
-    print("TEST 3: Kelly active (58% win, 40 trades) → not capped")
+    print("TEST 3: Kelly active (55% win, 40 trades) → not capped")
     print("=" * 60)
 
     portfolio = make_portfolio(10000)
-    # 58% win rate: alpha=24 (1+23 wins), beta=18 (1+17 losses), n=40
-    # win_rate = 24/42 ≈ 0.5714
-    # kelly_full = 2*0.5714 - 1 = 0.1429
-    # half_kelly = 0.1429 * 0.5 = 0.0714
-    # below max 0.10 → not capped
-    # position = 10000 * 0.0714 = 714
-    runtime = make_runtime({"default": {"NEUTRAL": {"alpha": 24.0, "beta": 18.0, "n": 40}}})
+    # 55% win rate: alpha=23 (1+22 wins), beta=19 (1+18 losses), n=40
+    # win_rate = 23/42 ≈ 0.5476
+    # kelly_full = 2*0.5476 - 1 = 0.0952
+    # half_kelly = 0.0952 * 0.5 = 0.0476
+    # below paper max 0.05 → not capped
+    # position = 10000 * 0.0476 = 476
+    runtime = make_runtime({"default": {"NEUTRAL": {"alpha": 23.0, "beta": 19.0, "n": 40}}})
 
     pos_usd, info = fde.kelly_position_size("default", "NEUTRAL", portfolio, runtime)
     assert_eq("Method", "kelly_active", info["method"])
-    assert_close("Win rate", 0.5714, info["win_rate"], tol=0.01)
-    assert_close("Kelly full", 0.1429, info["kelly_full"], tol=0.01)
+    assert_close("Win rate", 0.5476, info["win_rate"], tol=0.01)
+    assert_close("Kelly full", 0.0952, info["kelly_full"], tol=0.01)
     assert_true("Not capped (kelly_pct < max)", info["kelly_pct"] < info["max_position_pct"])
-    assert_close("Position USD", 714.0, pos_usd, tol=20)
+    assert_close("Position USD", 476.0, pos_usd, tol=20)
 
     print("\n✅ TEST 3 PASSED")
 
@@ -211,13 +213,13 @@ def test_kelly_negative():
     # 40% win rate: alpha=15, beta=22, n=35
     # win_rate = 15/37 ≈ 0.4054
     # kelly_full = 2*0.4054 - 1 = -0.189 → negative
-    # position = cash * default * 0.5 = 10000 * 0.075 * 0.5 = 375
+    # position = cash * default * 0.5 = 10000 * 0.02 * 0.5 = 100
     runtime = make_runtime({"default": {"NEUTRAL": {"alpha": 15.0, "beta": 22.0, "n": 35}}})
 
     pos_usd, info = fde.kelly_position_size("default", "NEUTRAL", portfolio, runtime)
     assert_eq("Method", "kelly_negative", info["method"])
     assert_true("Kelly full < 0", info["kelly_full"] < 0)
-    assert_close("Position USD (half default)", 375.0, pos_usd)
+    assert_close("Position USD (half default)", 100.0, pos_usd)
 
     print("\n✅ TEST 4 PASSED")
 
@@ -245,11 +247,11 @@ def test_e2e_kelly():
             return True, None, {}
         fde.stage_4_policy_engine = _stub
 
-        # Seed DB: 60% win rate, 40 trades → Kelly active
-        # alpha=25, beta=17, n=40 → win_rate=25/42≈0.595
-        # kelly_full = 2*0.595-1 = 0.190, half = 0.095
-        # position = 10000 * 0.095 = 952
-        db.seed_bandit("default", "NEUTRAL", 25.0, 17.0, 40)
+        # Seed DB: 55% win rate, 40 trades → Kelly active
+        # alpha=23, beta=19, n=40 → win_rate=23/42≈0.5476
+        # kelly_full = 2*0.5476-1 = 0.0952, half = 0.0476
+        # below paper cap 0.05 → position = 10000 * 0.0476 = 476
+        db.seed_bandit("default", "NEUTRAL", 23.0, 19.0, 40)
 
         # Build runtime from DB
         bandit_raw = get_bandit_stats()
@@ -282,10 +284,10 @@ def test_e2e_kelly():
         decision = fde.evaluate_signal_fast(signal, portfolio, runtime)
         assert_eq("Result", "EXECUTE", decision["result"])
 
-        # Check position_usd in decision — should be Kelly-sized (~952), not flat 100
+        # Check position_usd in decision — should be Kelly-sized (~476), not flat 200
         pos_usd = decision.get("position_usd", 0)
-        assert_true("Position USD > 500 (Kelly active, not flat 100)", pos_usd > 500)
-        assert_true("Position USD < 1100 (within Kelly range)", pos_usd < 1100)
+        assert_true("Position USD > 300 (Kelly active, not flat 200)", pos_usd > 300)
+        assert_true("Position USD < 600 (within paper Kelly range, cap 5%)", pos_usd < 600)
         print(f"✓ Kelly-sized position: ${pos_usd:.2f}")
 
         # Restore

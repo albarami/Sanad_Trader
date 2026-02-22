@@ -316,17 +316,20 @@ def stage_2_signal_scoring(signal, runtime_state, timings, start_time):
 
 def kelly_position_size(strategy_id, regime_tag, portfolio, runtime_state, config=None):
     """
-    Fractional Kelly Criterion position sizing.
+    Fractional Kelly Criterion position sizing with mode-specific caps.
     
-    Kelly formula: f* = (p * b - q) / b
-      where p = win_rate, q = 1 - p, b = avg_win/avg_loss ratio (assumed 1.0 for simplicity)
-    Simplified Kelly: f* = 2p - 1 (when b=1)
+    Kelly formula: f* = 2p - 1 (simplified, b=1)
     Half-Kelly: f = f* × kelly_fraction (default 0.5)
+    
+    Mode detection: portfolio["mode"] first, then SYSTEM_MODE env, default PAPER.
+    PAPER cap: paper_max_position_pct (0.05)
+    LIVE cap: live_max_position_pct (0.05)
+    Cold start default: kelly_default_pct (0.02 — conservative, matches risk constitution)
     
     Args:
         strategy_id: Strategy name
         regime_tag: Current market regime
-        portfolio: Portfolio dict with cash_balance_usd
+        portfolio: Portfolio dict with cash_balance_usd (and optional "mode")
         runtime_state: Must contain "thompson_state" from DB
         config: Sizing config (or uses defaults from thresholds.yaml)
     
@@ -339,8 +342,16 @@ def kelly_position_size(strategy_id, regime_tag, portfolio, runtime_state, confi
         config = {}
     kelly_fraction = config.get("kelly_fraction", 0.5)
     kelly_min_trades = config.get("kelly_min_trades", 30)
-    kelly_default_pct = config.get("kelly_default_pct", 0.075)
-    max_position_pct = config.get("max_position_pct", 0.10)
+    kelly_default_pct = config.get("kelly_default_pct", 0.02)
+    
+    # Mode detection: portfolio > env > default PAPER
+    mode = portfolio.get("mode", os.environ.get("SYSTEM_MODE", "PAPER")).upper()
+    
+    # Mode-specific caps
+    if mode == "LIVE":
+        max_position_pct = config.get("live_max_position_pct", 0.05)
+    else:
+        max_position_pct = config.get("paper_max_position_pct", 0.05)
     
     cash = portfolio.get("cash_balance_usd", 10000)
     
@@ -357,11 +368,13 @@ def kelly_position_size(strategy_id, regime_tag, portfolio, runtime_state, confi
         "method": "kelly_default",
         "strategy_id": strategy_id,
         "regime_tag": regime_tag,
+        "mode": mode,
         "n": n,
         "kelly_min_trades": kelly_min_trades,
+        "max_position_pct": max_position_pct,
     }
     
-    # Cold start: not enough trades → use default flat sizing
+    # Cold start: not enough trades → use conservative default (2%)
     if n < kelly_min_trades:
         position_usd = cash * kelly_default_pct
         sizing_info["method"] = "kelly_default"
@@ -375,7 +388,7 @@ def kelly_position_size(strategy_id, regime_tag, portfolio, runtime_state, confi
     # Kelly fraction: f* = 2p - 1 (simplified, b=1)
     kelly_full = 2 * win_rate - 1
     
-    # If Kelly is negative or zero, minimum sizing (still trade in paper mode)
+    # If Kelly is negative or zero, minimum sizing (half of default)
     if kelly_full <= 0:
         position_usd = cash * kelly_default_pct * 0.5  # Half of default
         sizing_info["method"] = "kelly_negative"
@@ -387,7 +400,7 @@ def kelly_position_size(strategy_id, regime_tag, portfolio, runtime_state, confi
     # Half-Kelly (or configured fraction)
     kelly_sized = kelly_full * kelly_fraction
     
-    # Cap at max_position_pct
+    # Cap at mode-specific max_position_pct
     kelly_pct = min(kelly_sized, max_position_pct)
     
     position_usd = cash * kelly_pct
@@ -398,7 +411,6 @@ def kelly_position_size(strategy_id, regime_tag, portfolio, runtime_state, confi
     sizing_info["kelly_fraction"] = kelly_fraction
     sizing_info["kelly_sized"] = round(kelly_sized, 4)
     sizing_info["kelly_pct"] = round(kelly_pct, 4)
-    sizing_info["max_position_pct"] = max_position_pct
     sizing_info["position_usd"] = round(position_usd, 2)
     
     return position_usd, sizing_info
