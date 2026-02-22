@@ -455,7 +455,30 @@ def close_position(position, current_price, reason, detail=""):
         pnl_pct = (current_price - entry) / entry
         pnl_usd = (current_price - entry) * qty
     
-    fee_usd = current_price * qty * 0.001  # 0.1% paper fee
+    # V4: Load execution costs from thresholds.yaml
+    try:
+        import yaml as _yaml
+        _th_path = Path(os.environ.get("SANAD_HOME", str(Path(__file__).resolve().parent.parent))) / "config" / "thresholds.yaml"
+        _th_cfg = _yaml.safe_load(_th_path.read_text()) if _th_path.exists() else {}
+        _exec_costs = _th_cfg.get("execution_costs", {})
+    except Exception:
+        _exec_costs = {}
+    _paper_fee_bps = float(_exec_costs.get("paper_fee_bps", 10))
+    _paper_slip_bps = float(_exec_costs.get("paper_slippage_bps", 5))
+    
+    # Paper SELL exec price = mid * (1 - slippage/10000) — adverse
+    mid_exit_price = current_price
+    exec_exit_price = mid_exit_price * (1 - _paper_slip_bps / 10000.0)
+    
+    # Recompute with exec price
+    if side == "SHORT":
+        pnl_pct = (entry - exec_exit_price) / entry
+        pnl_usd = (entry - exec_exit_price) * qty
+    else:
+        pnl_pct = (exec_exit_price - entry) / entry
+        pnl_usd = (exec_exit_price - entry) * qty
+    
+    fee_usd = exec_exit_price * qty * (_paper_fee_bps / 10000.0)
     net_pnl_usd = pnl_usd - fee_usd
     hold_hours = (now - parse_dt(position["opened_at"])).total_seconds() / 3600
 
@@ -645,14 +668,30 @@ def close_position(position, current_price, reason, detail=""):
     try:
         import state_store
         state_store.init_db()
-        position_id = state_store.ensure_and_close_position(position, {
-            "close_price": current_price,
-            "close_reason": reason,
-            "exit_price": current_price,  # Keep for backward compat
-            "exit_reason": reason,
-            "pnl_usd": net_pnl_usd,
-            "pnl_pct": pnl_pct,
-        })
+        position_id_str = position.get("position_id") or position.get("id", "")
+        
+        # Try V4 close_position first (handles fills, gross/net, reward)
+        try:
+            state_store.close_position(
+                position_id=position_id_str,
+                close_reason=reason,
+                close_price=exec_exit_price,
+                exit_expected_price=mid_exit_price,
+                exit_slippage_bps=_paper_slip_bps,
+                exit_fee_bps=_paper_fee_bps,
+                venue="paper",
+            )
+            position_id = position_id_str
+        except (ValueError, Exception) as v4_err:
+            # Fallback: ensure_and_close (v3.0→v3.1 bridge for legacy positions)
+            position_id = state_store.ensure_and_close_position(position, {
+                "close_price": exec_exit_price,
+                "close_reason": reason,
+                "exit_price": exec_exit_price,
+                "exit_reason": reason,
+                "pnl_usd": net_pnl_usd,
+                "pnl_pct": pnl_pct,
+            })
         print(f"    SQLite: position {position_id[:8]}... CLOSED (learning_status=PENDING)")
         # Immediately attempt learning
         import learning_loop
