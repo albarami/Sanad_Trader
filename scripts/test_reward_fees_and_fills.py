@@ -171,6 +171,84 @@ def test_reward_real_is_clamped():
         _assert_close(pos["reward_real"], 1.0, msg="reward_real not clamped to +1.0")
 
 
+def test_learning_loop_uses_reward_bin_not_pnl_sign():
+    """
+    CONTRACT test: learning_loop must use reward_bin, not recompute from pnl_usd sign.
+    We insert an intentionally inconsistent row: pnl_usd < 0 but reward_bin = 1.
+    If learning_loop uses reward_bin, it records a WIN.
+    If it recomputes from pnl_usd, it would record a LOSS.
+    """
+    td, db = _mkdb()
+    now = datetime(2026, 2, 23, 1, 0, 0, tzinfo=timezone.utc)
+    
+    # Open + close normally
+    state_store.open_position(
+        position_id="pos_learn_contract", token_address="LEARN", chain="SOL",
+        entry_price=1.0, size_usd=100.0, strategy_id="default",
+        regime_tag="TEST", source_primary="unknown:general",
+        decision_id="dec4", policy_version="pvA",
+        entry_fee_bps=0.0, venue="paper", db_path=db,
+    )
+    state_store.close_position(
+        position_id="pos_learn_contract", close_reason="TAKE_PROFIT",
+        close_price=1.01, exit_fee_bps=0.0, venue="paper", db_path=db,
+    )
+    
+    # Force inconsistency: pnl_usd negative, reward_bin=1
+    with state_store.get_connection(db) as conn:
+        conn.execute("""
+            UPDATE positions SET
+                pnl_usd = -1.0,
+                pnl_pct = -0.01,
+                reward_bin = 1,
+                reward_real = 0.5,
+                reward_version = 'v1',
+                learning_status = 'PENDING',
+                closed_at = ?
+            WHERE position_id='pos_learn_contract'
+        """, (_iso(now),))
+        conn.commit()
+        
+        before = _one(conn, """
+            SELECT alpha, beta, n FROM bandit_strategy_stats
+            WHERE strategy_id='default' AND regime_tag='TEST'
+        """)
+        b_alpha = float(before["alpha"]) if before else 1.0
+        b_beta = float(before["beta"]) if before else 1.0
+        b_n = int(before["n"]) if before else 0
+    
+    # Run learning loop as subprocess
+    env = os.environ.copy()
+    env["SANAD_DB_PATH"] = str(db)
+    env["SANAD_HOME"] = str(BASE_DIR)
+    p = subprocess.run(
+        [sys.executable, str(BASE_DIR / "scripts" / "learning_loop.py")],
+        cwd=str(BASE_DIR), env=env,
+        stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
+    )
+    if p.returncode != 0:
+        raise AssertionError(f"learning_loop.py failed: {p.stdout}")
+    
+    with state_store.get_connection(db) as conn:
+        after = _one(conn, """
+            SELECT alpha, beta, n FROM bandit_strategy_stats
+            WHERE strategy_id='default' AND regime_tag='TEST'
+        """)
+        assert after is not None, "bandit_strategy_stats not updated"
+        a_alpha = float(after["alpha"])
+        a_beta = float(after["beta"])
+        a_n = int(after["n"])
+        
+        # reward_bin=1 => alpha increments, beta unchanged, n increments
+        _assert_close(a_alpha, b_alpha + 1.0, msg="alpha did not increment → reward_bin not used?")
+        _assert_close(a_beta, b_beta, msg="beta changed unexpectedly")
+        assert a_n == b_n + 1, "n did not increment"
+        
+        # Ensure position marked learned
+        st = _one(conn, "SELECT learning_status FROM positions WHERE position_id='pos_learn_contract'")
+        assert (st["learning_status"] or "").upper() == "DONE", "learning_status not set to DONE"
+
+
 # ========== HARNESS ==========
 
 def main():
@@ -181,6 +259,7 @@ def main():
         test_open_position_rejects_bad_entry_price,
         test_close_position_computes_gross_net_fees_reward_and_exit_fill,
         test_reward_real_is_clamped,
+        test_learning_loop_uses_reward_bin_not_pnl_sign,
     ]
     ok = fails = 0
     print("=" * 60)

@@ -93,7 +93,8 @@ def process_closed_position(position_id: str, db_path=None) -> dict:
         # Read position data (within same transaction, guaranteed consistent)
         row = conn.execute("""
             SELECT position_id, strategy_id, regime_tag, source_primary,
-                   pnl_usd, pnl_pct, token_address
+                   pnl_usd, pnl_pct, token_address,
+                   reward_bin, reward_real, fees_usd_total
             FROM positions WHERE position_id = ?
         """, (position_id,)).fetchone()
 
@@ -108,7 +109,11 @@ def process_closed_position(position_id: str, db_path=None) -> dict:
             conn.commit()
             raise ValueError(f"Position {position_id} has no pnl_pct")
 
-        is_win = pos["pnl_pct"] > 0
+        # V4: Use stored reward_bin (fallback to pnl_pct > 0 for legacy positions)
+        if pos.get("reward_bin") is not None:
+            is_win = bool(pos["reward_bin"])
+        else:
+            is_win = pos["pnl_pct"] > 0
         strategy_id = pos["strategy_id"]
         regime_tag = pos["regime_tag"] or "unknown"
         raw_source = pos["source_primary"] or "unknown"
