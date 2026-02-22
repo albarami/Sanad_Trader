@@ -77,17 +77,18 @@ TICKER_RE = re.compile(r'\$([A-Z]{2,10})\b')
 
 # Whale Alert format: "757 #BTC (51,556,810 USD) transferred from Coinbase to unknown"
 WHALE_ALERT_RE = re.compile(
-    r'([\d,]+)\s+#?(\w+)\s+\(([\d,]+)\s+USD\)\s+(?:transferred|transfered)\s+from\s+(.+?)\s+to\s+(.+?)(?:\n|$)',
+    r'([\d,]+)\s+#?(\w+)\s+\(([\d,]+)\s+USD\)\s+(?:transferred|transfered)\s+from\s+#?(.+?)\s+to\s+#?(.+?)(?:\n|\[|$)',
     re.IGNORECASE
 )
 
-# WhaleBot format: "300 BTC ($20,418,514) transfered from Binance to Unknown"
+# WhaleBot format: "465 BTC ($31,422,260) transfered from Coinbase to Unknown"
+# May be wrapped in backticks, $ inside parens
 WHALEBOT_RE = re.compile(
-    r'([\d,]+)\s+(\w+)\s+\(\$([\d,]+)\)\s+(?:transferred|transfered)\s+from\s+(\w[\w\s]*?)\s+to\s+(\w[\w\s]*?)(?:\n|$)',
+    r'([\d,]+)\s+(\w+)\s+\(\$([\d,]+)\)\s+(?:transferred|transfered)\s+from\s+([\w][\w\s.-]*?)\s+to\s+([\w][\w\s.-]*?)(?:\n|$)',
     re.IGNORECASE
 )
 
-# WhaleBot Pumps format: "🚀MMT/USDT is Pumping on Binance!" or "💀BSU/USDT is Dumping on Bitget!"
+# WhaleBot Pumps format: "🚀PIPPIN/USDT is Pumping on Binance-Futures!📈" or "💀COLLECT/USDT is Dumping on Bitget!📉"
 PUMP_DUMP_RE = re.compile(
     r'[🚀💀]\s*(\w+)/(?:USDT|USDC)\s+is\s+(Pumping|Dumping)\s+on\s+([\w-]+)',
     re.IGNORECASE
@@ -523,7 +524,7 @@ def test_detection():
     _log("=== TEST COMPLETE ===")
 
 
-async def run_snapshot(max_messages: int = 20, max_age_min: int = 15):
+async def run_snapshot(max_messages: int = 50, max_age_min: int = 120):
     """Snapshot mode: connect, read recent messages from channels, parse, disconnect.
     Designed for cron execution (no persistent connection needed).
     """
@@ -566,6 +567,9 @@ async def run_snapshot(max_messages: int = 20, max_age_min: int = 15):
     state = _load_json(STATE_PATH, {"signals_emitted": 0, "messages_scanned": 0, "cooldowns": {}})
     cutoff = _now() - timedelta(minutes=max_age_min)
     signals_found = 0
+
+    # Reset hourly counter each snapshot run (cron runs every 5 min, counter is per-run)
+    state["signals_this_hour"] = 0
 
     _log(f"Snapshot mode: reading last {max_messages} messages from {len(groups)} channels (max {max_age_min}min old)")
 
