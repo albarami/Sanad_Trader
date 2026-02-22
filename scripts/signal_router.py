@@ -1295,8 +1295,15 @@ def _run_router_impl():
             })
             
             # Build runtime state — stats from SQLite (single source of truth)
+            # Mode-specific min_score from thresholds.yaml
+            mode = portfolio.get("mode", os.environ.get("SYSTEM_MODE", "PAPER")).upper()
+            if mode == "LIVE":
+                _min_score = _cfg.get("trading", {}).get("live_minimum_trade_score", 70)
+            else:
+                _min_score = _cfg.get("trading", {}).get("minimum_trade_score", 15)
+            
             runtime_state = {
-                "min_score": 40,
+                "min_score": _min_score,
                 "regime_tag": "NEUTRAL",  # TODO: integrate regime_classifier
                 "kill_switch": False,
             }
