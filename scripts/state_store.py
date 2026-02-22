@@ -178,10 +178,11 @@ def init_db(db_path=DB_PATH):
         )
     """)
     
-    # Gate 02 portfolio migrations (idempotent)
+    # Portfolio migrations (idempotent)
     _add_column_if_missing(conn, "portfolio", "starting_balance_usd", "REAL")
     _add_column_if_missing(conn, "portfolio", "daily_pnl_pct", "REAL")
     _add_column_if_missing(conn, "portfolio", "current_drawdown_pct", "REAL")
+    _add_column_if_missing(conn, "portfolio", "daily_reset_at", "TEXT")
     
     # Migration: seed portfolio from JSON if table is empty
     count = conn.execute("SELECT COUNT(*) FROM portfolio").fetchone()[0]
@@ -768,7 +769,8 @@ def update_portfolio(updates: dict, db_path=None):
     allowed = {
         "current_balance_usd", "mode",
         "daily_pnl_usd", "max_drawdown_pct", "daily_trades",
-        "starting_balance_usd", "daily_pnl_pct", "current_drawdown_pct"
+        "starting_balance_usd", "daily_pnl_pct", "current_drawdown_pct",
+        "daily_reset_at"
     }
     updates_filtered = {k: v for k, v in updates.items() if k in allowed}
     if not updates_filtered:

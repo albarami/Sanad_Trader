@@ -172,13 +172,25 @@ def emergency_sell_all(reason, portfolio):
     log(f"EMERGENCY SELL ALL: {reason} (mode={mode}, positions={open_count})")
 
     if mode == "PAPER":
-        # Paper mode: just update state
-        portfolio["open_position_count"] = 0
-        portfolio["meme_allocation_pct"] = 0.0
-        portfolio["total_exposure_pct"] = 0.0
-        portfolio["token_exposure_pct"] = {}
-        save_state("portfolio.json", portfolio)
-        log("PAPER MODE: All positions marked as closed in state")
+        # Paper mode: close all positions in SQLite
+        try:
+            import state_store
+            open_positions = state_store.get_open_positions()
+            for p in open_positions:
+                pid = p.get("position_id") or p.get("id")
+                if pid:
+                    state_store.update_position_close(
+                        pid,
+                        close_price=p.get("entry_price", 0),
+                        close_reason="EMERGENCY_SELL"
+                    )
+            state_store.sync_json_cache()
+            log(f"PAPER MODE: {len(open_positions)} positions closed in SQLite")
+        except Exception as e:
+            log(f"SQLite emergency close failed ({e}), falling back to JSON")
+            portfolio["open_position_count"] = 0
+            save_state("portfolio.json", portfolio)  # fallback if SQLite unavailable
+            log("PAPER MODE: Positions marked closed in JSON (fallback)")
     else:
         # LIVE mode: execute real sells
         # TODO Phase 8: Implement exchange API sell orders

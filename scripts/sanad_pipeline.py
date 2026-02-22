@@ -2740,9 +2740,9 @@ def _add_position(signal, strategy_result, order, sanad_result, bull_result=None
         portfolio = _load_state("portfolio.json")
         portfolio["open_position_count"] = len([p for p in pos_list if p["status"] == "OPEN"])
 
-        with open(STATE_DIR / "positions.json", "w") as f:
+        with open(STATE_DIR / "positions.json", "w") as f:  # legacy v3.0 — deprecated
             json.dump(positions, f, indent=2)
-        with open(STATE_DIR / "portfolio.json", "w") as f:
+        with open(STATE_DIR / "portfolio.json", "w") as f:  # legacy v3.0 — deprecated
             json.dump(portfolio, f, indent=2)
     except Exception as e:
         print(f"[PIPELINE] Error updating positions: {e}")

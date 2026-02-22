@@ -176,23 +176,20 @@ def emergency_sell_all(reason: str = "Manual emergency", paper_mode: bool = True
                 "error": str(e),
             })
 
-    # Step 4: Update positions to closed
+    # Step 4: Update positions to closed — SQLite SSOT
     try:
-        all_positions = _load_json(POSITIONS_PATH, {})
-        if isinstance(all_positions, list):
-            for p in all_positions:
-                if p.get("status") == "open":
-                    p["status"] = "closed"
-                    p["close_reason"] = "EMERGENCY_SELL"
-                    p["closed_at"] = now.isoformat()
-        elif isinstance(all_positions, dict):
-            for k, v in all_positions.items():
-                if isinstance(v, dict) and v.get("status") == "open":
-                    v["status"] = "closed"
-                    v["close_reason"] = "EMERGENCY_SELL"
-                    v["closed_at"] = now.isoformat()
-        _save_json(POSITIONS_PATH, all_positions)
-        _log("Step 4: All positions marked CLOSED")
+        import state_store
+        open_positions = state_store.get_open_positions()
+        for p in open_positions:
+            pid = p.get("position_id") or p.get("id")
+            if pid:
+                state_store.update_position_close(
+                    pid,
+                    close_price=p.get("entry_price", 0),  # Emergency: use entry as close (no market data)
+                    close_reason="EMERGENCY_SELL"
+                )
+        state_store.sync_json_cache()
+        _log(f"Step 4: {len(open_positions)} positions marked CLOSED in SQLite")
     except Exception as e:
         _log(f"Step 4: Position update failed: {e}")
 

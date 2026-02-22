@@ -84,6 +84,7 @@ def reset():
             "daily_pnl_usd": 0.0,
             "daily_trades": 0,
             "starting_balance_usd": balance,  # Today's starting balance = yesterday's closing
+            "daily_reset_at": now.isoformat(),
         })
         state_store.sync_json_cache()
         _log(f"Daily PnL reset to 0 (SQLite + JSON). New day: {now.strftime('%Y-%m-%d')}")

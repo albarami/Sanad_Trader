@@ -509,7 +509,7 @@ def control_action(action: ControlAction):
         old_mode = portfolio.get("mode", "paper")
         portfolio["mode"] = new_mode
         portfolio["mode_changed_at"] = _now().isoformat()
-        _save_json(STATE_DIR / "portfolio.json", portfolio)
+        _save_json(STATE_DIR / "portfolio.json", portfolio)  # legacy fallback — TODO migrate to state_store
         command["status"] = "EXECUTED"
         command["result"] = f"Mode: {old_mode} → {new_mode}"
 

@@ -684,7 +684,7 @@ def update_portfolio(positions_data, closed_pnls):
     open_positions = [p for p in all_positions if p["status"] == "OPEN"]
 
     # ALWAYS derive balance from trade_history.json (source of truth)
-    starting = portfolio.get("starting_balance_usd", 10000.0)
+    starting = portfolio.get("starting_balance_usd") or 10000.0
     trade_history = load_json(STATE_DIR / "trade_history.json") or {}
     trades = trade_history.get("trades", trade_history) if isinstance(trade_history, dict) else trade_history
     total_realized_pnl = sum(
@@ -771,9 +771,9 @@ def update_portfolio(positions_data, closed_pnls):
             portfolio["total_exposure_pct"] = round(total_exposure_usd / total_equity, 4) if total_equity > 0 else 0
             portfolio["token_exposure_pct"] = {k: round(v, 4) for k, v in token_exposure.items()}
             portfolio["updated_at"] = now_iso()
-            save_json_atomic(STATE_DIR / "portfolio.json", portfolio)
+            save_json_atomic(STATE_DIR / "portfolio.json", portfolio)  # sync_json_cache equivalent
     else:
-        # No state_store, use JSON
+        # No state_store, use JSON — fallback
         portfolio["cash_balance_usd"] = round(current, 2)
         portfolio["unrealized_pnl_usd"] = round(unrealized_pnl, 2)
         portfolio["current_balance_usd"] = round(total_equity, 2)
@@ -786,7 +786,7 @@ def update_portfolio(positions_data, closed_pnls):
         portfolio["total_exposure_pct"] = round(total_exposure_usd / total_equity, 4) if total_equity > 0 else 0
         portfolio["token_exposure_pct"] = {k: round(v, 4) for k, v in token_exposure.items()}
         portfolio["updated_at"] = now_iso()
-        save_json_atomic(STATE_DIR / "portfolio.json", portfolio)
+        save_json_atomic(STATE_DIR / "portfolio.json", portfolio)  # fallback if no state_store
     
     unr_sign = "+" if unrealized_pnl >= 0 else ""
     print(f"  [PORTFOLIO] Equity: ${total_equity:,.2f} (cash ${current:,.2f} {unr_sign}${unrealized_pnl:.2f} unrealized) | "
@@ -816,6 +816,37 @@ def run_monitor():
     if positions_data is None:
         print("[POSITION MONITOR] FATAL: Cannot read positions — aborting")
         return
+
+    # ── Normalize v3.1 schema → v3.0 compat aliases ──
+    for p in positions_data.get("positions", []):
+        if "symbol" not in p and "token_address" in p:
+            p["symbol"] = p["token_address"]
+        if "token" not in p:
+            # Extract short token name from features_json if available
+            features = p.get("features_json")
+            if isinstance(features, str):
+                try:
+                    import json as _json
+                    features = _json.loads(features)
+                except Exception:
+                    features = {}
+            if isinstance(features, dict):
+                entry_sig = features.get("entry_signal", {})
+                p["token"] = entry_sig.get("token", p.get("symbol", "UNKNOWN"))
+            else:
+                p["token"] = p.get("symbol", "UNKNOWN")
+        if "exchange" not in p:
+            p["exchange"] = "raydium" if p.get("chain") == "solana" else "binance"
+        if "position_usd" not in p:
+            p["position_usd"] = p.get("size_usd", 0)
+        if "stop_loss_pct" not in p:
+            p["stop_loss_pct"] = 0.15
+        if "take_profit_pct" not in p:
+            p["take_profit_pct"] = 0.30
+        if "opened_at" not in p and "created_at" in p:
+            p["opened_at"] = p["created_at"]
+        if "side" not in p:
+            p["side"] = "LONG"
 
     price_cache = load_json(STATE_DIR / "price_cache.json")
     if not price_cache:
@@ -887,7 +918,14 @@ def run_monitor():
         symbol = position.get("symbol") or position.get("token_address", "UNKNOWN")
         token = position.get("token") or symbol
         entry = position["entry_price"]
+
+        # Price lookup: try symbol directly, then SYMBOL+USDT for CEX positions
         current_price = price_cache.get(symbol)
+        if current_price is None and position.get("exchange") in ("binance", "mexc"):
+            current_price = price_cache.get(symbol + "USDT")
+        if current_price is None:
+            # Also try token name + USDT (e.g. BTC → BTCUSDT)
+            current_price = price_cache.get(token + "USDT") if token != symbol else None
 
         if current_price is None:
             print(f"  [{token}] WARNING: No price in cache for {symbol} — skipping")
@@ -897,7 +935,8 @@ def run_monitor():
         position["current_price"] = current_price
 
         pnl_pct = (current_price - entry) / entry
-        hold_hours = (now_utc() - parse_dt(position["opened_at"])).total_seconds() / 3600
+        opened_at = position.get("opened_at") or position.get("created_at")
+        hold_hours = (now_utc() - parse_dt(opened_at)).total_seconds() / 3600
         stop_price = entry * (1.0 - position.get("stop_loss_pct", 0.15))
         tp_price = entry * (1.0 + position.get("take_profit_pct", 0.30))
 
@@ -997,7 +1036,7 @@ def run_monitor():
     # NOTE: Positions are auto-synced to JSON by state_store.sync_json_cache()
     # Only save if state_store not available (backward compat)
     if not HAS_STATE_STORE:
-        save_json_atomic(STATE_DIR / "positions.json", positions_data)
+        save_json_atomic(STATE_DIR / "positions.json", positions_data)  # fallback if no state_store
     save_trailing_stops(trailing_stops)
 
     # Always update portfolio with mark-to-market (not just on closes)
