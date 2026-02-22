@@ -182,6 +182,10 @@ def gate_04_token_age(config, decision_packet, state):
         deployment_ts = token.get("deployment_timestamp")
 
         if deployment_ts is None:
+            # In PAPER mode, allow unknown age (scanner may not provide it)
+            mode = decision_packet.get("mode", os.environ.get("SYSTEM_MODE", "PAPER")).upper()
+            if mode == "PAPER":
+                return True, "Token deployment timestamp unknown — PAPER mode allows unknown age"
             return False, "Token deployment timestamp unknown — cannot verify age"
 
         deploy_dt = datetime.fromisoformat(deployment_ts)

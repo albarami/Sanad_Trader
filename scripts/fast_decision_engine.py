@@ -651,6 +651,9 @@ def build_policy_packet(signal: dict, strategy_data: dict, price: float, runtime
             "enrichment_sources": {src: {"status": "ok"} for src in cross_sources},
         },
         
+        # System mode (for PAPER-mode gate relaxation)
+        "mode": os.environ.get("SYSTEM_MODE", "PAPER"),
+        
         # Sanad verification (Gate 5 checks these)
         "sanad_verification": {
             "rugpull_flags": signal.get("onchain_evidence", {}).get("rugpull_scan", {}).get("flags", []),
