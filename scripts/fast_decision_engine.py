@@ -120,6 +120,16 @@ def elapsed_ms(start_time):
     return int((time.perf_counter() - start_time) * 1000)
 
 
+def _estimate_deployment_ts(signal):
+    """Estimate deployment_timestamp from pair_age_hours or token_age_hours."""
+    age_hours = signal.get("pair_age_hours") or signal.get("token_age_hours")
+    if age_hours and age_hours > 0:
+        from datetime import timedelta
+        deploy_dt = datetime.now(timezone.utc) - timedelta(hours=float(age_hours))
+        return deploy_dt.isoformat()
+    return None
+
+
 def build_decision_record(
     signal_id, decision_id, policy_version, result, stage, reason_code,
     signal, score_data, strategy_data, policy_data, execution_data, timings
@@ -625,7 +635,7 @@ def build_policy_packet(signal: dict, strategy_data: dict, price: float, runtime
             "symbol": symbol,
             "chain": chain,
             "contract_address": token_address,
-            "deployment_timestamp": signal.get("deployment_timestamp"),  # Gate 4 checks this
+            "deployment_timestamp": signal.get("deployment_timestamp") or _estimate_deployment_ts(signal),  # Gate 4 checks this
         },
         
         # Timestamps (Gate 3 checks these)
