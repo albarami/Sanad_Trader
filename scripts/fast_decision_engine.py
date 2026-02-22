@@ -314,9 +314,99 @@ def stage_2_signal_scoring(signal, runtime_state, timings, start_time):
 # STAGE 3: STRATEGY SELECTION
 # ============================================================================
 
+def kelly_position_size(strategy_id, regime_tag, portfolio, runtime_state, config=None):
+    """
+    Fractional Kelly Criterion position sizing.
+    
+    Kelly formula: f* = (p * b - q) / b
+      where p = win_rate, q = 1 - p, b = avg_win/avg_loss ratio (assumed 1.0 for simplicity)
+    Simplified Kelly: f* = 2p - 1 (when b=1)
+    Half-Kelly: f = f* × kelly_fraction (default 0.5)
+    
+    Args:
+        strategy_id: Strategy name
+        regime_tag: Current market regime
+        portfolio: Portfolio dict with cash_balance_usd
+        runtime_state: Must contain "thompson_state" from DB
+        config: Sizing config (or uses defaults from thresholds.yaml)
+    
+    Returns:
+        position_usd: Sized position in USD
+        sizing_info: Dict with Kelly computation details
+    """
+    # Config defaults (from thresholds.yaml)
+    if config is None:
+        config = {}
+    kelly_fraction = config.get("kelly_fraction", 0.5)
+    kelly_min_trades = config.get("kelly_min_trades", 30)
+    kelly_default_pct = config.get("kelly_default_pct", 0.075)
+    max_position_pct = config.get("max_position_pct", 0.10)
+    
+    cash = portfolio.get("cash_balance_usd", 10000)
+    
+    # Look up Thompson stats from DB
+    thompson_state = runtime_state.get("thompson_state", {})
+    strat_data = thompson_state.get(strategy_id, {})
+    regime_data = strat_data.get(regime_tag, strat_data.get("NEUTRAL", {}))
+    
+    alpha = regime_data.get("alpha", 1.0)
+    beta_val = regime_data.get("beta", 1.0)
+    n = regime_data.get("n", 0)
+    
+    sizing_info = {
+        "method": "kelly_default",
+        "strategy_id": strategy_id,
+        "regime_tag": regime_tag,
+        "n": n,
+        "kelly_min_trades": kelly_min_trades,
+    }
+    
+    # Cold start: not enough trades → use default flat sizing
+    if n < kelly_min_trades:
+        position_usd = cash * kelly_default_pct
+        sizing_info["method"] = "kelly_default"
+        sizing_info["default_pct"] = kelly_default_pct
+        sizing_info["position_usd"] = position_usd
+        return position_usd, sizing_info
+    
+    # Compute win rate from Beta distribution (posterior mean)
+    win_rate = alpha / (alpha + beta_val)
+    
+    # Kelly fraction: f* = 2p - 1 (simplified, b=1)
+    kelly_full = 2 * win_rate - 1
+    
+    # If Kelly is negative or zero, minimum sizing (still trade in paper mode)
+    if kelly_full <= 0:
+        position_usd = cash * kelly_default_pct * 0.5  # Half of default
+        sizing_info["method"] = "kelly_negative"
+        sizing_info["win_rate"] = round(win_rate, 4)
+        sizing_info["kelly_full"] = round(kelly_full, 4)
+        sizing_info["position_usd"] = position_usd
+        return position_usd, sizing_info
+    
+    # Half-Kelly (or configured fraction)
+    kelly_sized = kelly_full * kelly_fraction
+    
+    # Cap at max_position_pct
+    kelly_pct = min(kelly_sized, max_position_pct)
+    
+    position_usd = cash * kelly_pct
+    
+    sizing_info["method"] = "kelly_active"
+    sizing_info["win_rate"] = round(win_rate, 4)
+    sizing_info["kelly_full"] = round(kelly_full, 4)
+    sizing_info["kelly_fraction"] = kelly_fraction
+    sizing_info["kelly_sized"] = round(kelly_sized, 4)
+    sizing_info["kelly_pct"] = round(kelly_pct, 4)
+    sizing_info["max_position_pct"] = max_position_pct
+    sizing_info["position_usd"] = round(position_usd, 2)
+    
+    return position_usd, sizing_info
+
+
 def stage_3_strategy_selection(signal, portfolio, runtime_state, timings, start_time):
     """
-    Stage 3: Strategy Match + Thompson Select (<100ms target)
+    Stage 3: Strategy Match + Thompson Select + Kelly Sizing (<100ms target)
     
     Returns: (strategy_id: str or None, position_usd: float or None, eligible: list)
     """
@@ -335,9 +425,10 @@ def stage_3_strategy_selection(signal, portfolio, runtime_state, timings, start_
         timings["stage_3_strategy"] = elapsed_ms(stage_start)
         return strategy_id, position_usd, eligible
     
-    # Fallback: default strategy
+    # Fallback: default strategy + Kelly sizing
     strategy_id = "default"
-    position_usd = 100.0  # Default sizing
+    regime_tag = runtime_state.get("regime_tag", "NEUTRAL")
+    position_usd, _sizing = kelly_position_size(strategy_id, regime_tag, portfolio, runtime_state)
     eligible = [strategy_id]
     
     timings["stage_3_strategy"] = elapsed_ms(stage_start)
