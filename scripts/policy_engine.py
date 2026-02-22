@@ -790,7 +790,9 @@ def evaluate_gates(decision_packet, gate_range=None, state_override=None):
             portfolio = None
             err = f"state_store.get_portfolio failed: {e}"
     else:
-        portfolio, err = load_json_state("portfolio.json")
+        # FAIL CLOSED: If state_store is unavailable, block all trading
+        portfolio = None
+        err = "state_store unavailable — fail closed (SSOT enforcement)"
     
     if err:
         result["gate_failed"] = 0
