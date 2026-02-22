@@ -370,14 +370,20 @@ def stage_4_policy_engine(decision_packet, portfolio, timings, start_time):
 # STAGE 5: EXECUTE
 # ============================================================================
 
-def stage_5_execute(signal, decision_id, strategy_id, position_usd, timings, start_time):
+def stage_5_execute(signal, decision_id, strategy_id, position_usd,
+                    score_data, policy_data, timings, start_time):
     """
     Stage 5: Execute Paper Trade (<1000ms target)
     
     Steps:
     1. Fetch live price (with timeout)
-    2. Create position via try_open_position_atomic()
-    3. Return position record
+    2. Build full canonical DecisionRecord for DB
+    3. Create position via try_open_position_atomic()
+    4. Return position record
+    
+    Args:
+        score_data: dict with score_total, score_breakdown (from stage 2)
+        policy_data: dict with gate_failed, evidence (from stage 4)
     
     Returns: (success: bool, position: dict or None, error: str or None)
     """
@@ -415,23 +421,33 @@ def stage_5_execute(signal, decision_id, strategy_id, position_usd, timings, sta
     
     # Execute via try_open_position_atomic
     try:
-        # Build decision record for DB insert (will be done atomically)
-        decision_for_db = {
-            "decision_id": decision_id,
-            "signal_id": signal.get("signal_id"),
-            "created_at": now_utc_iso(),
-            "policy_version": POLICY_VERSION,
-            "result": "EXECUTE",
-            "stage": "STAGE_5_EXECUTE",
-            "reason_code": "EXECUTE",
-            "token_address": signal.get("token_address") or signal.get("token", "unknown"),
-            "chain": signal.get("chain", "unknown"),
-            "source_primary": signal.get("source_primary") or signal.get("source"),
-            "signal_type": signal.get("signal_type", "generic"),
+        # Build FULL canonical DecisionRecord for DB insert
+        # Must match schema expected by _insert_decision_internal
+        signal_id = signal.get("signal_id", "")
+        strategy_data = {
             "strategy_id": strategy_id,
             "position_usd": position_usd,
-            "timings_ms": {}  # Will be filled later
+            "eligible": [strategy_id]
         }
+        execution_data = {
+            "result": "EXECUTE",
+            "position_id": position_id
+        }
+
+        decision_for_db = build_decision_record(
+            signal_id=signal_id,
+            decision_id=decision_id,
+            policy_version=POLICY_VERSION,
+            result="EXECUTE",
+            stage="STAGE_5_EXECUTE",
+            reason_code="EXECUTE",
+            signal=signal,
+            score_data=score_data,
+            strategy_data=strategy_data,
+            policy_data=policy_data,
+            execution_data=execution_data,
+            timings=timings
+        )
         
         position, metadata = state_store.try_open_position_atomic(
             decision_for_db, price, position_payload
@@ -440,10 +456,8 @@ def stage_5_execute(signal, decision_id, strategy_id, position_usd, timings, sta
         timings["stage_5_execute"] = elapsed_ms(stage_start)
         
         if metadata.get("already_existed"):
-            # Position already exists (idempotent retry) - this is SUCCESS
             return True, position, None
         else:
-            # New position created
             return True, position, None
     
     except state_store.DBBusyError as e:
@@ -661,7 +675,7 @@ def evaluate_signal_fast(
         strategy_data=strategy_data,
         price=0.0,  # Will be fetched in Stage 5
         runtime_state=runtime_state,
-        now_iso=now_iso
+        now_iso=now_utc_iso()
     )
     
     passed, gate_failed, evidence = stage_4_policy_engine(
@@ -690,7 +704,8 @@ def evaluate_signal_fast(
     # ========================================================================
     
     success, position, error = stage_5_execute(
-        signal, decision_id, strategy_id, position_usd, timings, start_time
+        signal, decision_id, strategy_id, position_usd,
+        score_data, policy_data, timings, start_time
     )
     
     if not success:

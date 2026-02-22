@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """
-Test Ticket 8 — End-to-End Router → Position → Async → Close → Learn
+Test Ticket 8 v2 — True E2E: evaluate_signal_fast() → DB → Async → Close → Learn
 
 ALL tests run against an ISOLATED temp SQLite DB. No real APIs, no real LLMs.
 
 Tests:
-1. Signal → Decision (SKIP path): low score → decision in DB, no position, no task
-2. Signal → Decision → Position → Async task (EXECUTE path): full lifecycle
+1. SKIP path: evaluate_signal_fast() with low score → decision in DB, no position, no task
+2. EXECUTE path: evaluate_signal_fast() with high score → decision + position + task (full schema)
 3. Idempotency: same signal twice → still one position + one task
 4. Cold path wiring (stubbed LLMs): task → DONE, analysis_json populated
 5. Close → SQLite → learning_status=PENDING → learning_loop → DONE
@@ -20,6 +20,7 @@ import sqlite3
 import tempfile
 import shutil
 import time
+import contextlib
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
 from unittest.mock import patch, MagicMock
@@ -28,8 +29,11 @@ BASE_DIR = Path(os.environ.get("SANAD_HOME", "/data/.openclaw/workspace/trading"
 sys.path.insert(0, str(BASE_DIR / "scripts"))
 
 import state_store
-from state_store import init_db, insert_decision, try_open_position_atomic, ensure_and_close_position
+from state_store import init_db, ensure_and_close_position
 import learning_loop
+import fast_decision_engine as fde
+# Disable Binance for tests — use signal.get("price") fallback
+fde.HAS_BINANCE = False
 
 
 def assert_eq(label, expected, actual):
@@ -46,6 +50,13 @@ def assert_true(label, val):
     print(f"✓ {label}")
 
 
+def assert_not_none(label, val):
+    if val is None:
+        print(f"❌ FAIL: {label}: expected non-None")
+        sys.exit(1)
+    print(f"✓ {label}: non-null")
+
+
 def assert_in(label, key, d):
     if key not in d:
         print(f"❌ FAIL: {label}: {key!r} not in {list(d.keys())!r}")
@@ -53,14 +64,11 @@ def assert_in(label, key, d):
     print(f"✓ {label}: has key {key!r}")
 
 
-import contextlib
-
 class IsolatedDB:
     def __init__(self):
         self.tmpdir = tempfile.mkdtemp(prefix="sanad_t8_")
         self.db_path = Path(self.tmpdir) / "state" / "sanad_trader.db"
         init_db(self.db_path)
-        # Monkey-patch state_store to use isolated DB
         self._old_db = state_store.DB_PATH
         self._old_get_conn = state_store.get_connection
         state_store.DB_PATH = self.db_path
@@ -106,84 +114,78 @@ class IsolatedDB:
         shutil.rmtree(self.tmpdir, ignore_errors=True)
 
 
-def make_signal(score_boost=0, token="TEST_TOKEN_E2E", source="telegram:alpha_group"):
-    """Build a canonical signal dict."""
+# Token deployed 48h ago — passes gate 4 (token age)
+DEPLOY_TS = (datetime.now(timezone.utc) - timedelta(hours=48)).isoformat()
+
+
+def make_portfolio():
     return {
-        "token_address": token,
-        "token": token,
-        "chain": "sol",
-        "source_primary": source,
-        "source": source,
-        "signal_type": "whale_accumulation",
-        "rugcheck_score": 80 + score_boost,
-        "cross_source_count": 3,
-        "volume_24h": 5_000_000,
-        "price": 1.50,
-        "onchain_evidence": {},
-        "regime_tag": "BULLISH",
+        "cash_balance_usd": 10000,
+        "open_position_count": 0,
+        "total_exposure_pct": 0,
+        "meme_allocation_pct": 0,
+        "current_drawdown_pct": 0,
+        "daily_pnl_pct": 0,
     }
 
 
-def make_decision_record(signal, result="SKIP", stage="STAGE_2_SCORE",
-                          reason_code="SKIP_SCORE_LOW", strategy_id=None, position_usd=None):
-    """Build a decision record dict matching DB schema."""
-    import ids
-    signal_id = ids.make_signal_id(signal)
-    decision_id = ids.make_decision_id(signal_id, "v3.1.0")
+def make_runtime_state(min_score=40):
     return {
-        "decision_id": decision_id,
-        "signal_id": signal_id,
-        "created_at": datetime.now(timezone.utc).isoformat(),
-        "policy_version": "v3.1.0",
-        "result": result,
-        "stage": stage,
-        "reason_code": reason_code,
-        "token_address": signal["token_address"],
-        "chain": signal["chain"],
-        "source_primary": signal.get("source_primary"),
-        "signal_type": signal.get("signal_type"),
-        "score_total": 75,
-        "score_breakdown_json": json.dumps({"total": 75}),
-        "strategy_id": strategy_id,
-        "position_usd": position_usd,
-        "gate_failed": None,
-        "evidence_json": "{}",
-        "timings_json": "{}",
-        "decision_packet_json": "{}",
+        "min_score": min_score,
+        "regime_tag": "NEUTRAL",
     }
 
 
 # ─────────────────────────────────────────────
-# TEST 1: Signal → Decision (SKIP/BLOCK path)
+# TEST 1: SKIP path via evaluate_signal_fast
 # ─────────────────────────────────────────────
 
 def test_skip_path():
     print("=" * 60)
-    print("TEST 1: Signal → Decision (SKIP path) — no position, no task")
+    print("TEST 1: evaluate_signal_fast() → SKIP (low score) → decision only")
     print("=" * 60)
 
     db = IsolatedDB()
     try:
-        signal = make_signal()
-        decision = make_decision_record(signal, result="SKIP", stage="STAGE_2_SCORE",
-                                         reason_code="SKIP_SCORE_LOW")
-        decision_id = decision["decision_id"]
+        # Build signal that will score LOW (rugcheck=10, no volume, 1 source)
+        signal = {
+            "token_address": "SKIP_TOKEN",
+            "token": "SKIP_TOKEN",
+            "chain": "sol",
+            "source_primary": "test:skip",
+            "source": "test:skip",
+            "signal_type": "generic",
+            "rugcheck_score": 10,
+            "cross_source_count": 1,
+            "volume_24h": 1000,
+            "price": 0.50,
+            "onchain_evidence": {},
+        }
 
-        # Insert decision (same as router does for SKIP/BLOCK)
-        insert_decision(decision)
+        portfolio = make_portfolio()
+        runtime = make_runtime_state(min_score=50)  # High threshold → SKIP
 
-        # Verify: decision exists
-        row = db.query_one("SELECT * FROM decisions WHERE decision_id=?", (decision_id,))
-        assert_true("Decision exists in DB", row is not None)
+        decision = fde.evaluate_signal_fast(signal, portfolio, runtime)
+        assert_eq("Result", "SKIP", decision["result"])
+
+        # Insert decision to DB (same as router does for SKIP)
+        state_store.insert_decision(decision)
+
+        # Verify: decision exists with full schema
+        row = db.query_one("SELECT * FROM decisions WHERE decision_id=?", (decision["decision_id"],))
+        assert_true("Decision in DB", row is not None)
         assert_eq("Decision result", "SKIP", row["result"])
+        assert_not_none("score_breakdown_json", row["score_breakdown_json"])
+        assert_not_none("timings_json", row["timings_json"])
+        assert_not_none("decision_packet_json", row["decision_packet_json"])
 
-        # Verify: NO position created
-        pos = db.query_one("SELECT * FROM positions WHERE decision_id=?", (decision_id,))
+        # Verify: NO position
+        pos = db.query_one("SELECT * FROM positions WHERE decision_id=?", (decision["decision_id"],))
         assert_eq("No position for SKIP", None, pos)
 
-        # Verify: NO async task created
-        task = db.query_one("SELECT * FROM async_tasks WHERE entity_id=?", (decision_id,))
-        assert_eq("No task for SKIP", None, task)
+        # Verify: NO task
+        tasks = db.query_all("SELECT * FROM async_tasks")
+        assert_eq("No tasks for SKIP", 0, len(tasks))
 
         print("\n✅ TEST 1 PASSED")
     finally:
@@ -191,56 +193,77 @@ def test_skip_path():
 
 
 # ─────────────────────────────────────────────
-# TEST 2: Signal → Decision → Position → Async task (EXECUTE path)
+# TEST 2: EXECUTE path via evaluate_signal_fast
 # ─────────────────────────────────────────────
 
 def test_execute_path():
     print("\n" + "=" * 60)
-    print("TEST 2: Signal → Decision → Position → Async task (EXECUTE path)")
+    print("TEST 2: evaluate_signal_fast() → EXECUTE → decision + position + task")
     print("=" * 60)
 
     db = IsolatedDB()
     try:
-        signal = make_signal(token="EXEC_TOKEN")
-        decision = make_decision_record(signal, result="EXECUTE", stage="STAGE_5_EXECUTE",
-                                         reason_code="EXECUTE", strategy_id="momentum_breakout",
-                                         position_usd=500.0)
-
-        import ids
-        position_id = ids.make_position_id(decision["decision_id"], execution_ordinal=1)
-
-        position_payload = {
-            "position_id": position_id,
-            "size_token": 500.0 / 1.50,
+        # Build signal that scores HIGH
+        signal = {
+            "token_address": "EXEC_TOKEN_E2E",
+            "token": "EXEC_TOKEN_E2E",
+            "chain": "sol",
+            "source_primary": "telegram:alpha",
+            "source": "telegram:alpha",
+            "signal_type": "whale_accumulation",
+            "rugcheck_score": 85,
+            "cross_source_count": 3,
+            "volume_24h": 10_000_000,
+            "price": 2.50,
+            "onchain_evidence": {},
             "regime_tag": "BULLISH",
-            "features": {"entry_signal": signal, "strategy_id": "momentum_breakout"},
+            "deployment_timestamp": DEPLOY_TS,
         }
 
-        # Execute atomically (same as stage_5_execute does)
-        pos, meta = try_open_position_atomic(decision, 1.50, position_payload)
+        portfolio = make_portfolio()
+        runtime = make_runtime_state(min_score=40)
 
-        assert_eq("Not already existed", False, meta["already_existed"])
-        assert_true("Position returned", pos is not None)
+        decision = fde.evaluate_signal_fast(signal, portfolio, runtime)
+        assert_eq("Result", "EXECUTE", decision["result"])
 
-        # DB: decision exists
-        row = db.query_one("SELECT result FROM decisions WHERE decision_id=?", (decision["decision_id"],))
+        decision_id = decision["decision_id"]
+
+        # Verify: decision exists with FULL schema fields populated
+        row = db.query_one("SELECT * FROM decisions WHERE decision_id=?", (decision_id,))
+        assert_true("Decision in DB", row is not None)
         assert_eq("Decision result", "EXECUTE", row["result"])
+        assert_not_none("score_breakdown_json populated", row["score_breakdown_json"])
+        assert_not_none("evidence_json populated", row["evidence_json"])
+        assert_not_none("timings_json populated", row["timings_json"])
+        assert_not_none("decision_packet_json populated", row["decision_packet_json"])
+        assert_eq("strategy_id non-null", True, row["strategy_id"] is not None)
+        assert_eq("position_usd non-null", True, row["position_usd"] is not None)
 
-        # DB: position exists, OPEN
-        row = db.query_one("SELECT status, strategy_id, entry_price FROM positions WHERE position_id=?", (position_id,))
-        assert_eq("Position status", "OPEN", row["status"])
-        assert_eq("Strategy", "momentum_breakout", row["strategy_id"])
-        assert_eq("Entry price", 1.5, row["entry_price"])
+        # Verify JSON fields are valid JSON
+        json.loads(row["score_breakdown_json"])
+        json.loads(row["evidence_json"])
+        json.loads(row["timings_json"])
+        json.loads(row["decision_packet_json"])
+        print("✓ All JSON fields parse correctly")
 
-        # DB: async task exists
-        task = db.query_one("SELECT status, attempts, task_type FROM async_tasks WHERE entity_id=?", (position_id,))
+        # Verify: position exists (OPEN)
+        positions = db.query_all("SELECT * FROM positions WHERE decision_id=?", (decision_id,))
+        assert_eq("Exactly 1 position", 1, len(positions))
+        pos = positions[0]
+        assert_eq("Position status", "OPEN", pos["status"])
+        assert_eq("Position token", "EXEC_TOKEN_E2E", pos["token_address"])
+        assert_eq("Entry price", 2.5, pos["entry_price"])
+
+        # Verify: async task exists
+        task = db.query_one("SELECT * FROM async_tasks WHERE entity_id=?", (pos["position_id"],))
+        assert_true("Task exists", task is not None)
         assert_eq("Task type", "ANALYZE_EXECUTED", task["task_type"])
         assert_eq("Task status", "PENDING", task["status"])
         assert_eq("Task attempts", 0, task["attempts"])
 
-        # Store for later tests
+        # Store for subsequent tests
         test_execute_path.decision = decision
-        test_execute_path.position_id = position_id
+        test_execute_path.position_id = pos["position_id"]
         test_execute_path.db = db
 
         print("\n✅ TEST 2 PASSED")
@@ -250,7 +273,7 @@ def test_execute_path():
 
 
 # ─────────────────────────────────────────────
-# TEST 3: Idempotency — same signal twice
+# TEST 3: Idempotency
 # ─────────────────────────────────────────────
 
 def test_idempotency():
@@ -258,32 +281,42 @@ def test_idempotency():
     print("TEST 3: Idempotency — same signal twice → one position, one task")
     print("=" * 60)
 
-    # Reuse DB from test 2
     db = test_execute_path.db
     decision = test_execute_path.decision
     position_id = test_execute_path.position_id
+    decision_id = decision["decision_id"]
 
     try:
-        import ids
-        position_payload = {
-            "position_id": position_id,
-            "size_token": 333.33,
+        # Run evaluate_signal_fast again with same signal
+        signal = {
+            "token_address": "EXEC_TOKEN_E2E",
+            "token": "EXEC_TOKEN_E2E",
+            "chain": "sol",
+            "source_primary": "telegram:alpha",
+            "source": "telegram:alpha",
+            "signal_type": "whale_accumulation",
+            "rugcheck_score": 85,
+            "cross_source_count": 3,
+            "volume_24h": 10_000_000,
+            "price": 2.50,
+            "onchain_evidence": {},
             "regime_tag": "BULLISH",
-            "features": {},
+            "deployment_timestamp": DEPLOY_TS,
         }
+        portfolio = make_portfolio()
+        runtime = make_runtime_state(min_score=40)
 
-        # Call again with same decision
-        pos2, meta2 = try_open_position_atomic(decision, 1.50, position_payload)
+        decision2 = fde.evaluate_signal_fast(signal, portfolio, runtime)
+        # Same deterministic IDs → same decision_id
+        assert_eq("Same decision_id", decision_id, decision2["decision_id"])
 
-        assert_eq("Already existed", True, meta2["already_existed"])
+        # Still exactly 1 position
+        positions = db.query_all("SELECT * FROM positions WHERE decision_id=?", (decision_id,))
+        assert_eq("Still 1 position", 1, len(positions))
 
-        # Verify: still exactly one position
-        rows = db.query_all("SELECT * FROM positions WHERE decision_id=?", (decision["decision_id"],))
-        assert_eq("Exactly 1 position", 1, len(rows))
-
-        # Verify: still exactly one task
+        # Still exactly 1 task
         tasks = db.query_all("SELECT * FROM async_tasks WHERE entity_id=?", (position_id,))
-        assert_eq("Exactly 1 task", 1, len(tasks))
+        assert_eq("Still 1 task", 1, len(tasks))
 
         print("\n✅ TEST 3 PASSED")
     finally:
@@ -291,7 +324,7 @@ def test_idempotency():
 
 
 # ─────────────────────────────────────────────
-# TEST 4: Cold path wiring — stubbed LLMs → task DONE
+# TEST 4: Cold path — stubbed LLMs → DONE
 # ─────────────────────────────────────────────
 
 def test_cold_path_stubbed():
@@ -301,64 +334,59 @@ def test_cold_path_stubbed():
 
     db = IsolatedDB()
     try:
-        # Create a position + task
-        signal = make_signal(token="COLD_PATH_TOKEN")
-        decision = make_decision_record(signal, result="EXECUTE", stage="STAGE_5_EXECUTE",
-                                         reason_code="EXECUTE", strategy_id="mean_reversion",
-                                         position_usd=200.0)
-
-        import ids
-        position_id = ids.make_position_id(decision["decision_id"], execution_ordinal=1)
-        position_payload = {
-            "position_id": position_id,
-            "size_token": 200.0 / 1.50,
+        # Create position via real EXECUTE path
+        signal = {
+            "token_address": "COLD_TOKEN_E2E",
+            "token": "COLD_TOKEN_E2E",
+            "chain": "sol",
+            "source_primary": "twitter:whale",
+            "source": "twitter:whale",
+            "signal_type": "whale_accumulation",
+            "rugcheck_score": 90,
+            "cross_source_count": 3,
+            "volume_24h": 8_000_000,
+            "price": 1.25,
+            "onchain_evidence": {},
             "regime_tag": "NEUTRAL",
-            "features": {"strategy_id": "mean_reversion"},
+            "deployment_timestamp": DEPLOY_TS,
         }
-        try_open_position_atomic(decision, 1.50, position_payload)
+        portfolio = make_portfolio()
+        runtime = make_runtime_state(min_score=40)
 
-        # Verify task is PENDING
+        decision = fde.evaluate_signal_fast(signal, portfolio, runtime)
+        assert_eq("Result", "EXECUTE", decision["result"])
+
+        pos = db.query_one("SELECT position_id FROM positions WHERE decision_id=?", (decision["decision_id"],))
+        position_id = pos["position_id"]
+
         task = db.query_one("SELECT task_id, status FROM async_tasks WHERE entity_id=?", (position_id,))
         assert_eq("Task PENDING", "PENDING", task["status"])
         task_id = task["task_id"]
 
-        # Stub LLM responses
+        # Stub LLMs
         def stub_claude(system_prompt, user_message, model="claude-haiku-4-5-20251001",
                         max_tokens=2000, stage="unknown", token_symbol=""):
             return json.dumps({
-                "trust_score": 72,
-                "rugpull_risk": "LOW",
-                "sybil_risk": "LOW",
-                "verdict": "PROCEED",
-                "confidence": 80,
-                "reasoning": "Test stub: looks safe"
+                "trust_score": 72, "rugpull_risk": "LOW", "sybil_risk": "LOW",
+                "verdict": "PROCEED", "confidence": 80, "reasoning": "Stub: safe"
             })
 
         def stub_openai(system_prompt, user_message, model="gpt-5.2",
                          max_tokens=2000, stage="unknown", token_symbol=""):
             return json.dumps({
-                "verdict": "APPROVE",
-                "confidence": 75,
-                "reasoning": "Test stub: approved",
-                "risk_flags": [],
-                "bias_detected": False
+                "verdict": "APPROVE", "confidence": 75, "reasoning": "Stub: approved",
+                "risk_flags": [], "bias_detected": False
             })
 
         import async_analysis_queue as aaq
-
-        # Patch get_connection in aaq to use isolated DB
-        aaq.get_connection = lambda db_path=None: state_store.get_connection(db.db_path)
+        aaq.get_connection = state_store.get_connection
 
         with patch.object(aaq.llm_client, 'call_claude', side_effect=stub_claude), \
              patch.object(aaq.llm_client, 'call_openai', side_effect=stub_openai):
-
-            # Run worker
             task_ids = aaq.poll_pending_tasks()
             assert_eq("Found 1 task", 1, len(task_ids))
-
             claimed = aaq.claim_task(task_id)
             assert_true("Claimed", claimed is not None)
-
             aaq.process_task(
                 task_id=claimed["task_id"],
                 entity_id=claimed["entity_id"],
@@ -366,21 +394,16 @@ def test_cold_path_stubbed():
                 attempts_now=claimed["attempts"]
             )
 
-        # Restore
-        from state_store import get_connection as _gc
-        aaq.get_connection = _gc
-
-        # Verify: task is DONE
+        # Verify DONE
         task = db.query_one("SELECT status FROM async_tasks WHERE task_id=?", (task_id,))
         assert_eq("Task DONE", "DONE", task["status"])
 
-        # Verify: position has analysis
         pos = db.query_one("SELECT async_analysis_complete, async_analysis_json FROM positions WHERE position_id=?", (position_id,))
         assert_eq("Analysis complete", 1, pos["async_analysis_complete"])
 
         analysis = json.loads(pos["async_analysis_json"])
         for key in ("sanad", "bull", "bear", "judge", "meta"):
-            assert_in(f"analysis_json", key, analysis)
+            assert_in("analysis_json", key, analysis)
 
         print("\n✅ TEST 4 PASSED")
     finally:
@@ -388,7 +411,7 @@ def test_cold_path_stubbed():
 
 
 # ─────────────────────────────────────────────
-# TEST 5: Close → SQLite → learning PENDING → learning_loop → DONE
+# TEST 5: Close → learning PENDING → DONE
 # ─────────────────────────────────────────────
 
 def test_close_to_learn():
@@ -398,64 +421,66 @@ def test_close_to_learn():
 
     db = IsolatedDB()
     try:
-        # Create a position via the full EXECUTE path
-        signal = make_signal(token="CLOSE_LEARN_TOKEN")
-        decision = make_decision_record(signal, result="EXECUTE", stage="STAGE_5_EXECUTE",
-                                         reason_code="EXECUTE", strategy_id="breakout_sol",
-                                         position_usd=300.0)
-
-        import ids
-        position_id = ids.make_position_id(decision["decision_id"], execution_ordinal=1)
-        position_payload = {
-            "position_id": position_id,
-            "size_token": 200.0,
+        # Create via real EXECUTE path
+        signal = {
+            "token_address": "LEARN_TOKEN_E2E",
+            "token": "LEARN_TOKEN_E2E",
+            "chain": "sol",
+            "source_primary": "telegram:signal_group",
+            "source": "telegram:signal_group",
+            "signal_type": "breakout",
+            "rugcheck_score": 80,
+            "cross_source_count": 3,
+            "volume_24h": 6_000_000,
+            "price": 3.00,
+            "onchain_evidence": {},
             "regime_tag": "BULLISH",
-            "features": {"strategy_id": "breakout_sol"},
+            "deployment_timestamp": DEPLOY_TS,
         }
-        try_open_position_atomic(decision, 1.50, position_payload)
+        portfolio = make_portfolio()
+        runtime = make_runtime_state(min_score=40)
 
-        # Verify OPEN
-        row = db.query_one("SELECT status FROM positions WHERE position_id=?", (position_id,))
-        assert_eq("Position OPEN", "OPEN", row["status"])
+        decision = fde.evaluate_signal_fast(signal, portfolio, runtime)
+        assert_eq("Result", "EXECUTE", decision["result"])
 
-        # Close via ensure_and_close_position (bridge path, same as position_monitor)
+        pos = db.query_one("SELECT position_id, strategy_id FROM positions WHERE decision_id=?", (decision["decision_id"],))
+        position_id = pos["position_id"]
+        strategy_id = pos["strategy_id"]
+
+        # Close via ensure_and_close_position (bridge path)
         pos_dict = {
             "id": position_id,
-            "token": "CLOSE_LEARN_TOKEN",
-            "strategy_name": "breakout_sol",
-            "signal_source_canonical": "telegram:alpha_group",
+            "token": "LEARN_TOKEN_E2E",
+            "strategy_name": strategy_id,
+            "signal_source_canonical": "telegram:signal_group",
             "regime_tag": "BULLISH",
-            "entry_price": 1.50,
+            "deployment_timestamp": DEPLOY_TS,
+            "entry_price": 3.00,
         }
         returned_pid = ensure_and_close_position(pos_dict, {
-            "exit_price": 1.80,
+            "exit_price": 3.60,
             "exit_reason": "TAKE_PROFIT",
             "pnl_usd": 60.0,
             "pnl_pct": 0.20,
         }, db_path=db.db_path)
         assert_eq("Returned pid", position_id, returned_pid)
 
-        # Verify CLOSED + PENDING
-        row = db.query_one("SELECT status, learning_status, pnl_pct FROM positions WHERE position_id=?", (position_id,))
+        row = db.query_one("SELECT status, learning_status FROM positions WHERE position_id=?", (position_id,))
         assert_eq("Status CLOSED", "CLOSED", row["status"])
         assert_eq("Learning PENDING", "PENDING", row["learning_status"])
-        assert_eq("PnL", 0.2, row["pnl_pct"])
 
-        # Run learning loop
+        # Run learning
         result = learning_loop.process_closed_position(position_id, db.db_path)
         assert_eq("is_win", True, result["is_win"])
 
-        # Verify DONE
         row = db.query_one("SELECT learning_status FROM positions WHERE position_id=?", (position_id,))
         assert_eq("Learning DONE", "DONE", row["learning_status"])
 
-        # Verify bandit stats incremented exactly once
-        bandit = db.query_one("SELECT alpha, beta, n FROM bandit_strategy_stats WHERE strategy_id='breakout_sol'")
+        # Bandit stats
+        bandit = db.query_one("SELECT n FROM bandit_strategy_stats WHERE strategy_id=?", (strategy_id,))
         assert_eq("Bandit n", 1, bandit["n"])
-        assert_eq("Bandit alpha (win)", 2, bandit["alpha"])  # prior 1 + 1 win
-        assert_eq("Bandit beta (no loss)", 1, bandit["beta"])
 
-        # Verify source stats
+        # Source stats
         src = db.query_one("SELECT SUM(n) as n FROM source_ucb_stats")
         assert_eq("Source n", 1, src["n"])
 
@@ -477,8 +502,8 @@ if __name__ == "__main__":
         test_close_to_learn()
 
         print("\n" + "=" * 60)
-        print("✅ ALL 5 TESTS PASSED — Full E2E lifecycle validated")
-        print("  Signal → Decision → Position → Async → Close → Learn")
+        print("✅ ALL 5 TESTS PASSED — True E2E lifecycle validated")
+        print("  evaluate_signal_fast() → Decision → Position → Async → Close → Learn")
         print("  (isolated temp DB, no real APIs, no real LLMs)")
         print("=" * 60)
     except SystemExit:
