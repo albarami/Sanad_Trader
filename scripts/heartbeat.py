@@ -737,10 +737,30 @@ def _send_hourly_summary(portfolio, price_cache, overall):
         from notifier import send as notify_send
         from rejection_funnel import get_funnel
 
-        # Positions
-        positions_data = load_state("positions.json") or {}
-        all_pos = positions_data.get("positions", [])
-        open_pos = [p for p in all_pos if isinstance(p, dict) and p.get("status") == "OPEN"]
+        # Positions — read from SQLite (v3.1 source of truth), fallback to JSON
+        open_pos = []
+        try:
+            import state_store
+            db_path = state_store.DB_PATH
+            import sqlite3
+            con = sqlite3.connect(db_path)
+            con.row_factory = sqlite3.Row
+            rows = con.execute("SELECT * FROM positions WHERE status='OPEN'").fetchall()
+            for r in rows:
+                open_pos.append({
+                    "token": r["token_address"],
+                    "status": "OPEN",
+                    "entry_price": r["entry_price"] or 0,
+                    "current_price": r["entry_price"] or 0,  # TODO: live price
+                    "position_usd": r["size_usd"] or 0,
+                    "strategy": r["strategy_id"] or "unknown",
+                })
+            con.close()
+        except Exception as e:
+            log(f"SQLite position load failed ({e}), falling back to JSON")
+            positions_data = load_state("positions.json") or {}
+            all_pos = positions_data.get("positions", [])
+            open_pos = [p for p in all_pos if isinstance(p, dict) and p.get("status") == "OPEN"]
 
         pos_lines = []
         total_unrealized = 0.0
@@ -757,8 +777,18 @@ def _send_hourly_summary(portfolio, price_cache, overall):
 
         balance = portfolio.get("current_balance_usd", 0)
 
-        # Funnel
+        # Funnel — augment with SQLite decision counts
         funnel = get_funnel()
+        try:
+            con = sqlite3.connect(db_path)
+            today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+            row = con.execute("SELECT COUNT(*) c FROM decisions WHERE result='EXECUTE' AND created_at LIKE ?", (today+'%',)).fetchone()
+            funnel["executed"] = max(funnel.get("executed", 0), row[0] if row else 0)
+            row2 = con.execute("SELECT COUNT(*) c FROM decisions WHERE created_at LIKE ?", (today+'%',)).fetchone()
+            funnel["signals_ingested"] = max(funnel.get("signals_ingested", 0), row2[0] if row2 else 0)
+            con.close()
+        except Exception:
+            pass
 
         # Router
         router_state = load_state("signal_router_state.json") or {}
