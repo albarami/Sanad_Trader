@@ -222,12 +222,16 @@ def _request(method, endpoint, params=None, signed=False, timeout=10):
 # MARKET DATA (Public endpoints — no auth needed)
 # ─────────────────────────────────────────────
 
-def get_price(symbol):
+def get_price(symbol, timeout=10):
     """
     Get current price for a symbol (e.g., 'BTCUSDT').
     Returns float price or None on failure.
+    
+    Args:
+        symbol: Trading pair (e.g., 'BTCUSDT')
+        timeout: HTTP request timeout in seconds (default 10s)
     """
-    result = _request("GET", "/api/v3/ticker/price", {"symbol": symbol.upper()})
+    result = _request("GET", "/api/v3/ticker/price", {"symbol": symbol.upper()}, timeout=timeout)
     if result and "price" in result:
         return float(result["price"])
     return None

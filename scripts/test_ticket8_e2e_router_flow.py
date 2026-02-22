@@ -32,8 +32,37 @@ import state_store
 from state_store import init_db, ensure_and_close_position
 import learning_loop
 import fast_decision_engine as fde
-# Disable Binance for tests — use signal.get("price") fallback
-fde.HAS_BINANCE = False
+
+# Stub binance_client.get_price — proves real binance path is exercised
+_get_price_calls = []
+
+def _stub_get_price(symbol, timeout=10):
+    """Deterministic stub: returns price based on symbol, records calls."""
+    _get_price_calls.append({"symbol": symbol, "timeout": timeout})
+    prices = {
+        "EXEC_TOKEN_E2E": 2.50,
+        "COLD_TOKEN_E2E": 1.25,
+        "LEARN_TOKEN_E2E": 3.00,
+    }
+    for token, price in prices.items():
+        if token in symbol:
+            return price
+    return 1.0
+
+fde.HAS_BINANCE = True
+fde.binance_client = type('BinanceStub', (), {'get_price': staticmethod(_stub_get_price)})()
+
+# Stub policy engine to always PASS for E2E test isolation.
+# Policy gates have their own test suite (test_policy_engine.py).
+# This E2E test validates: signal scoring → strategy → DB schema → async → close → learn.
+_original_stage_4 = fde.stage_4_policy_engine
+
+def _stub_stage_4(decision_packet, portfolio, timings, start_time):
+    import time as _time
+    timings["stage_4_policy"] = round((_time.perf_counter() - start_time) * 1000, 2)
+    return True, None, {}
+
+fde.stage_4_policy_engine = _stub_stage_4
 
 
 def assert_eq(label, expected, actual):
@@ -260,6 +289,11 @@ def test_execute_path():
         assert_eq("Task type", "ANALYZE_EXECUTED", task["task_type"])
         assert_eq("Task status", "PENDING", task["status"])
         assert_eq("Task attempts", 0, task["attempts"])
+
+        # Verify: binance stub was called with timeout=0.5
+        binance_calls = [c for c in _get_price_calls if "EXEC_TOKEN_E2E" in c["symbol"]]
+        assert_true("Binance stub called", len(binance_calls) > 0)
+        assert_eq("Binance timeout", 0.5, binance_calls[-1]["timeout"])
 
         # Store for subsequent tests
         test_execute_path.decision = decision
