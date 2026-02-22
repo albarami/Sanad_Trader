@@ -628,7 +628,11 @@ def process_task(task_id: str, entity_id: str, task_type: str, attempts_now: int
             risk_flag = "FLAG_JUDGE_HIGH_CONF_REJECT"
             _log(f"CATASTROPHIC: Judge rejected {token_symbol} with {confidence}% confidence (threshold={CATASTROPHIC_THRESHOLD})")
         
-        # Update position record
+        # Update position record via state_store (uses analysis_json column)
+        import state_store as ss
+        ss.update_position_analysis(entity_id, analysis_result)
+        
+        # Mark async_analysis_complete and risk_flag
         with get_connection() as conn:
             now_iso = datetime.now(timezone.utc).isoformat()
             conn.execute("""

@@ -113,6 +113,11 @@ def init_db(db_path=DB_PATH):
     _add_column_if_missing(conn, "positions", "learning_error", "TEXT")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_positions_learning ON positions(status, learning_status)")
     
+    # Position close metadata columns (Gate 02 + Close Metadata Fix)
+    _add_column_if_missing(conn, "positions", "close_reason", "TEXT")
+    _add_column_if_missing(conn, "positions", "close_price", "REAL")
+    _add_column_if_missing(conn, "positions", "analysis_json", "TEXT")
+    
     # Backfill legacy CLOSED rows where learning_status is NULL
     conn.execute("""
         UPDATE positions SET learning_status = 'PENDING'
@@ -172,6 +177,11 @@ def init_db(db_path=DB_PATH):
             updated_at TEXT NOT NULL
         )
     """)
+    
+    # Gate 02 portfolio migrations (idempotent)
+    _add_column_if_missing(conn, "portfolio", "starting_balance_usd", "REAL")
+    _add_column_if_missing(conn, "portfolio", "daily_pnl_pct", "REAL")
+    _add_column_if_missing(conn, "portfolio", "current_drawdown_pct", "REAL")
     
     # Migration: seed portfolio from JSON if table is empty
     count = conn.execute("SELECT COUNT(*) FROM portfolio").fetchone()[0]
@@ -422,17 +432,64 @@ def try_open_position_atomic(decision: dict, price: float, position_payload: dic
 
 
 def update_position_close(position_id: str, exit_payload: dict, db_path=None):
-    """Update position to CLOSED with exit data. Auto-syncs JSON cache."""
+    """Update position to CLOSED with exit data. Auto-syncs JSON cache.
+    
+    Args:
+        position_id: Position ID to close
+        exit_payload: dict with required keys:
+            - close_price: exit price (float)
+            - close_reason: reason string
+            Optional keys (computed if missing):
+            - pnl_pct: P&L percentage (computed from entry_price if missing)
+            - pnl_usd: P&L USD (computed from pnl_pct and size_usd if missing)
+    """
     _db = db_path or DB_PATH
     try:
         with get_connection(_db) as conn:
             now_iso = datetime.now(timezone.utc).isoformat()
+            
+            # Require close_price and close_reason
+            if "close_price" not in exit_payload or "close_reason" not in exit_payload:
+                raise ValueError("close_price and close_reason are required")
+            
+            close_price = exit_payload["close_price"]
+            close_reason = exit_payload["close_reason"]
+            
+            # Fetch position for computation if needed
+            pos = conn.execute(
+                "SELECT entry_price, size_usd FROM positions WHERE position_id = ?",
+                (position_id,)
+            ).fetchone()
+            
+            if not pos:
+                raise ValueError(f"Position {position_id} not found")
+            
+            entry_price = pos["entry_price"]
+            size_usd = pos["size_usd"]
+            
+            # Compute pnl_pct if not provided
+            if "pnl_pct" in exit_payload:
+                pnl_pct = exit_payload["pnl_pct"]
+            else:
+                if entry_price and entry_price > 0:
+                    pnl_pct = ((close_price - entry_price) / entry_price) * 100
+                else:
+                    pnl_pct = 0.0
+            
+            # Compute pnl_usd if not provided
+            if "pnl_usd" in exit_payload:
+                pnl_usd = exit_payload["pnl_usd"]
+            else:
+                pnl_usd = (pnl_pct / 100) * size_usd if size_usd else 0.0
+            
             conn.execute("""
                 UPDATE positions SET
                     status = 'CLOSED',
                     updated_at = ?,
                     exit_price = ?,
+                    close_price = ?,
                     exit_reason = ?,
+                    close_reason = ?,
                     closed_at = ?,
                     pnl_usd = ?,
                     pnl_pct = ?,
@@ -442,11 +499,13 @@ def update_position_close(position_id: str, exit_payload: dict, db_path=None):
                 WHERE position_id = ?
             """, (
                 now_iso,
-                exit_payload["exit_price"],
-                exit_payload["exit_reason"],
+                close_price,  # Keep exit_price for backward compat
+                close_price,
+                close_reason,  # Keep exit_reason for backward compat
+                close_reason,
                 now_iso,
-                exit_payload["pnl_usd"],
-                exit_payload["pnl_pct"],
+                pnl_usd,
+                pnl_pct,
                 now_iso,
                 position_id
             ))
@@ -519,13 +578,35 @@ def ensure_and_close_position(position_dict: dict, exit_payload: dict, db_path=N
                         f"(possible decision_id collision) for {position_id}"
                     )
             
+            # Compute required fields
+            close_price = exit_payload.get("close_price") or exit_payload.get("exit_price", 0)
+            close_reason = exit_payload.get("close_reason") or exit_payload.get("exit_reason", "UNKNOWN")
+            
+            # Compute P&L if not provided
+            entry_price = position_dict.get("entry_price", 0)
+            size_usd = position_dict.get("position_usd", position_dict.get("size_usd", 0))
+            
+            if "pnl_pct" in exit_payload:
+                pnl_pct = exit_payload["pnl_pct"]
+            elif entry_price and entry_price > 0 and close_price:
+                pnl_pct = ((close_price - entry_price) / entry_price) * 100
+            else:
+                pnl_pct = 0.0
+            
+            if "pnl_usd" in exit_payload:
+                pnl_usd = exit_payload["pnl_usd"]
+            else:
+                pnl_usd = (pnl_pct / 100) * size_usd if size_usd else 0.0
+            
             # Close it — check rowcount
             cur = conn.execute("""
                 UPDATE positions SET
                     status = 'CLOSED',
                     updated_at = ?,
                     exit_price = ?,
+                    close_price = ?,
                     exit_reason = ?,
+                    close_reason = ?,
                     closed_at = ?,
                     pnl_usd = ?,
                     pnl_pct = ?,
@@ -535,11 +616,13 @@ def ensure_and_close_position(position_dict: dict, exit_payload: dict, db_path=N
                 WHERE position_id = ?
             """, (
                 now_iso,
-                exit_payload["exit_price"],
-                exit_payload["exit_reason"],
+                close_price,  # Keep both for backward compat
+                close_price,
+                close_reason,
+                close_reason,
                 now_iso,
-                exit_payload["pnl_usd"],
-                exit_payload["pnl_pct"],
+                pnl_usd,
+                pnl_pct,
                 now_iso,
                 position_id
             ))
@@ -632,7 +715,8 @@ def get_portfolio(db_path=None) -> dict:
     """Get portfolio state from SQLite (single row, id=1).
     
     Returns: dict with keys: current_balance_usd, mode, open_position_count,
-             daily_pnl_usd, max_drawdown_pct, daily_trades, updated_at
+             daily_pnl_usd, max_drawdown_pct, daily_trades, updated_at,
+             daily_pnl_pct (computed), current_drawdown_pct (computed)
     Raises: RuntimeError if portfolio row doesn't exist (DB not initialized)
     """
     _db = db_path or DB_PATH
@@ -640,7 +724,22 @@ def get_portfolio(db_path=None) -> dict:
         row = conn.execute("SELECT * FROM portfolio WHERE id = 1").fetchone()
         if not row:
             raise RuntimeError("Portfolio row missing — run init_db() or ensure_tables()")
-        return dict(row)
+        
+        portfolio = dict(row)
+        
+        # Compute daily_pnl_pct if not already present or if starting_balance_usd exists
+        starting_balance = portfolio.get("starting_balance_usd", 0) or 10000.0
+        daily_pnl_usd = portfolio.get("daily_pnl_usd", 0) or 0.0
+        
+        if starting_balance > 0:
+            portfolio["daily_pnl_pct"] = (daily_pnl_usd / starting_balance) * 100
+        else:
+            portfolio["daily_pnl_pct"] = 0.0
+        
+        # current_drawdown_pct = max_drawdown_pct (alias for Gate 02)
+        portfolio["current_drawdown_pct"] = portfolio.get("max_drawdown_pct", 0.0)
+        
+        return portfolio
 
 
 def update_portfolio(updates: dict, db_path=None):
@@ -707,6 +806,31 @@ def update_position_price(position_id: str, current_price: float, db_path=None):
             SET current_price = ?, updated_at = ?
             WHERE position_id = ?
         """, (current_price, now_iso, position_id))
+
+
+def update_position_analysis(position_id: str, analysis_dict: dict, db_path=None):
+    """Update position with cold-path analysis results.
+    
+    Args:
+        position_id: Position ID
+        analysis_dict: Analysis results (sanad, bull, bear, judge)
+        db_path: Optional DB path
+    """
+    _db = db_path or DB_PATH
+    now_iso = datetime.now(timezone.utc).isoformat()
+    
+    try:
+        with get_connection(_db) as conn:
+            conn.execute("""
+                UPDATE positions
+                SET analysis_json = ?, updated_at = ?
+                WHERE position_id = ?
+            """, (json.dumps(analysis_dict), now_iso, position_id))
+        
+        # Auto-sync to JSON cache
+        sync_json_cache(db_path=_db)
+    except DBBusyError:
+        raise
 
 
 def sync_json_cache(db_path=None):

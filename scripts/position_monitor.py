@@ -645,7 +645,9 @@ def close_position(position, current_price, reason, detail=""):
         import state_store
         state_store.init_db()
         position_id = state_store.ensure_and_close_position(position, {
-            "exit_price": current_price,
+            "close_price": current_price,
+            "close_reason": reason,
+            "exit_price": current_price,  # Keep for backward compat
             "exit_reason": reason,
             "pnl_usd": net_pnl_usd,
             "pnl_pct": pnl_pct,

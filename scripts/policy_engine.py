@@ -126,25 +126,40 @@ def gate_02_capital_preservation(config, decision_packet, state):
     Gate 2: Capital Preservation
     BLOCK if daily loss limit hit (5%) OR max drawdown exceeded (15%).
     Rationale: Prevent catastrophic loss days.
+    
+    Belt-and-suspenders: computes daily_pnl_pct internally if missing from portfolio.
     """
     try:
         portfolio = state.get("portfolio", {})
+        
+        # Priority 1: Use pre-computed pct fields if available
         daily_pnl_pct = portfolio.get("daily_pnl_pct")
-        max_drawdown_pct = portfolio.get("current_drawdown_pct")
-
-        if daily_pnl_pct is None or max_drawdown_pct is None:
-            return False, "Portfolio state missing daily_pnl_pct or current_drawdown_pct"
+        current_drawdown_pct = portfolio.get("current_drawdown_pct")
+        
+        # Priority 2: Compute from USD values if pct fields missing
+        if daily_pnl_pct is None:
+            daily_pnl_usd = portfolio.get("daily_pnl_usd", 0) or 0.0
+            starting_balance_usd = portfolio.get("starting_balance_usd", 0) or portfolio.get("current_balance_usd", 10000.0)
+            
+            if starting_balance_usd and starting_balance_usd > 0:
+                daily_pnl_pct = (daily_pnl_usd / starting_balance_usd) * 100
+            else:
+                daily_pnl_pct = 0.0
+        
+        if current_drawdown_pct is None:
+            # Fallback: use max_drawdown_pct as current_drawdown_pct
+            current_drawdown_pct = portfolio.get("max_drawdown_pct", 0) or 0.0
 
         daily_limit = config["risk"]["daily_loss_limit_pct"]
         max_dd = config["risk"]["max_drawdown_pct"]
 
         if daily_pnl_pct <= -daily_limit:
-            return False, f"Daily loss limit hit: {daily_pnl_pct:.4f} <= -{daily_limit}"
+            return False, f"Daily loss limit hit: {daily_pnl_pct:.4f}% <= -{daily_limit}%"
 
-        if max_drawdown_pct >= max_dd:
-            return False, f"Max drawdown exceeded: {max_drawdown_pct:.4f} >= {max_dd}"
+        if current_drawdown_pct >= max_dd:
+            return False, f"Max drawdown exceeded: {current_drawdown_pct:.4f}% >= {max_dd}%"
 
-        return True, f"Daily PnL: {daily_pnl_pct:.4f}, Drawdown: {max_drawdown_pct:.4f}"
+        return True, f"Daily PnL: {daily_pnl_pct:.2f}%, Drawdown: {current_drawdown_pct:.2f}%"
     except KeyError as e:
         return False, f"Missing config key: {e}"
     except Exception as e:
