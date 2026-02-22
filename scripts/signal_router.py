@@ -223,12 +223,22 @@ def _load_open_tokens() -> set[str]:
 
 
 def _load_cooldown_tokens() -> dict[str, float]:
-    """Return {TOKEN: remaining_minutes} for tokens traded within cooldown period from SQLite."""
+    """Return {TOKEN: remaining_minutes} for tokens traded within cooldown period from SQLite.
+    
+    Cooldown rules:
+    - Normal close: COOLDOWN_HOURS (default 30min)
+    - STOP_LOSS close: 24 hours (don't touch that landmine again)
+    - JUDGE_REJECT_CATASTROPHIC: 48 hours
+    """
+    STOP_LOSS_COOLDOWN_MIN = 24 * 60    # 24 hours
+    CATASTROPHIC_COOLDOWN_MIN = 48 * 60  # 48 hours
+    NORMAL_COOLDOWN_MIN = COOLDOWN_HOURS * 60
+    
     try:
         with state_store.get_connection() as conn:
-            # Query closed positions
+            # Query closed positions with close reason
             rows = conn.execute("""
-                SELECT token_address, closed_at 
+                SELECT token_address, closed_at, close_reason 
                 FROM positions 
                 WHERE status='CLOSED' AND closed_at IS NOT NULL
             """).fetchall()
@@ -239,10 +249,20 @@ def _load_cooldown_tokens() -> dict[str, float]:
             for row in rows:
                 token = row["token_address"].upper()
                 closed_at_str = row["closed_at"]
+                close_reason = (row["close_reason"] or "").upper()
+                
+                # Determine cooldown based on close reason
+                if "CATASTROPHIC" in close_reason:
+                    cooldown_min = CATASTROPHIC_COOLDOWN_MIN
+                elif close_reason == "STOP_LOSS":
+                    cooldown_min = STOP_LOSS_COOLDOWN_MIN
+                else:
+                    cooldown_min = NORMAL_COOLDOWN_MIN
+                
                 try:
                     closed_at = datetime.fromisoformat(closed_at_str.replace("Z", "+00:00"))
                     elapsed = (now - closed_at).total_seconds() / 60
-                    remaining = COOLDOWN_HOURS * 60 - elapsed
+                    remaining = cooldown_min - elapsed
                     
                     if remaining > 0:
                         cooldowns[token] = max(cooldowns.get(token, 0), remaining)
