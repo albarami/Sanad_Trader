@@ -518,7 +518,7 @@ def get_source_ucb_stats(db_path=None):
     Returns: dict[source_id] = {"n": int, "reward_sum": float}
     Empty dict if table is empty. DBBusyError propagates.
     """
-    with get_connection(db_path) as conn:
+    with get_connection(db_path or DB_PATH) as conn:
         rows = conn.execute(
             "SELECT source_id, n, reward_sum FROM source_ucb_stats"
         ).fetchall()
@@ -534,7 +534,7 @@ def get_bandit_stats(db_path=None):
     Returns: dict[(strategy_id, regime_tag)] = {"alpha": float, "beta": float, "n": int}
     Empty dict if table is empty. DBBusyError propagates.
     """
-    with get_connection(db_path) as conn:
+    with get_connection(db_path or DB_PATH) as conn:
         rows = conn.execute(
             "SELECT strategy_id, regime_tag, alpha, beta, n FROM bandit_strategy_stats"
         ).fetchall()
