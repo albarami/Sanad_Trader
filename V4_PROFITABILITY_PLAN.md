@@ -641,6 +641,42 @@ execution_costs:
 
 ---
 
+## Spec Fixes (Salim review, 2026-02-23)
+
+### Fix 1: Units Contract
+All `positions.*_pct` fields are **fractions** in [-inf, +inf] (e.g. 0.10 = +10%, -0.3092 = -30.92%).
+`reward_real` clamps to [-1.0, +1.0].
+Portfolio `daily_pnl_pct` may be percent (legacy) — never reuse for reward/eval.
+Telegram formatting multiplies by 100 for display.
+
+### Fix 2: fill_id generation
+`fill_id` = `ids.new_id()` (uuid-based, no deterministic hash).
+Tests only assert `len(fill_id) > 10`. No clock-dependent collisions possible.
+Optional `fill_id=` override only for tests if needed.
+
+### Fix 3: Fill + position update in one transaction
+`open_position()`: insert fill + insert position in one `with get_connection() as conn:` block.
+`close_position()`: insert exit fill + update position in one `with get_connection() as conn:` block.
+No orphan fills, no half-updated positions.
+
+### Fix 4: Guard entry_price <= 0 and size_usd <= 0
+`open_position()`: if `entry_price <= 0` or `size_usd <= 0`, raise `ValueError` (caller must SKIP/BLOCK).
+`close_position()`: if loaded `entry_price <= 0` or `size_usd <= 0`, mark closed with `close_reason` preserved but set `pnl_*` fields to 0.0, `reward_bin=0`. Never divide by zero.
+
+### Fix 5: Walk-forward min_test_trades is per-policy
+Promotion requires BOTH:
+- `n_test_active >= min_test_trades`
+- `n_test_winner >= min_test_trades`
+Prevents promoting a candidate off 1 trade when total happens to exceed threshold.
+
+### Fix 6: Seed policy_configs + meta at init_db()
+`init_db()` after schema creation:
+- If `meta.active_policy_version` missing → set to `"main"`
+- If `policy_configs["main"]` missing → insert minimal config_json from thresholds.yaml (or `{}`)
+Prevents "fail closed bricks fresh DB" scenario.
+
+---
+
 ## Risk Assessment
 
 | Risk | Mitigation |
