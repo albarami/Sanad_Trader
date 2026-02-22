@@ -60,9 +60,9 @@ def generate_summary():
             "SELECT token_address, entry_price, size_usd FROM positions WHERE status='OPEN'"
         ).fetchall()
 
-        # Recent closes (last 2h)
+        # Recent closes (last 2h) — V4: include fees + gross
         closes = con.execute(
-            "SELECT token_address, pnl_pct, pnl_usd, close_reason FROM positions WHERE status='CLOSED' AND closed_at > ?",
+            "SELECT token_address, pnl_pct, pnl_usd, close_reason, fees_usd_total, pnl_gross_usd FROM positions WHERE status='CLOSED' AND closed_at > ?",
             (two_hours_ago,)
         ).fetchall()
 
@@ -111,11 +111,17 @@ def generate_summary():
         lines.append(f"\n🔴 *Closed (last 2h):*")
         for c in closes:
             token = c[0][:12]
-            pnl_pct = (c[1] or 0) * 100
-            pnl_usd = c[2] or 0
+            pnl_pct = (c[1] or 0) * 100  # fraction → percent
+            pnl_usd = c[2] or 0  # NET
             reason = c[3] or "?"
+            fees = c[4] or 0.0
+            gross = c[5]
             emoji = "🟢" if pnl_usd >= 0 else "🔴"
-            lines.append(f"  {emoji} {token}: {pnl_pct:+.1f}% (${pnl_usd:+.2f}) — {reason}")
+            # Show fees if non-zero
+            if fees > 0.01:
+                lines.append(f"  {emoji} {token}: {pnl_pct:+.1f}% net (${pnl_usd:+.2f}, fees ${fees:.2f}) — {reason}")
+            else:
+                lines.append(f"  {emoji} {token}: {pnl_pct:+.1f}% (${pnl_usd:+.2f}) — {reason}")
 
     # P&L
     lines.append(f"\n💰 *Balance:* ${balance:,.2f}")
