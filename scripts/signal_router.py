@@ -44,6 +44,14 @@ try:
 except ImportError:
     HAS_V31_HOT_PATH = False
 
+# Stablecoin filter (backup layer)
+try:
+    from stablecoin_filter import is_stablecoin
+    HAS_STABLECOIN_FILTER = True
+except ImportError:
+    HAS_STABLECOIN_FILTER = False
+    def is_stablecoin(**kwargs): return False
+
 # ---------------------------------------------------------------------------
 # Paths
 # ---------------------------------------------------------------------------
@@ -313,6 +321,7 @@ def _score_signal(signal: dict, age_minutes: float, is_cross_source: bool) -> in
     Score signals like an experienced trader, not a hype chaser.
 
     Priority hierarchy:
+    0. Stablecoin filter (BLOCK immediately)             REJECT
     1. CEX-listed (can actually execute and exit)        +40
     2. Volume & liquidity (can size a real position)     +30 max
     3. Cross-source confirmation (Tawatur/Mashhur)       +30
@@ -320,6 +329,15 @@ def _score_signal(signal: dict, age_minutes: float, is_cross_source: bool) -> in
     5. Momentum (catalyst-driven, not pump-driven)       +15 max
     6. Penalties: brand new, low liquidity, rug flags    -50 max
     """
+    # ── 0. STABLECOIN FILTER (backup layer) ──
+    if HAS_STABLECOIN_FILTER and is_stablecoin(
+        token=signal.get("token"),
+        symbol=signal.get("symbol"),
+        address=signal.get("token_address")
+    ):
+        _log(f"  SKIP {signal.get('token', 'UNKNOWN')}: stablecoin (backup filter)")
+        return -999  # Auto-reject
+    
     score = 0
     stype = signal.get("signal_type", "")
     source = signal.get("source", "")
@@ -1600,22 +1618,40 @@ def _run_router_impl():
 # ---------------------------------------------------------------------------
 # Entry point
 # ---------------------------------------------------------------------------
+def _update_heartbeat(status: str):
+    """Write router heartbeat file for liveness monitoring."""
+    heartbeat_path = STATE_DIR / "signal_router_heartbeat.json"
+    heartbeat = {
+        "pid": os.getpid(),
+        "status": status,
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+    }
+    # Atomic write
+    tmp = heartbeat_path.with_suffix(f".tmp.{os.getpid()}")
+    tmp.write_text(json.dumps(heartbeat, indent=2))
+    os.replace(tmp, heartbeat_path)
+
+
 if __name__ == "__main__":
     import signal
     
     def timeout_handler(signum, frame):
         _log("GLOBAL TIMEOUT: Router exceeded 10 minute hard limit - forcing exit")
+        _update_heartbeat("timeout")
         sys.exit(124)  # Exit code 124 = timeout
     
     # Set global 10-minute timeout (dead man's switch)
     signal.signal(signal.SIGALRM, timeout_handler)
     signal.alarm(600)  # 10 minutes total for entire router run
     
+    _update_heartbeat("started")
     try:
         run_router()
         signal.alarm(0)  # Cancel alarm if completed successfully
+        _update_heartbeat("finished")
     except Exception as e:
         signal.alarm(0)  # Cancel alarm on error
+        _update_heartbeat("error")
         _log(f"FATAL: {e}")
         import traceback
         traceback.print_exc()

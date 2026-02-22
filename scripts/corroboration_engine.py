@@ -22,6 +22,8 @@ LOCK_PATH = STATE_DIR / "signal_window.lock"
 # Rolling window: signals older than this are pruned
 WINDOW_MINUTES = 60
 
+# Simple file lock (no PID tracking needed - OS releases on process death)
+
 # Source independence mapping — multiple sub-sources from same provider = 1 source
 SOURCE_PROVIDERS = {
     "coingecko": "coingecko",

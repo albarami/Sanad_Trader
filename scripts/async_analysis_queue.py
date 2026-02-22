@@ -661,6 +661,20 @@ def process_task(task_id: str, entity_id: str, task_type: str, attempts_now: int
         if verdict == "REJECT" and confidence >= CATASTROPHIC_THRESHOLD:
             risk_flag = "FLAG_JUDGE_HIGH_CONF_REJECT"
             _log(f"CATASTROPHIC: Judge rejected {token_symbol} with {confidence}% confidence (threshold={CATASTROPHIC_THRESHOLD})")
+            
+            # Mark position for force-close
+            _log(f"Marking position {entity_id} for FORCE CLOSE (catastrophic reject)")
+            with get_connection() as conn:
+                now_iso = datetime.now(timezone.utc).isoformat()
+                conn.execute("""
+                    UPDATE positions
+                    SET force_close = 1,
+                        force_close_reason = 'CATASTROPHIC_REJECT',
+                        force_close_at = ?,
+                        updated_at = ?
+                    WHERE position_id = ? AND status = 'OPEN'
+                """, (now_iso, now_iso, entity_id))
+                conn.commit()
         
         # Update position record via state_store (uses analysis_json column)
         import state_store as ss

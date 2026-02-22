@@ -440,6 +440,11 @@ def check_flash_crash(price_history):
 
 def close_position(position, current_price, reason, detail=""):
     """Close a position and update all state."""
+    # IDEMPOTENCY GUARD: Skip if already closed
+    if position.get("status") == "CLOSED" or position.get("closed_at"):
+        print(f"  [SKIP] Position {position.get('position_id', position.get('symbol'))} already closed")
+        return
+    
     now = now_utc()
     entry = position["entry_price"]
     qty = position["quantity"]
@@ -662,7 +667,7 @@ def close_position(position, current_price, reason, detail=""):
         import post_trade_analyzer
         # Convert position to trade format for analyzer
         trade_record = {
-            "trade_id": position["id"],
+            "trade_id": position.get("position_id") or position.get("id", "unknown"),
             "token": position["token"],
             "entry_price": entry,
             "exit_price": current_price,
@@ -812,7 +817,12 @@ def update_portfolio(positions_data, closed_pnls):
         "open_position_count": len(open_positions),
         "daily_pnl_usd": round(daily_pnl_usd, 2),
         "max_drawdown_pct": round((peak - total_equity) / peak, 6) if peak > 0 else 0,
+        "daily_reset_at": daily_reset_at,  # Persist if it was set
     }
+    
+    # Ensure starting_balance_usd is set if null
+    if not portfolio.get("starting_balance_usd"):
+        updates["starting_balance_usd"] = portfolio.get("current_balance_usd", 10000.0)
     
     # Update via SQLite (auto-syncs to JSON cache)
     if HAS_STATE_STORE:
@@ -878,7 +888,7 @@ def run_monitor():
     if positions_data is None:
         print("[POSITION MONITOR] FATAL: Cannot read positions — aborting")
         return
-
+    
     # ── Normalize v3.1 schema → v3.0 compat aliases ──
     for p in positions_data.get("positions", []):
         if "symbol" not in p and "token_address" in p:
@@ -930,11 +940,48 @@ def run_monitor():
     trailing_stops = load_trailing_stops()
 
     open_positions = [p for p in positions_data.get("positions", []) if p["status"] == "OPEN"]
+    closed_pnls = []  # Initialize before any closes
+    
     print(f"[POSITION MONITOR] Checking {len(open_positions)} open position(s)...")
 
     if not open_positions:
         print("[POSITION MONITOR] No open positions. Nothing to do.")
         return
+    
+    # ── Force-close check: catastrophic rejects MUST be closed immediately ──
+    if HAS_STATE_STORE:
+        try:
+            import state_store as ss
+            with ss.get_connection() as conn:
+                force_close_positions = conn.execute("""
+                    SELECT position_id, force_close_reason, force_close_at
+                    FROM positions
+                    WHERE status = 'OPEN' AND force_close = 1
+                """).fetchall()
+                
+                for row in force_close_positions:
+                    pos_id, reason, flagged_at = row
+                    print(f"[FORCE CLOSE] Closing {pos_id}: {reason} (flagged at {flagged_at})")
+                    # Find the position in normalized data
+                    for p in open_positions:
+                        if p.get("position_id") == pos_id:
+                            # Get current price from entry_price (force close doesn't wait for market data)
+                            current_price = p.get("current_price") or p.get("entry_price", 0)
+                            pnl = close_position(
+                                position=p,
+                                current_price=current_price,
+                                reason=f"FORCE_CLOSE_{reason}",
+                                detail=f"Flagged at {flagged_at}"
+                            )
+                            if pnl is not None:
+                                closed_pnls.append(pnl)
+                            # Remove from open_positions list so it's not checked again
+                            open_positions.remove(p)
+                            break
+        except Exception as e:
+            print(f"[FORCE CLOSE] Check failed: {e}")
+            import traceback
+            traceback.print_exc()
 
     # ── Flash crash check (portfolio-wide) ──
     flash_triggers = check_flash_crash(price_history)

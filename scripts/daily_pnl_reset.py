@@ -42,9 +42,9 @@ def reset():
     yesterday = (now - timedelta(days=1)).strftime("%Y-%m-%d")
 
     portfolio = _load_json(PORTFOLIO_PATH, {})
-    starting = portfolio.get("starting_balance_usd", 10000.0)
+    starting = portfolio.get("starting_balance_usd") or 10000.0
     balance = portfolio.get("current_balance_usd", starting)
-    prev_reset_at = portfolio.get("daily_reset_at", "1970-01-01T00:00:00")
+    prev_reset_at = portfolio.get("daily_reset_at") or "1970-01-01T00:00:00+00:00"
 
     # Derive yesterday's PnL from trade_history (source of truth)
     trade_history = _load_json(TRADE_HISTORY_PATH, {})
@@ -52,6 +52,7 @@ def reset():
     daily_pnl_usd = sum(
         float(t.get("pnl_usd", t.get("net_pnl_usd", 0)) or 0)
         for t in trades if isinstance(t, dict)
+        and t.get("closed_at", t.get("timestamp", "")) is not None
         and (t.get("closed_at", t.get("timestamp", "")) >= prev_reset_at)
     )
     daily_pnl_pct = round(daily_pnl_usd / starting, 6) if starting > 0 else 0

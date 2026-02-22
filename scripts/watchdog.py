@@ -781,14 +781,18 @@ def check_router_stall():
             except Exception as e:
                 _log(f"Lease check failed: {e}", "WARNING")
         
-        # FALLBACK: Use cron_health.json if no lease
-        health_file = STATE_DIR / "cron_health.json"
-        if not health_file.exists():
-            return []
+        # FALLBACK: Use signal_router_heartbeat.json (router-specific liveness file)
+        heartbeat_file = STATE_DIR / "signal_router_heartbeat.json"
+        if not heartbeat_file.exists():
+            return []  # No heartbeat yet, router might not have run
         
-        health = json.load(open(health_file))
-        router_entry = health.get("signal_router", {})
-        last_run_str = router_entry.get("last_run")
+        try:
+            heartbeat = json.load(open(heartbeat_file))
+            last_run_str = heartbeat.get("timestamp")
+            heartbeat_status = heartbeat.get("status", "unknown")
+        except Exception as e:
+            _log(f"Heartbeat read failed: {e}", "WARNING")
+            return []
         
         if not last_run_str:
             return []

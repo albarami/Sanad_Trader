@@ -9,6 +9,7 @@
 
 # === Every 10 minutes ===
 */10 * * * * cd /data/.openclaw/workspace/trading && python3 scripts/heartbeat.py >> logs/heartbeat.log 2>&1
+*/10 * * * * cd /data/.openclaw/workspace/trading && python3 scripts/quality_circuit_breaker.py >> logs/quality_circuit_breaker_cron.log 2>&1
 
 # === Every 15 minutes ===
 */15 * * * * cd /data/.openclaw/workspace/trading && python3 scripts/onchain_analytics.py >> logs/onchain.log 2>&1

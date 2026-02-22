@@ -213,7 +213,12 @@ def stage_1_hard_safety_gates(signal, timings, start_time):
     """
     Stage 1: Hard Safety Gates (<100ms target)
     
-    Checks:
+    UNIVERSAL GATES (run BEFORE HAS_HARD_GATES early-return):
+    - Self-pair blocking (USDT/USDT, BTC/BTC, etc.)
+    - Stablecoin blocking (all symbol/address variants)
+    - Missing holder data (fail-closed for microcaps)
+    
+    CONDITIONAL GATES:
     - Honeypot (cached)
     - Rugpull scan (from router enrichment)
     - Sybil risk (cached)
@@ -222,15 +227,109 @@ def stage_1_hard_safety_gates(signal, timings, start_time):
     
     Returns: (passed: bool, reason_code: str or None, evidence: dict)
     """
+    import re
+    
     stage_start = time.perf_counter()
     
-    # Placeholder: call hard_gates module if available
+    # ========================================================================
+    # UNIVERSAL GATES: CANNOT BE BYPASSED
+    # ========================================================================
+    
+    # Stablecoin symbols (cash instruments, no upside)
+    STABLE_SYMBOLS = {"USDT", "USDC", "DAI", "BUSD", "USDD", "TUSD", "FRAX", "USDP", "GUSD", "PAX"}
+    
+    # Known stablecoin addresses (Solana mainnet)
+    STABLE_ADDRESSES_SOL = {
+        "Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB",  # USDT
+        "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",  # USDC
+        "EjmyN6qEC1Tf1JxiG1ae7UTJhUxSwk1TCWNWqxWV4J6o",  # DAI
+        "AJ1W9A9N9dEMdVyoDiam2rV44gnBm2csrPDP7xqcapgX",  # BUSD (bridged)
+    }
+    
+    def _norm(sym: str) -> str:
+        """Normalize symbol: strip non-alphanumeric, uppercase."""
+        return re.sub(r"[^A-Z0-9]", "", sym.upper().replace("$", "").strip())
+    
+    def _extract_symbols(signal: dict) -> set:
+        """Extract all symbol-like fields from signal (handles field name variance)."""
+        syms = set()
+        for k in ("token", "symbol", "base_symbol", "quote_symbol", "pair", "pair_symbol", "ticker", "market"):
+            v = signal.get(k)
+            if isinstance(v, str) and v.strip():
+                parts = re.split(r"[\s\-_\/]+", v.upper())
+                for p in parts:
+                    p = _norm(p)
+                    if p:
+                        syms.add(p)
+        return syms
+    
+    def _is_self_pair(signal: dict) -> bool:
+        """Check if base == quote (e.g. USDT/USDT, BTC/BTC)."""
+        s = signal.get("symbol") or signal.get("pair") or ""
+        if not isinstance(s, str):
+            return False
+        parts = re.split(r"[\s\-_\/]+", s.upper())
+        parts = [p for p in map(_norm, parts) if p]
+        return len(parts) >= 2 and parts[0] == parts[1]
+    
+    # GATE: Self-pair (base == quote)
+    if _is_self_pair(signal):
+        timings["stage_1_safety"] = elapsed_ms(stage_start)
+        return False, "BLOCK_SELF_PAIR", {"pair": signal.get("symbol") or signal.get("pair")}
+    
+    # GATE: Stablecoin by symbol
+    syms = _extract_symbols(signal)
+    stable_hit = sorted(syms & STABLE_SYMBOLS)
+    if stable_hit:
+        timings["stage_1_safety"] = elapsed_ms(stage_start)
+        return False, "BLOCK_STABLECOIN", {"stablecoins": stable_hit}
+    
+    # GATE: Stablecoin by address (Solana)
+    addr = (signal.get("token_address") or signal.get("contract_address") or "").strip()
+    if addr in STABLE_ADDRESSES_SOL:
+        timings["stage_1_safety"] = elapsed_ms(stage_start)
+        return False, "BLOCK_STABLECOIN_ADDR", {"address": addr}
+    
+    # GATE: Missing holder data for microcaps (fail-closed)
+    # If we don't have holder_count OR top10_pct, assume high risk for non-majors
+    holder_count = signal.get("solscan_holder_count") or signal.get("holders") or 0
+    top10_pct = signal.get("solscan_top_10_pct") or signal.get("top10_pct") or 0
+    
+    token_symbol = (signal.get("token") or signal.get("symbol") or "").upper()
+    is_major = token_symbol in BINANCE_MAJORS
+    
+    if not is_major:
+        # Microcap without holder data → fail closed
+        if holder_count == 0 and top10_pct == 0:
+            timings["stage_1_safety"] = elapsed_ms(stage_start)
+            return False, "BLOCK_MISSING_HOLDER_DATA", {
+                "token": token_symbol,
+                "reason": "holder data missing, fail closed for microcaps"
+            }
+    
+    # GATE: Holder count too low (<10)
+    if holder_count > 0 and holder_count < 10:
+        timings["stage_1_safety"] = elapsed_ms(stage_start)
+        return False, "BLOCK_HOLDER_COUNT_CRITICAL", {"holders": holder_count, "threshold": 10}
+    
+    # GATE: Top10 concentration too high (>95%)
+    if top10_pct > 0 and top10_pct > 95.0:
+        timings["stage_1_safety"] = elapsed_ms(stage_start)
+        return False, "BLOCK_TOP10_CONCENTRATION", {"top10_pct": top10_pct, "threshold": 95.0}
+    
+    # ========================================================================
+    # CONDITIONAL GATES: Call hard_gates module if available
+    # ========================================================================
+    
     if HAS_HARD_GATES:
         passed, reason_code, evidence = hard_gates.evaluate(signal)
         timings["stage_1_safety"] = elapsed_ms(stage_start)
         return passed, reason_code, evidence
     
-    # Fallback: basic checks
+    # ========================================================================
+    # FALLBACK GATES: Basic checks if no hard_gates module
+    # ========================================================================
+    
     onchain = signal.get("onchain_evidence", {})
     
     # Honeypot check
@@ -477,11 +576,56 @@ def stage_4_policy_engine(decision_packet, portfolio, timings, start_time):
     """
     Stage 4: Policy Engine Gates 1-14 (<500ms target)
     
+    UNIVERSAL CHECK: Safe mode (quality circuit breaker)
+    
     Returns: (passed: bool, gate_failed: int or None, evidence: dict)
     """
     stage_start = time.perf_counter()
     
-    # Call policy_engine module if available
+    # ========================================================================
+    # UNIVERSAL GATE: Quality Circuit Breaker (Safe Mode)
+    # ========================================================================
+    safe_mode_flag = BASE_DIR / "config" / "safe_mode.flag"
+    if safe_mode_flag.exists():
+        try:
+            flag_data = json.loads(safe_mode_flag.read_text())
+            expires_at = datetime.fromisoformat(flag_data["expires_at"])
+            now = datetime.now(timezone.utc)
+            
+            if now < expires_at:
+                # Hard block during cooldown period
+                timings["stage_4_policy"] = elapsed_ms(stage_start)
+                return False, -1, {
+                    "gate_name": "SAFE_MODE_ACTIVE",
+                    "reason": "quality_circuit_breaker_cooldown",
+                    "activated_at": flag_data.get("activated_at"),
+                    "expires_at": flag_data.get("expires_at"),
+                    "stats": flag_data.get("stats")
+                }
+            
+            # Post-expiry recovery: enforce sync_cold_path_required counter
+            sync_required = flag_data.get("sync_cold_path_required", 0)
+            if sync_required > 0:
+                # TODO: Implement pre-trade cold path flow
+                # For now: hard block until counter reaches 0
+                # Production implementation should:
+                #   1. Enqueue pre-trade analysis task
+                #   2. Wait for cold path approval
+                #   3. Decrement counter on APPROVE
+                #   4. Proceed to execute
+                timings["stage_4_policy"] = elapsed_ms(stage_start)
+                return False, -2, {
+                    "gate_name": "SAFE_MODE_RECOVERY",
+                    "reason": "sync_cold_path_required",
+                    "remaining_required": sync_required,
+                    "note": "Pre-trade cold path validation required after quality incident"
+                }
+        except Exception:
+            pass  # Ignore malformed flag, proceed to normal gates
+    
+    # ========================================================================
+    # CONDITIONAL GATES: Call policy_engine module if available
+    # ========================================================================
     if HAS_POLICY:
         # Build state_override from SQLite/portfolio (avoid stale JSON)
         state_override = {

@@ -24,6 +24,9 @@ except ImportError:
     BIRDEYE_AVAILABLE = False
     def get_token_overview(address): return {}
 
+# Import stablecoin filter
+from stablecoin_filter import is_stablecoin, filter_signals
+
 BASE_DIR = Path(os.environ.get("SANAD_HOME", Path(__file__).resolve().parents[1]))
 CONFIG_FILE = BASE_DIR / "config" / "whale_wallets.json"
 STATE_FILE = BASE_DIR / "state" / "whale_activity.json"
@@ -203,6 +206,11 @@ def _detect_accumulation(state: dict, config: dict) -> list[dict]:
                 metadata = get_token_metadata(mint) or {}
                 symbol = metadata.get("symbol", mint[:8])
                 
+                # STABLECOIN FILTER — Block at source
+                if is_stablecoin(token=symbol, address=mint):
+                    _log(f"BLOCKED stablecoin {symbol} ({mint[:8]}) from whale accumulation signal")
+                    continue
+                
                 # Calculate accumulation window
                 timestamps = [datetime.fromisoformat(b["timestamp"]) for b in buys]
                 window_hours = (max(timestamps) - min(timestamps)).total_seconds() / 3600
@@ -212,7 +220,7 @@ def _detect_accumulation(state: dict, config: dict) -> list[dict]:
                 
                 signal = {
                     "token": symbol,
-                    "symbol": f"{symbol}USDT",
+                    "symbol": symbol,  # FIXED: was f"{symbol}USDT" (hardcoded garbage)
                     "source": "whale_tracker",
                     "chain": "solana",
                     "direction": "LONG",
@@ -323,7 +331,7 @@ def run_tracker(test_mode: bool = False):
         _log("TEST MODE: Creating mock signal")
         mock_signal = {
             "token": "TEST",
-            "symbol": "TESTUSDT",
+            "symbol": "TEST",  # FIXED: was "TESTUSDT" (hardcoded garbage)
             "source": "whale_tracker",
             "chain": "solana",
             "direction": "LONG",
@@ -423,14 +431,23 @@ def run_tracker(test_mode: bool = False):
             whale_count = alert["wallets_selling"]
             whale_names = [d["name"] for d in alert["details"][:3]]  # First 3 names
             
+            # Get metadata for proper symbol
+            metadata = get_token_metadata(mint) or {}
+            symbol = metadata.get("symbol", mint[:8])
+            
+            # STABLECOIN FILTER — Block at source
+            if is_stablecoin(token=symbol, address=mint):
+                _log(f"BLOCKED stablecoin {symbol} ({mint[:8]}) from whale distribution signal")
+                continue
+            
             # Only generate SHORT signal if 2+ whales (distribution confirmed)
             if whale_count >= 2:
                 # Enrich with Birdeye data
                 enrichment = _enrich_token_data(mint)
                 
                 short_signal = {
-                    "token": mint[:8],  # Truncated mint for readability
-                    "symbol": f"{mint[:8]}USDT",
+                    "token": symbol,
+                    "symbol": symbol,  # FIXED: was f"{mint[:8]}USDT" (hardcoded garbage)
                     "source": "whale_distribution",
                     "chain": "solana",
                     "direction": "SHORT",  # ← SHORT signal

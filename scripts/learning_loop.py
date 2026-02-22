@@ -110,10 +110,36 @@ def process_closed_position(position_id: str, db_path=None) -> dict:
             raise ValueError(f"Position {position_id} has no pnl_pct")
 
         # V4: Use stored reward_bin (fallback to pnl_pct > 0 for legacy positions)
+        # V5 FIX: Check Judge REJECT override (catastrophic trades treated as hard loss)
+        judge_override = False
         if pos.get("reward_bin") is not None:
             is_win = bool(pos["reward_bin"])
         else:
-            is_win = pos["pnl_pct"] > 0
+            # Check async_analysis_json for Judge REJECT high confidence
+            async_json_str = conn.execute(
+                "SELECT async_analysis_json FROM positions WHERE position_id = ?",
+                (position_id,)
+            ).fetchone()[0]
+            
+            if async_json_str:
+                try:
+                    async_json = json.loads(async_json_str)
+                    judge_parsed = async_json.get("judge", {}).get("parsed", {})
+                    verdict = judge_parsed.get("verdict")
+                    confidence = judge_parsed.get("confidence", 0)
+                    
+                    # If Judge REJECT ≥85% confidence, treat as HARD LOSS
+                    if verdict == "REJECT" and confidence >= 85:
+                        is_win = False
+                        judge_override = True
+                        _log(f"Position {position_id}: Judge REJECT override (confidence={confidence}%), forcing LOSS")
+                    else:
+                        is_win = pos["pnl_pct"] > 0
+                except Exception:
+                    is_win = pos["pnl_pct"] > 0
+            else:
+                is_win = pos["pnl_pct"] > 0
+        
         strategy_id = pos["strategy_id"]
         regime_tag = pos["regime_tag"] or "unknown"
         raw_source = pos["source_primary"] or "unknown"
@@ -130,8 +156,15 @@ def process_closed_position(position_id: str, db_path=None) -> dict:
              f"strategy={strategy_id} source={source_id}")
 
         # Step 2: Atomic increment bandit_strategy_stats
-        win_inc = 1.0 if is_win else 0.0
-        loss_inc = 0.0 if is_win else 1.0
+        # V5 FIX: Apply strong negative penalty for Judge REJECT
+        if judge_override:
+            # Treat Judge REJECT as 3x loss penalty (beta += 3.0 instead of 1.0)
+            win_inc = 0.0
+            loss_inc = 3.0
+            _log(f"Bandit: Applying 3x loss penalty for Judge REJECT (beta += 3.0)")
+        else:
+            win_inc = 1.0 if is_win else 0.0
+            loss_inc = 0.0 if is_win else 1.0
 
         conn.execute("""
             INSERT INTO bandit_strategy_stats(strategy_id, regime_tag, alpha, beta, n, last_updated)
@@ -159,11 +192,17 @@ def process_closed_position(position_id: str, db_path=None) -> dict:
              f"n={bandit_row['n']} E[v]={expected:.3f}")
 
         # Step 3: Atomic increment source_ucb_stats (skip enrichers)
+        # V5 FIX: Apply strong negative penalty for Judge REJECT
         source_result = {}
         if is_enricher(source_id):
             _log(f"Source: {source_id} is enricher, skipping UCB1")
         else:
-            reward = 1.0 if is_win else 0.0
+            if judge_override:
+                # Treat Judge REJECT as reward = -2.0 (strong negative signal)
+                reward = -2.0
+                _log(f"Source: Applying -2.0 reward penalty for Judge REJECT")
+            else:
+                reward = 1.0 if is_win else 0.0
             conn.execute("""
                 INSERT INTO source_ucb_stats(source_id, n, reward_sum, last_updated)
                 VALUES (?, 1, ?, ?)

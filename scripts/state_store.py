@@ -858,7 +858,7 @@ def ensure_and_close_position(position_dict: dict, exit_payload: dict, db_path=N
             else:
                 pnl_usd = (pnl_pct / 100) * size_usd if size_usd else 0.0
             
-            # Close it — check rowcount
+            # Close it — check rowcount (IDEMPOTENCY: only update if OPEN)
             cur = conn.execute("""
                 UPDATE positions SET
                     status = 'CLOSED',
@@ -873,7 +873,7 @@ def ensure_and_close_position(position_dict: dict, exit_payload: dict, db_path=N
                     learning_status = 'PENDING',
                     learning_updated_at = ?,
                     learning_error = NULL
-                WHERE position_id = ?
+                WHERE position_id = ? AND status = 'OPEN'
             """, (
                 now_iso,
                 close_price,  # Keep both for backward compat
@@ -886,11 +886,18 @@ def ensure_and_close_position(position_dict: dict, exit_payload: dict, db_path=N
                 now_iso,
                 position_id
             ))
-            if cur.rowcount != 1:
-                raise RuntimeError(
-                    f"ensure_and_close_position: close UPDATE affected {cur.rowcount} rows "
-                    f"(position missing) for {position_id}"
-                )
+            if cur.rowcount == 0:
+                # Check if already closed (idempotent skip) or truly missing
+                check = conn.execute(
+                    "SELECT status FROM positions WHERE position_id = ?", (position_id,)
+                ).fetchone()
+                if check and check["status"] == "CLOSED":
+                    # Already closed — idempotent success
+                    pass
+                else:
+                    raise RuntimeError(
+                        f"ensure_and_close_position: close UPDATE affected 0 rows (position missing or wrong state) for {position_id}"
+                    )
         
         # Sync JSON cache after mutation
         sync_json_cache(db_path=_db)
