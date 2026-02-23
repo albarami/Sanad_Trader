@@ -117,37 +117,39 @@ def _reset_circuit():
 
 
 # ---------------------------------------------------------------------------
-# HTTP helper — tries Pro then Free
+# HTTP helper — PRO-only (fail-closed)
 # ---------------------------------------------------------------------------
 def _get(path: str, params: dict | None = None) -> dict | list:
+    """Paid-data stance: fail closed.
+
+    If COINGECKO_API_KEY is set, we should never silently fall back to free.
+    Falling back hides misconfiguration and degrades data quality (429s/stale).
+    """
     _check_circuit()
     _rate_limit()
 
-    # Try Pro first, fall back to Free
-    for base_url, header_key in [
-        (PRO_URL, "x-cg-pro-api-key"),
-        (FREE_URL, "x-cg-demo-api-key"),
-    ]:
-        url = f"{base_url}{path}"
-        headers = {header_key: API_KEY, "accept": "application/json"}
-        try:
-            resp = requests.get(url, headers=headers, params=params, timeout=10)
-            if resp.status_code in (401, 403):
-                continue  # wrong tier, try next
-            if resp.status_code == 429:
-                _log("Rate limited (429) — sleeping 60s and retrying once")
-                time.sleep(60)
-                resp = requests.get(url, headers=headers, params=params, timeout=10)
-            resp.raise_for_status()
-            _reset_circuit()
-            return resp.json()
-        except requests.exceptions.RequestException as e:
-            _record_failure()
-            _log(f"API error on {url}: {e}")
-            continue
+    url = f"{PRO_URL}{path}"
+    headers = {"x-cg-pro-api-key": API_KEY, "accept": "application/json"}
 
-    _record_failure()
-    raise RuntimeError(f"All endpoints failed for {path}")
+    try:
+        resp = requests.get(url, headers=headers, params=params, timeout=10)
+        if resp.status_code == 429:
+            _log("Rate limited (429) on PRO — sleeping 60s and retrying once")
+            time.sleep(60)
+            resp = requests.get(url, headers=headers, params=params, timeout=10)
+        resp.raise_for_status()
+        _reset_circuit()
+        data = resp.json()
+        try:
+            from provider_samples import capture
+            capture("coingecko", path.lstrip("/"), {"params": params or {}, "data": data})
+        except Exception:
+            pass
+        return data
+    except requests.exceptions.RequestException as e:
+        _record_failure()
+        _log(f"PRO API error on {url}: {e}")
+        raise
 
 
 # ---------------------------------------------------------------------------

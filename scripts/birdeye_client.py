@@ -128,7 +128,13 @@ def _get(path: str, params: dict | None = None) -> dict | list:
             resp = requests.get(url, headers=headers, params=params, timeout=8)
         resp.raise_for_status()
         _reset_circuit()
-        return resp.json()
+        data = resp.json()
+        try:
+            from provider_samples import capture
+            capture("birdeye", path.lstrip("/"), {"params": params or {}, "data": data})
+        except Exception:
+            pass
+        return data
     except requests.exceptions.RequestException as e:
         _record_failure()
         raise RuntimeError(f"API error on {url}: {e}") from e

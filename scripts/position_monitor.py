@@ -560,16 +560,16 @@ def close_position(position, current_price, reason, detail=""):
     try:
         import supabase_client
         supabase_client.log_event("TRADE_CLOSED", {
-            "token": position["token"],
-            "symbol": position["symbol"],
+            "token": position.get("token"),
+            "symbol": position.get("symbol", position.get("token")),
             "entry_price": entry,
             "exit_price": current_price,
             "pnl_pct": pnl_pct,
             "pnl_usd": net_pnl_usd,
             "exit_reason": reason,
             "hold_hours": hold_hours,
-            "strategy": position["strategy_name"],
-            "sanad_score": position["sanad_score"],
+            "strategy": position.get("strategy_name") or position.get("strategy_id") or "unknown",
+            "sanad_score": position.get("sanad_score"),
         }, correlation_id=position.get("id"))
         print(f"    Supabase: TRADE_CLOSED logged")
     except Exception as e:
@@ -1020,8 +1020,14 @@ def run_monitor():
                     overview = get_token_overview(token_address)
                     if overview and overview.get("price"):
                         dex_price = float(overview["price"])
-                        symbol = pos.get("symbol", token)
-                        price_cache[symbol] = dex_price
+                        # Store under the most reliable key(s).
+                        # v3.1 positions often have no symbol; token_address is always present.
+                        symbol_key = pos.get("symbol") or pos.get("token_address") or token
+                        if symbol_key:
+                            price_cache[symbol_key] = dex_price
+                        # Also store under token_address explicitly (prevents cache-miss during lookup)
+                        if pos.get("token_address"):
+                            price_cache[pos["token_address"]] = dex_price
                         print(f"  [DEX] {token}: ${dex_price}")
                 except Exception as e:
                     print(f"  [DEX] Price fetch failed for {token}: {e}")

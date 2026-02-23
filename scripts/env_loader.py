@@ -37,7 +37,9 @@ def load_env():
                         key, _, value = line.partition("=")
                         key = key.strip()
                         value = value.strip().strip('"').strip("'")
-                        if key and value and key not in os.environ:
+                        # Override empty-string env vars (common in cron/service shells)
+                        # but do not overwrite non-empty values.
+                        if key and value and (key not in os.environ or os.environ.get(key, "") == ""):
                             os.environ[key] = value
             except Exception:
                 pass

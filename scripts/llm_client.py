@@ -34,6 +34,28 @@ OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 
 
+def _map_openrouter_model(model: str) -> str:
+    """Map internal model ids to OpenRouter-supported ids.
+
+    Root cause: our internal Anthropic model ids (e.g. claude-haiku-4-5-20251001)
+    are NOT guaranteed to exist on OpenRouter. Passing them through causes 400.
+
+    Override: set OPENROUTER_CLAUDE_MODEL / OPENROUTER_OPENAI_MODEL in env.
+    """
+    # Allow explicit override
+    if model.startswith("anthropic/") and os.getenv("OPENROUTER_CLAUDE_MODEL"):
+        return os.getenv("OPENROUTER_CLAUDE_MODEL", "").strip() or model
+    if model.startswith("openai/") and os.getenv("OPENROUTER_OPENAI_MODEL"):
+        return os.getenv("OPENROUTER_OPENAI_MODEL", "").strip() or model
+
+    # Conservative defaults that are broadly available on OpenRouter
+    if model.startswith("anthropic/"):
+        return "anthropic/claude-3.5-haiku"
+    if model.startswith("openai/"):
+        return "openai/gpt-4.1-mini"
+    return model
+
+
 def _fallback_openrouter(system_prompt, user_message, model, max_tokens, stage, token_symbol):
     """OpenRouter fallback for both Claude and OpenAI."""
     if not OPENROUTER_API_KEY:
@@ -48,12 +70,14 @@ def _fallback_openrouter(system_prompt, user_message, model, max_tokens, stage, 
         "X-Title": "Sanad Trader v3",
     }
 
+    mapped_model = _map_openrouter_model(model)
+
     try:
         response = requests.post(
             url,
             headers=headers,
             json={
-                "model": model,
+                "model": mapped_model,
                 "max_tokens": max_tokens,
                 "messages": [
                     {"role": "system", "content": system_prompt},
@@ -68,18 +92,18 @@ def _fallback_openrouter(system_prompt, user_message, model, max_tokens, stage, 
         if choices:
             text = choices[0].get("message", {}).get("content", "")
             if text:
-                print(f"    [OpenRouter fallback OK — {model}]")
-                
+                print(f"    [OpenRouter fallback OK — {mapped_model}]")
+
                 # Log cost (best-effort)
                 usage = result.get("usage", {})
                 input_tokens = usage.get("prompt_tokens", 0)
                 output_tokens = usage.get("completion_tokens", 0)
                 try:
                     from cost_tracker import log_api_call
-                    log_api_call(f"openrouter/{model}", input_tokens, output_tokens, stage, token_symbol)
+                    log_api_call(f"openrouter/{mapped_model}", input_tokens, output_tokens, stage, token_symbol)
                 except Exception as e:
                     print(f"    [Cost tracking failed: {e}]")
-                
+
                 return text
         return None
     except Exception as e:

@@ -734,6 +734,17 @@ def stage_5_execute(signal, decision_id, strategy_id, position_usd,
     
     token = signal.get("token_address") or signal.get("token")
     symbol = signal.get("symbol", token or "")
+
+    # Guardrails: never execute unknown/default strategy (architecture hygiene)
+    if not strategy_id or str(strategy_id).strip().lower() in ("default", "unknown"):
+        timings["stage_5_execute"] = elapsed_ms(stage_start)
+        return False, None, "BLOCK_DEFAULT_STRATEGY"
+
+    # Guardrails: require explicit identity for non-CEX symbols
+    # (prevents ticker-only meme signals from being executed as if they were majors)
+    if not _is_binance_symbol(symbol) and not signal.get("token_address"):
+        timings["stage_5_execute"] = elapsed_ms(stage_start)
+        return False, None, "BLOCK_MISSING_CONTRACT_ADDRESS"
     
     # Price selection: DEX/enriched price first, Binance fallback only for CEX symbols
     try:

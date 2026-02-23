@@ -82,6 +82,12 @@ def get_token_meta(token_address: str) -> dict:
             
             if result.get("success"):
                 data = result.get("data", {})
+                try:
+                    from provider_samples import capture
+                    capture("solscan", "token/meta", {"address": token_address, "data": result})
+                except Exception:
+                    pass
+
                 parsed = {
                     "symbol": data.get("symbol", ""),
                     "name": data.get("name", ""),
@@ -197,25 +203,35 @@ def get_recent_transfers(token_address: str, limit: int = 50) -> dict:
         "Accept": "application/json"
     }
     
+    # Cache-based circuit breaker: disable transfer endpoint for 1h if it starts 400'ing.
+    cache = _load_cache()
+    disable_key = "transfers_disabled_until"
+    try:
+        disabled_until = float(cache.get(disable_key, 0) or 0)
+        if disabled_until > time.time():
+            return {}
+    except Exception:
+        pass
+
     try:
         req = urllib.request.Request(url, headers=headers, method="GET")
         with urllib.request.urlopen(req, timeout=10) as resp:
             result = json.loads(resp.read().decode("utf-8"))
-            
+
             if result.get("success"):
                 data = result.get("data", {})
                 items = data.get("items", [])
-                
+
                 unique_addrs = set()
                 total_amount = 0.0
-                
+
                 for item in items:
                     unique_addrs.add(item.get("from_address", ""))
                     unique_addrs.add(item.get("to_address", ""))
                     total_amount += float(item.get("amount", 0))
-                
+
                 avg_amount = total_amount / len(items) if items else 0
-                
+
                 return {
                     "transfer_count": len(items),
                     "unique_addresses": len(unique_addrs),
@@ -224,7 +240,17 @@ def get_recent_transfers(token_address: str, limit: int = 50) -> dict:
                 }
             else:
                 return {}
-                
+
+    except urllib.error.HTTPError as e:
+        # If Solscan changes the endpoint contract, we don't want noisy repeated 400s.
+        if e.code == 400:
+            try:
+                cache[disable_key] = time.time() + 3600
+                _save_cache(cache)
+            except Exception:
+                pass
+        _log(f"Transfer activity HTTP {e.code}: {e.reason}")
+        return {}
     except Exception as e:
         _log(f"Transfer activity error: {e}")
         return {}

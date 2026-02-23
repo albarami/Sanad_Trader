@@ -264,6 +264,28 @@ def check_positions(config, portfolio, price_cache):
                 current = price_cache[k]
                 break
 
+        # If price is missing for a Solana/Dex position, try a deterministic on-demand fetch
+        # (prevents noisy alerts when Binance-only cache doesn't include token addresses).
+        if (current <= 0 or entry <= 0) and pos.get("chain") == "solana" and pos.get("token_address"):
+            try:
+                import sys as _sys
+                from pathlib import Path as _Path
+                _sys.path.insert(0, str(_Path(__file__).resolve().parent))
+                from birdeye_client import get_token_overview  # deterministic HTTP
+
+                overview = get_token_overview(pos["token_address"])
+                px = float(overview.get("price") or 0)
+                if px > 0:
+                    current = px
+                    price_cache[pos["token_address"]] = px
+                    # Best-effort persist so subsequent checks stop alerting.
+                    try:
+                        save_state("price_cache.json", price_cache)
+                    except Exception:
+                        pass
+            except Exception:
+                pass
+
         if current <= 0 or entry <= 0:
             alerts.append(f"{symbol}: invalid price data (current={current}, entry={entry})")
             continue
