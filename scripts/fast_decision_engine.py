@@ -316,7 +316,37 @@ def stage_1_hard_safety_gates(signal, timings, start_time):
     if top10_pct > 0 and top10_pct > 95.0:
         timings["stage_1_safety"] = elapsed_ms(stage_start)
         return False, "BLOCK_TOP10_CONCENTRATION", {"top10_pct": top10_pct, "threshold": 95.0}
-    
+
+    # GATE: Utility blue-chip strategy mismatch
+    # This system's edge is meme/momentum microstructure, NOT macro blue-chip bets.
+    # Utility majors (ETH, LINK, BNB, XRP, etc.) get consistently rejected by Judge
+    # for "strategy mismatch" + "no catalyst" + "no stop/TP defined".
+    # Block them unless signal comes from a whale or CEX listing catalyst source.
+    UTILITY_MAJORS = {
+        "ETH", "BNB", "XRP", "ADA", "AVAX", "DOT", "MATIC",
+        "LINK", "UNI", "ATOM", "LTC", "NEAR", "APT", "ARB", "OP", "FIL"
+    }
+    CATALYST_SOURCES = {"telegram", "whale_tracker", "twitter_whale", "cex_listing", "whale"}
+
+    if token_symbol in UTILITY_MAJORS:
+        source = (signal.get("source_primary") or signal.get("source") or "").lower()
+        sig_type = (signal.get("signal_type") or "").lower()
+        has_catalyst = (
+            any(cs in source for cs in CATALYST_SOURCES) or
+            any(kw in sig_type for kw in ("whale", "cex_listing", "listing"))
+        )
+        if not has_catalyst:
+            timings["stage_1_safety"] = elapsed_ms(stage_start)
+            return False, "BLOCK_STRATEGY_MISMATCH", {
+                "token": token_symbol,
+                "source": source or "none",
+                "reason": (
+                    f"{token_symbol} is a utility blue-chip. System edge is meme/momentum. "
+                    f"Requires whale or CEX listing catalyst (got: {source or 'none'}). "
+                    f"LINK/ETH/BNB trades consistently rejected by Judge as strategy mismatch."
+                )
+            }
+
     # ========================================================================
     # CONDITIONAL GATES: Call hard_gates module if available
     # ========================================================================
@@ -988,7 +1018,44 @@ def evaluate_signal_fast(
             execution_data=execution_data,
             timings=timings
         )
-    
+
+    # ========================================================================
+    # INJECT RISK PARAMETERS INTO SIGNAL
+    # ========================================================================
+    # The Judge (Al-Muhasbi) requires every decision packet to include explicit
+    # stop-loss, take-profit, time horizon, and R:R. Without these, it consistently
+    # rejects at 86%+ confidence for "undefined risk / missing trade parameters".
+    # Load from strategy config + thresholds.yaml and inject into signal now.
+    try:
+        import yaml as _yaml
+        _tpath = BASE_DIR / "config" / "thresholds.yaml"
+        _thresholds = _yaml.safe_load(_tpath.read_text()) if _tpath.exists() else {}
+    except Exception:
+        _thresholds = {}
+    _strategy_cfg = _thresholds.get("strategies", {}).get(strategy_id, {})
+    _risk_cfg = _thresholds.get("risk", {})
+
+    _sl_pct = float(_risk_cfg.get("stop_loss_default_pct", 0.15))
+    _tp_pct = float(
+        _strategy_cfg.get("take_profit_pct") or _risk_cfg.get("take_profit_default_pct", 0.30)
+    )
+    _max_hours = float(
+        _strategy_cfg.get("max_hold_hours") or _risk_cfg.get("paper_max_hold_hours", 8)
+    )
+    _trailing_stop = float(_strategy_cfg.get("trailing_stop_pct", 0.02))
+    _rr = round(_tp_pct / _sl_pct, 2) if _sl_pct > 0 else 0
+
+    signal["stop_loss_pct"] = _sl_pct
+    signal["take_profit_pct"] = _tp_pct
+    signal["max_hold_hours"] = _max_hours
+    signal["trailing_stop_pct"] = _trailing_stop
+    signal["risk_reward_ratio"] = _rr
+    signal["time_horizon_hours"] = _max_hours
+    signal["risk_plan"] = (
+        f"SL={_sl_pct*100:.0f}% | TP={_tp_pct*100:.0f}% | "
+        f"Hold≤{_max_hours:.0f}h | R:R=1:{_rr:.1f} | TrailingStop={_trailing_stop*100:.0f}%"
+    )
+
     # ========================================================================
     # STAGE 4: POLICY ENGINE
     # ========================================================================
