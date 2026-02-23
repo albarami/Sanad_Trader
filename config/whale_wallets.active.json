@@ -1,0 +1,820 @@
+{
+  "whales": [
+    {
+      "label": "GOOD TRADER 7",
+      "address": "RFSqPtn1JfavGiUD4HJsZyYXvZsycxf31hnYfbyG6iB",
+      "grade": "C",
+      "discovered_at": "2026-02-21T02:26:38.621439+00:00",
+      "promoted_at": "2026-02-21T02:26:38.621439+00:00",
+      "provenance": {
+        "source": "tracker_seed"
+      },
+      "initial_performance": null
+    },
+    {
+      "label": "JAMAL",
+      "address": "JDd3hy3gQn2V982mi1zqhNqUw1GfV2UL6g76STojCJPN",
+      "grade": "C",
+      "discovered_at": "2026-02-21T02:26:38.621439+00:00",
+      "promoted_at": "2026-02-21T02:26:38.621439+00:00",
+      "provenance": {
+        "source": "tracker_seed"
+      },
+      "initial_performance": null
+    },
+    {
+      "label": "CUPSEY2",
+      "address": "suqh5sHtr8HyJ7q8scBimULPkPpA557prMG47xCHQfK",
+      "grade": "C",
+      "discovered_at": "2026-02-21T02:26:38.621439+00:00",
+      "promoted_at": "2026-02-21T02:26:38.621439+00:00",
+      "provenance": {
+        "source": "tracker_seed"
+      },
+      "initial_performance": null
+    },
+    {
+      "label": "SPUNOSOUNDS",
+      "address": "GfXQesPe3Zuwg8JhAt6Cg8euJDTVx751enp9EQQmhzPH",
+      "grade": "C",
+      "discovered_at": "2026-02-21T02:26:38.621439+00:00",
+      "promoted_at": "2026-02-21T02:26:38.621439+00:00",
+      "provenance": {
+        "source": "tracker_seed"
+      },
+      "initial_performance": null
+    },
+    {
+      "label": "COOKER",
+      "address": "8deJ9xeUvXSJwicYptA9mHsU2rN2pDx37KWzkDkEXhU6",
+      "grade": "C",
+      "discovered_at": "2026-02-21T02:26:38.621439+00:00",
+      "promoted_at": "2026-02-21T02:26:38.621439+00:00",
+      "provenance": {
+        "source": "tracker_seed"
+      },
+      "initial_performance": null
+    },
+    {
+      "label": "WADDLES",
+      "address": "73LnJ7G9ffBDjEBGgJDdgvLUhD5APLonKrNiHsKDCw5B",
+      "grade": "C",
+      "discovered_at": "2026-02-21T02:26:38.621439+00:00",
+      "promoted_at": "2026-02-21T02:26:38.621439+00:00",
+      "provenance": {
+        "source": "tracker_seed"
+      },
+      "initial_performance": null
+    },
+    {
+      "label": "ZOOKES",
+      "address": "5TMR5GFPTzkNhprnty2ocXEFLoLur1uchg4NkEr5WEf4",
+      "grade": "C",
+      "discovered_at": "2026-02-21T02:26:38.621439+00:00",
+      "promoted_at": "2026-02-21T02:26:38.621439+00:00",
+      "provenance": {
+        "source": "tracker_seed"
+      },
+      "initial_performance": null
+    },
+    {
+      "label": "PATTYICE",
+      "address": "6nhskL8RVpXzWXC7mcC1UXpe3ze2p6P6og1jXVGUW88s",
+      "grade": "C",
+      "discovered_at": "2026-02-21T02:26:38.621439+00:00",
+      "promoted_at": "2026-02-21T02:26:38.621439+00:00",
+      "provenance": {
+        "source": "tracker_seed"
+      },
+      "initial_performance": null
+    },
+    {
+      "label": "GAKE",
+      "address": "DNfuF1L62WWyW3pNakVkyGGFzVVhj4Yr52jSmdTyeBHm",
+      "grade": "C",
+      "discovered_at": "2026-02-21T02:26:38.621439+00:00",
+      "promoted_at": "2026-02-21T02:26:38.621439+00:00",
+      "provenance": {
+        "source": "tracker_seed"
+      },
+      "initial_performance": null
+    },
+    {
+      "label": "ZEREBRO 100K",
+      "address": "BDC19MFbzDpoF37QCxe4JR6i7UmXNMSiEqrxuQgJoWte",
+      "grade": "C",
+      "discovered_at": "2026-02-21T02:26:38.621439+00:00",
+      "promoted_at": "2026-02-21T02:26:38.621439+00:00",
+      "provenance": {
+        "source": "tracker_seed"
+      },
+      "initial_performance": null
+    },
+    {
+      "label": "EQ",
+      "address": "AbcX4XBm7DJ3i9p29i6sU8WLmiW4FWY5tiwB9D6UBbcE",
+      "grade": "C",
+      "discovered_at": "2026-02-21T02:26:38.621439+00:00",
+      "promoted_at": "2026-02-21T02:26:38.621439+00:00",
+      "provenance": {
+        "source": "tracker_seed"
+      },
+      "initial_performance": null
+    },
+    {
+      "label": "GOODTRADER 1",
+      "address": "4hSXPtxZgXFpo6Vxq9yqxNjcBoqWN3VoaPJWonUtupzD",
+      "grade": "C",
+      "discovered_at": "2026-02-21T02:26:38.621439+00:00",
+      "promoted_at": "2026-02-21T02:26:38.621439+00:00",
+      "provenance": {
+        "source": "tracker_seed"
+      },
+      "initial_performance": null
+    },
+    {
+      "label": "BLOSSOM",
+      "address": "62FZUSWPMX9pofoV1uWHMdzFJRjwMa1LHgh2zhdEB7Zj",
+      "grade": "C",
+      "discovered_at": "2026-02-21T02:26:38.621439+00:00",
+      "promoted_at": "2026-02-21T02:26:38.621439+00:00",
+      "provenance": {
+        "source": "tracker_seed"
+      },
+      "initial_performance": null
+    },
+    {
+      "label": "WHALE_14",
+      "address": "DfMxre4cKmvogbLrPigxmibVTTQDuzjdXojWzjCXXhzj",
+      "grade": "C",
+      "discovered_at": "2026-02-21T02:26:38.621439+00:00",
+      "promoted_at": "2026-02-21T02:26:38.621439+00:00",
+      "provenance": {
+        "source": "tracker_seed"
+      },
+      "initial_performance": null
+    },
+    {
+      "label": "WHALE_15",
+      "address": "CRVidEDtEUTYZisCxBZkpELzhQc9eauMLR3FWg74tReL",
+      "grade": "C",
+      "discovered_at": "2026-02-21T02:26:38.621439+00:00",
+      "promoted_at": "2026-02-21T02:26:38.621439+00:00",
+      "provenance": {
+        "source": "tracker_seed"
+      },
+      "initial_performance": null
+    },
+    {
+      "label": "WHALE_16",
+      "address": "EcJWNtETrzdbj8s2dXpaE4Tu4r7fxALD6TNw9H8S6ksz",
+      "grade": "C",
+      "discovered_at": "2026-02-21T02:26:38.621439+00:00",
+      "promoted_at": "2026-02-21T02:26:38.621439+00:00",
+      "provenance": {
+        "source": "tracker_seed"
+      },
+      "initial_performance": null
+    },
+    {
+      "label": "WHALE_17",
+      "address": "EGLsVxDdDUFQBPtHxNwq5rBSUczWVniVzvNkkK6szAu7",
+      "grade": "C",
+      "discovered_at": "2026-02-21T02:26:38.621439+00:00",
+      "promoted_at": "2026-02-21T02:26:38.621439+00:00",
+      "provenance": {
+        "source": "tracker_seed"
+      },
+      "initial_performance": null
+    },
+    {
+      "label": "WHALE_18",
+      "address": "2HWT2KLLdN2wxYTqdSuko5SBzg2SEJASgV4GE2tD7TML",
+      "grade": "C",
+      "discovered_at": "2026-02-21T02:26:38.621439+00:00",
+      "promoted_at": "2026-02-21T02:26:38.621439+00:00",
+      "provenance": {
+        "source": "tracker_seed"
+      },
+      "initial_performance": null
+    },
+    {
+      "label": "WHALE_19",
+      "address": "FdGbqLGGPrpBkNYfGXuAZVzM3py4qA76pMwp77GJxiwx",
+      "grade": "C",
+      "discovered_at": "2026-02-21T02:26:38.621439+00:00",
+      "promoted_at": "2026-02-21T02:26:38.621439+00:00",
+      "provenance": {
+        "source": "tracker_seed"
+      },
+      "initial_performance": null
+    },
+    {
+      "label": "WHALE_20",
+      "address": "7tH1V6GiDsTS5c3BdJaVAu71iyZAvPbUwFbdMmY9tkGr",
+      "grade": "C",
+      "discovered_at": "2026-02-21T02:26:38.621439+00:00",
+      "promoted_at": "2026-02-21T02:26:38.621439+00:00",
+      "provenance": {
+        "source": "tracker_seed"
+      },
+      "initial_performance": null
+    },
+    {
+      "label": "WHALE_21",
+      "address": "4dUCqJNuZJkVtCgqgZYPnQSscBxHqm8EpvX5oGQbGrw2",
+      "grade": "C",
+      "discovered_at": "2026-02-21T02:26:38.621439+00:00",
+      "promoted_at": "2026-02-21T02:26:38.621439+00:00",
+      "provenance": {
+        "source": "tracker_seed"
+      },
+      "initial_performance": null
+    },
+    {
+      "label": "WHALE_22",
+      "address": "E9nLJ8T9YEH8Xim1mQxN51XxUcSoSA1b4fNxCysEL62F",
+      "grade": "C",
+      "discovered_at": "2026-02-21T02:26:38.621439+00:00",
+      "promoted_at": "2026-02-21T02:26:38.621439+00:00",
+      "provenance": {
+        "source": "tracker_seed"
+      },
+      "initial_performance": null
+    },
+    {
+      "label": "WHALE_23",
+      "address": "H8kJvCZpjLWnYMYoLhJTq5vXDvV6HqzS82XVEZGnWhTN",
+      "grade": "C",
+      "discovered_at": "2026-02-21T02:26:38.621439+00:00",
+      "promoted_at": "2026-02-21T02:26:38.621439+00:00",
+      "provenance": {
+        "source": "tracker_seed"
+      },
+      "initial_performance": null
+    },
+    {
+      "label": "WHALE_24",
+      "address": "FszZ1BzCCJM9rzCxC6KGZXSBLmkJJJxTvFzE9gLaYAQm",
+      "grade": "C",
+      "discovered_at": "2026-02-21T02:26:38.621439+00:00",
+      "promoted_at": "2026-02-21T02:26:38.621439+00:00",
+      "provenance": {
+        "source": "tracker_seed"
+      },
+      "initial_performance": null
+    },
+    {
+      "label": "WHALE_25",
+      "address": "6JdChvPY7MXuAE7A6RcS68fJNTLPM8dxL6jdeSdC9Uzs",
+      "grade": "C",
+      "discovered_at": "2026-02-21T02:26:38.621439+00:00",
+      "promoted_at": "2026-02-21T02:26:38.621439+00:00",
+      "provenance": {
+        "source": "tracker_seed"
+      },
+      "initial_performance": null
+    },
+    {
+      "label": "WHALE_26",
+      "address": "A8mCnSDGzoWqkDQQUkKQju9HcmTDcikXS4Jt8NaUi9VV",
+      "grade": "C",
+      "discovered_at": "2026-02-21T02:26:38.621439+00:00",
+      "promoted_at": "2026-02-21T02:26:38.621439+00:00",
+      "provenance": {
+        "source": "tracker_seed"
+      },
+      "initial_performance": null
+    },
+    {
+      "label": "WHALE_27",
+      "address": "DhdkmQjrwBPk56MERMa8vZ6zxhTXrz9J93KXXEz97hfK",
+      "grade": "C",
+      "discovered_at": "2026-02-21T02:26:38.621439+00:00",
+      "promoted_at": "2026-02-21T02:26:38.621439+00:00",
+      "provenance": {
+        "source": "tracker_seed"
+      },
+      "initial_performance": null
+    },
+    {
+      "label": "WHALE_28",
+      "address": "Ec9uPQSwXhoXdN5KDaUGRQziiQWZPDXtcNm8J7uFiLJW",
+      "grade": "C",
+      "discovered_at": "2026-02-21T02:26:38.621439+00:00",
+      "promoted_at": "2026-02-21T02:26:38.621439+00:00",
+      "provenance": {
+        "source": "tracker_seed"
+      },
+      "initial_performance": null
+    },
+    {
+      "label": "WHALE_29",
+      "address": "BcrRKh1fVwKQzCiGHGURhqvYjokZmx8hULQzpwZfkvP3",
+      "grade": "C",
+      "discovered_at": "2026-02-21T02:26:38.621439+00:00",
+      "promoted_at": "2026-02-21T02:26:38.621439+00:00",
+      "provenance": {
+        "source": "tracker_seed"
+      },
+      "initial_performance": null
+    },
+    {
+      "label": "WHALE_30",
+      "address": "5pKHfK6j1jnFDtp52CrRuXKfxmK8EtKzMfHQXS8bUv7e",
+      "grade": "C",
+      "discovered_at": "2026-02-21T02:26:38.621439+00:00",
+      "promoted_at": "2026-02-21T02:26:38.621439+00:00",
+      "provenance": {
+        "source": "tracker_seed"
+      },
+      "initial_performance": null
+    },
+    {
+      "label": "WHALE_31",
+      "address": "3RCvGzXgDFuYUMJ4USYfLiK2GQj4KPt5WQaS5Zoai6NW",
+      "grade": "C",
+      "discovered_at": "2026-02-21T02:26:38.621439+00:00",
+      "promoted_at": "2026-02-21T02:26:38.621439+00:00",
+      "provenance": {
+        "source": "tracker_seed"
+      },
+      "initial_performance": null
+    },
+    {
+      "label": "WHALE_32",
+      "address": "9L3JCvJPdPMPRJESSuBCXRmZQmE7fFZm6JGRWRfHHWGw",
+      "grade": "C",
+      "discovered_at": "2026-02-21T02:26:38.621439+00:00",
+      "promoted_at": "2026-02-21T02:26:38.621439+00:00",
+      "provenance": {
+        "source": "tracker_seed"
+      },
+      "initial_performance": null
+    },
+    {
+      "label": "WHALE_33",
+      "address": "Gu7Xzs5X6PUQh9vzz1vup8iM2ayMXPrLwBXJaEq1TLcF",
+      "grade": "C",
+      "discovered_at": "2026-02-21T02:26:38.621439+00:00",
+      "promoted_at": "2026-02-21T02:26:38.621439+00:00",
+      "provenance": {
+        "source": "tracker_seed"
+      },
+      "initial_performance": null
+    },
+    {
+      "label": "WHALE_34",
+      "address": "7cUeTKcKguzKEXrJJgNoDvuRH4fB8KzKCEPZYnTnmZVk",
+      "grade": "C",
+      "discovered_at": "2026-02-21T02:26:38.621439+00:00",
+      "promoted_at": "2026-02-21T02:26:38.621439+00:00",
+      "provenance": {
+        "source": "tracker_seed"
+      },
+      "initial_performance": null
+    },
+    {
+      "label": "WHALE_35",
+      "address": "FJM6NG4dCt5FYZ1pG6Cd5QiwGbA9eQr5RMdcwFbBtLM1",
+      "grade": "C",
+      "discovered_at": "2026-02-21T02:26:38.621439+00:00",
+      "promoted_at": "2026-02-21T02:26:38.621439+00:00",
+      "provenance": {
+        "source": "tracker_seed"
+      },
+      "initial_performance": null
+    },
+    {
+      "label": "WHALE_36",
+      "address": "GWcNHbEyW2vr4dX8MQPX9Fy2pKPgYf9rjcEVfJE97Vd5",
+      "grade": "C",
+      "discovered_at": "2026-02-21T02:26:38.621439+00:00",
+      "promoted_at": "2026-02-21T02:26:38.621439+00:00",
+      "provenance": {
+        "source": "tracker_seed"
+      },
+      "initial_performance": null
+    },
+    {
+      "label": "WHALE_37",
+      "address": "7YmWiukJLHXVGJNbU5qvwLhubuLhBxBn9aCJUoQVGm1t",
+      "grade": "C",
+      "discovered_at": "2026-02-21T02:26:38.621439+00:00",
+      "promoted_at": "2026-02-21T02:26:38.621439+00:00",
+      "provenance": {
+        "source": "tracker_seed"
+      },
+      "initial_performance": null
+    },
+    {
+      "label": "WHALE_38",
+      "address": "G6uBEMQXTiNE7v5dQiwBWrPuUHAEg2PKiNxvYfNsMGbR",
+      "grade": "C",
+      "discovered_at": "2026-02-21T02:26:38.621439+00:00",
+      "promoted_at": "2026-02-21T02:26:38.621439+00:00",
+      "provenance": {
+        "source": "tracker_seed"
+      },
+      "initial_performance": null
+    },
+    {
+      "label": "WHALE_39",
+      "address": "8j9PyAKBbdwMXF7kWKPLfyFmRpzuJKYKWQV6uXevJNbp",
+      "grade": "C",
+      "discovered_at": "2026-02-21T02:26:38.621439+00:00",
+      "promoted_at": "2026-02-21T02:26:38.621439+00:00",
+      "provenance": {
+        "source": "tracker_seed"
+      },
+      "initial_performance": null
+    },
+    {
+      "label": "WHALE_40",
+      "address": "HXdZNa9T2gun8fVHDzahxKo1JNTkwK3KW4qkFLvq9Ls3",
+      "grade": "C",
+      "discovered_at": "2026-02-21T02:26:38.621439+00:00",
+      "promoted_at": "2026-02-21T02:26:38.621439+00:00",
+      "provenance": {
+        "source": "tracker_seed"
+      },
+      "initial_performance": null
+    },
+    {
+      "label": "WHALE_41",
+      "address": "BdnrwxpWKFEGqVKTWhSWcPUeRPZzmyXgWqzbd7pxY7gf",
+      "grade": "C",
+      "discovered_at": "2026-02-21T02:26:38.621439+00:00",
+      "promoted_at": "2026-02-21T02:26:38.621439+00:00",
+      "provenance": {
+        "source": "tracker_seed"
+      },
+      "initial_performance": null
+    },
+    {
+      "label": "WHALE_42",
+      "address": "4qX4c9UJLcAG6YQynjvK9XMwK1SRxi9C8F5JNmG1VK4w",
+      "grade": "C",
+      "discovered_at": "2026-02-21T02:26:38.621439+00:00",
+      "promoted_at": "2026-02-21T02:26:38.621439+00:00",
+      "provenance": {
+        "source": "tracker_seed"
+      },
+      "initial_performance": null
+    },
+    {
+      "label": "WHALE_43",
+      "address": "AwKiJCZWvxhZLAk6PNXjArcCCuwRqy8SJNyYG8W2vXzQ",
+      "grade": "C",
+      "discovered_at": "2026-02-21T02:26:38.621439+00:00",
+      "promoted_at": "2026-02-21T02:26:38.621439+00:00",
+      "provenance": {
+        "source": "tracker_seed"
+      },
+      "initial_performance": null
+    },
+    {
+      "label": "WHALE_44",
+      "address": "8Fy9Yx7RPPYpKQcWFNz9P5GSFf4fk3NK2STuVkMXR6D3",
+      "grade": "C",
+      "discovered_at": "2026-02-21T02:26:38.621439+00:00",
+      "promoted_at": "2026-02-21T02:26:38.621439+00:00",
+      "provenance": {
+        "source": "tracker_seed"
+      },
+      "initial_performance": null
+    },
+    {
+      "label": "WHALE_45",
+      "address": "5hFCLNqUMnJXQKUH9TxBgpTfyUzBEqMrRF16e9SHsGbk",
+      "grade": "C",
+      "discovered_at": "2026-02-21T02:26:38.621439+00:00",
+      "promoted_at": "2026-02-21T02:26:38.621439+00:00",
+      "provenance": {
+        "source": "tracker_seed"
+      },
+      "initial_performance": null
+    },
+    {
+      "label": "WHALE_46",
+      "address": "DA8N3VRRGBYiHbvgSRK8tFyJfhEJn57GqzZ3CuTPWJC3",
+      "grade": "C",
+      "discovered_at": "2026-02-21T02:26:38.621439+00:00",
+      "promoted_at": "2026-02-21T02:26:38.621439+00:00",
+      "provenance": {
+        "source": "tracker_seed"
+      },
+      "initial_performance": null
+    },
+    {
+      "label": "WHALE_47",
+      "address": "DV7NZK1Z5YdcvXQvqzP4E2NYngPpXkxLTnxtUfnmygUR",
+      "grade": "C",
+      "discovered_at": "2026-02-21T02:26:38.621439+00:00",
+      "promoted_at": "2026-02-21T02:26:38.621439+00:00",
+      "provenance": {
+        "source": "tracker_seed"
+      },
+      "initial_performance": null
+    },
+    {
+      "label": "WHALE_48",
+      "address": "H1qPZKKjLpMdT8nDhwjq6zWs874kLpz68YiRHQQu4cVA",
+      "grade": "C",
+      "discovered_at": "2026-02-21T02:26:38.621439+00:00",
+      "promoted_at": "2026-02-21T02:26:38.621439+00:00",
+      "provenance": {
+        "source": "tracker_seed"
+      },
+      "initial_performance": null
+    },
+    {
+      "label": "WHALE_49",
+      "address": "BwR3J3u5q2SLdsoK5X2dTnbTKW8UGcQTAHgY1gU2r5Sf",
+      "grade": "C",
+      "discovered_at": "2026-02-21T02:26:38.621439+00:00",
+      "promoted_at": "2026-02-21T02:26:38.621439+00:00",
+      "provenance": {
+        "source": "tracker_seed"
+      },
+      "initial_performance": null
+    },
+    {
+      "label": "WHALE_50",
+      "address": "3mdkCATqQPDjiqXosQeTfjMAJ2MhQVuPMK9ycsaHLAYr",
+      "grade": "C",
+      "discovered_at": "2026-02-21T02:26:38.621439+00:00",
+      "promoted_at": "2026-02-21T02:26:38.621439+00:00",
+      "provenance": {
+        "source": "tracker_seed"
+      },
+      "initial_performance": null
+    },
+    {
+      "label": "WHALE_51",
+      "address": "Gwb6V4A3XBSbZ5PYQFzLGnwLYBXrcs4qDCb7vwZ7bxg2",
+      "grade": "C",
+      "discovered_at": "2026-02-21T02:26:38.621439+00:00",
+      "promoted_at": "2026-02-21T02:26:38.621439+00:00",
+      "provenance": {
+        "source": "tracker_seed"
+      },
+      "initial_performance": null
+    },
+    {
+      "label": "WHALE_52",
+      "address": "2PiNrnd4D4RCXUPXQTTxM3yvwPFo6TwYBv47KTWsXJ3Z",
+      "grade": "C",
+      "discovered_at": "2026-02-21T02:26:38.621439+00:00",
+      "promoted_at": "2026-02-21T02:26:38.621439+00:00",
+      "provenance": {
+        "source": "tracker_seed"
+      },
+      "initial_performance": null
+    },
+    {
+      "label": "WHALE_53",
+      "address": "FLLF9CzNKNzRndQifjELGHLmHLhVLTQKvjrytYCe22pM",
+      "grade": "C",
+      "discovered_at": "2026-02-21T02:26:38.621439+00:00",
+      "promoted_at": "2026-02-21T02:26:38.621439+00:00",
+      "provenance": {
+        "source": "tracker_seed"
+      },
+      "initial_performance": null
+    },
+    {
+      "label": "WHALE_54",
+      "address": "ERPZfRmrGszrLY1D5jgAYo6cUKk4pkJxH6wfvUvfJBa8",
+      "grade": "C",
+      "discovered_at": "2026-02-21T02:26:38.621439+00:00",
+      "promoted_at": "2026-02-21T02:26:38.621439+00:00",
+      "provenance": {
+        "source": "tracker_seed"
+      },
+      "initial_performance": null
+    },
+    {
+      "label": "WHALE_55",
+      "address": "6M71znvhDSni7MWbnYCKrEPgGzQbU5BUDHPzUWj8poQR",
+      "grade": "C",
+      "discovered_at": "2026-02-21T02:26:38.621439+00:00",
+      "promoted_at": "2026-02-21T02:26:38.621439+00:00",
+      "provenance": {
+        "source": "tracker_seed"
+      },
+      "initial_performance": null
+    },
+    {
+      "label": "WHALE_56",
+      "address": "7h5iRZhMxADvsKmcH3QNQXALUcHUAoAKZvnzeLBs81qd",
+      "grade": "C",
+      "discovered_at": "2026-02-21T02:26:38.621439+00:00",
+      "promoted_at": "2026-02-21T02:26:38.621439+00:00",
+      "provenance": {
+        "source": "tracker_seed"
+      },
+      "initial_performance": null
+    },
+    {
+      "label": "WHALE_57",
+      "address": "GJSQvFb6At8MK8qdVinJXzdyZ9wdQyJvGpxCCHyGbgwx",
+      "grade": "C",
+      "discovered_at": "2026-02-21T02:26:38.621439+00:00",
+      "promoted_at": "2026-02-21T02:26:38.621439+00:00",
+      "provenance": {
+        "source": "tracker_seed"
+      },
+      "initial_performance": null
+    },
+    {
+      "label": "WHALE_58",
+      "address": "7JKd2eRTmihSLThQsD2wuCxMhpK6WcvQPBXA8vCs6DNW",
+      "grade": "C",
+      "discovered_at": "2026-02-21T02:26:38.621439+00:00",
+      "promoted_at": "2026-02-21T02:26:38.621439+00:00",
+      "provenance": {
+        "source": "tracker_seed"
+      },
+      "initial_performance": null
+    },
+    {
+      "label": "WHALE_59",
+      "address": "H8jt9bGSFXG7JzCDUThfG1ZfSjXQH9Z5PJH2zSvZKzfE",
+      "grade": "C",
+      "discovered_at": "2026-02-21T02:26:38.621439+00:00",
+      "promoted_at": "2026-02-21T02:26:38.621439+00:00",
+      "provenance": {
+        "source": "tracker_seed"
+      },
+      "initial_performance": null
+    },
+    {
+      "label": "WHALE_60",
+      "address": "AyLr6zkqmkz9o1FZo3A3j1k8HrXuC8QGi58LFnA8aLJd",
+      "grade": "C",
+      "discovered_at": "2026-02-21T02:26:38.621439+00:00",
+      "promoted_at": "2026-02-21T02:26:38.621439+00:00",
+      "provenance": {
+        "source": "tracker_seed"
+      },
+      "initial_performance": null
+    },
+    {
+      "label": "WHALE_61",
+      "address": "CpXfrBiBXp5r9vJJwLNHs3D4zbfDjcLDcQL22EWkW6jM",
+      "grade": "C",
+      "discovered_at": "2026-02-21T02:26:38.621439+00:00",
+      "promoted_at": "2026-02-21T02:26:38.621439+00:00",
+      "provenance": {
+        "source": "tracker_seed"
+      },
+      "initial_performance": null
+    },
+    {
+      "label": "WHALE_62",
+      "address": "DxWWGXcxBfCatP3AHMefQB8nQeUKznukcm9wSCGD49nG",
+      "grade": "C",
+      "discovered_at": "2026-02-21T02:26:38.621439+00:00",
+      "promoted_at": "2026-02-21T02:26:38.621439+00:00",
+      "provenance": {
+        "source": "tracker_seed"
+      },
+      "initial_performance": null
+    },
+    {
+      "label": "WHALE_63",
+      "address": "7PH5hzuMhL3fJgVgvjUbCb964FmJfYQU2Y3qFTuuVN4S",
+      "grade": "C",
+      "discovered_at": "2026-02-21T02:26:38.621439+00:00",
+      "promoted_at": "2026-02-21T02:26:38.621439+00:00",
+      "provenance": {
+        "source": "tracker_seed"
+      },
+      "initial_performance": null
+    },
+    {
+      "label": "WHALE_64",
+      "address": "DKuSaZ18CPGCGz2ZRUVEe8AJz5VZN4aKLWy4CxnCbLSS",
+      "grade": "C",
+      "discovered_at": "2026-02-21T02:26:38.621439+00:00",
+      "promoted_at": "2026-02-21T02:26:38.621439+00:00",
+      "provenance": {
+        "source": "tracker_seed"
+      },
+      "initial_performance": null
+    },
+    {
+      "label": "WHALE_65",
+      "address": "DRQrCwBHvWp8zvw8PxgJYGvqLfvvSzWJqv7DG3k7N5JY",
+      "grade": "C",
+      "discovered_at": "2026-02-21T02:26:38.621439+00:00",
+      "promoted_at": "2026-02-21T02:26:38.621439+00:00",
+      "provenance": {
+        "source": "tracker_seed"
+      },
+      "initial_performance": null
+    },
+    {
+      "label": "WHALE_66",
+      "address": "6cYfxdvXbKqAZNzxsHfvh5PYMXezRLAdEXeieepXhT73",
+      "grade": "C",
+      "discovered_at": "2026-02-21T02:26:38.621439+00:00",
+      "promoted_at": "2026-02-21T02:26:38.621439+00:00",
+      "provenance": {
+        "source": "tracker_seed"
+      },
+      "initial_performance": null
+    },
+    {
+      "label": "WHALE_67",
+      "address": "Bf9YTsNmDtpBFXkX2JbL6qSLUGXT68wNc5F5mwEAu1Fw",
+      "grade": "C",
+      "discovered_at": "2026-02-21T02:26:38.621439+00:00",
+      "promoted_at": "2026-02-21T02:26:38.621439+00:00",
+      "provenance": {
+        "source": "tracker_seed"
+      },
+      "initial_performance": null
+    },
+    {
+      "label": "WHALE_68",
+      "address": "BJD9gqngmQY1Vt3YeK5LEfUjL1gQbkQhZpCuBspHcbAS",
+      "grade": "C",
+      "discovered_at": "2026-02-21T02:26:38.621439+00:00",
+      "promoted_at": "2026-02-21T02:26:38.621439+00:00",
+      "provenance": {
+        "source": "tracker_seed"
+      },
+      "initial_performance": null
+    },
+    {
+      "label": "WHALE_69",
+      "address": "9cjxgJKd8BhJRFvuycQE9GyPhuFm7EeEQ8tVgaxkFrTh",
+      "grade": "C",
+      "discovered_at": "2026-02-21T02:26:38.621439+00:00",
+      "promoted_at": "2026-02-21T02:26:38.621439+00:00",
+      "provenance": {
+        "source": "tracker_seed"
+      },
+      "initial_performance": null
+    },
+    {
+      "label": "WHALE_70",
+      "address": "EeFZnSVBDZeX3qCLZktRDDX37FvjZfmzAyLRyYQfXMqo",
+      "grade": "C",
+      "discovered_at": "2026-02-21T02:26:38.621439+00:00",
+      "promoted_at": "2026-02-21T02:26:38.621439+00:00",
+      "provenance": {
+        "source": "tracker_seed"
+      },
+      "initial_performance": null
+    },
+    {
+      "label": "WHALE_71",
+      "address": "5T1VSQ1WMFuMrzhNGGbHiQY4Q7tHzFTNsXbvskFqEAhv",
+      "grade": "C",
+      "discovered_at": "2026-02-21T02:26:38.621439+00:00",
+      "promoted_at": "2026-02-21T02:26:38.621439+00:00",
+      "provenance": {
+        "source": "tracker_seed"
+      },
+      "initial_performance": null
+    },
+    {
+      "label": "WHALE_72",
+      "address": "9pnZLQBGGkP4Q6YCQwcdKfGVzpJpVUYNLY6q9RVL3RZR",
+      "grade": "C",
+      "discovered_at": "2026-02-21T02:26:38.621439+00:00",
+      "promoted_at": "2026-02-21T02:26:38.621439+00:00",
+      "provenance": {
+        "source": "tracker_seed"
+      },
+      "initial_performance": null
+    },
+    {
+      "label": "WHALE_73",
+      "address": "AoiLGjmLMVHMvqXPQk3KFTh2FsHmgbQXs5fjjNhxSxbg",
+      "grade": "C",
+      "discovered_at": "2026-02-21T02:26:38.621439+00:00",
+      "promoted_at": "2026-02-21T02:26:38.621439+00:00",
+      "provenance": {
+        "source": "tracker_seed"
+      },
+      "initial_performance": null
+    },
+    {
+      "label": "WHALE_74",
+      "address": "FnK3QmzFb1GYfkWRAEMJhowKeeyZpdB5yaDUUfgmyxRK",
+      "grade": "C",
+      "discovered_at": "2026-02-21T02:26:38.621439+00:00",
+      "promoted_at": "2026-02-21T02:26:38.621439+00:00",
+      "provenance": {
+        "source": "tracker_seed"
+      },
+      "initial_performance": null
+    }
+  ],
+  "migrated_from": "/data/.openclaw/workspace/trading/config/whale_wallets.json",
+  "migrated_at": "2026-02-23T01:10:18.422817+00:00Z"
+}

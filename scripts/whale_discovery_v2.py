@@ -37,10 +37,15 @@ STATE_DIR = BASE_DIR / "state"
 CONFIG_DIR = BASE_DIR / "config"
 LOGS_DIR = BASE_DIR / "logs"
 
-WHALE_WALLETS = CONFIG_DIR / "whale_wallets.json"
+# NOTE: whale_tracker.py uses config/whale_wallets.json (schema: {"wallets": [...]})
+# Whale Discovery v2 maintains its OWN active list to avoid clobbering the tracker config.
+WHALE_WALLETS = CONFIG_DIR / "whale_wallets.active.json"
 SEED_WALLETS = CONFIG_DIR / "whale_wallets.seed.json"
 CANDIDATE_WALLETS = STATE_DIR / "candidate_whales.json"
 RETIRED_WALLETS = STATE_DIR / "retired_whales.json"
+
+# Legacy tracker config (schema: {"wallets": [...]})
+TRACKER_WALLETS_CONFIG = CONFIG_DIR / "whale_wallets.json"
 CLOSED_TRADES = STATE_DIR / "closed_trades.json"
 
 # Discovery config
@@ -72,7 +77,7 @@ def load_json(path: Path, default=None):
             return json.loads(path.read_text())
         except Exception as e:
             _log(f"ERROR loading {path.name}: {e}")
-    return default or {}
+    return default if default is not None else {}
 
 
 def save_json(path: Path, data):
@@ -330,16 +335,54 @@ def promote_candidate(wallet_addr: str, performance: dict):
 # ---------------------------------------------------------------------------
 # Main discovery loop
 # ---------------------------------------------------------------------------
+def _migrate_tracker_wallets_to_active_if_needed():
+    """Initialize whale_wallets.active.json from whale_tracker config if active file missing/empty."""
+    whales = load_json(WHALE_WALLETS, {"whales": []})
+    if whales.get("whales"):
+        return  # already initialized
+
+    tracker = load_json(TRACKER_WALLETS_CONFIG, {"wallets": []})
+    wallets = tracker.get("wallets") or []
+    if not wallets:
+        return
+
+    # Convert tracker wallets → discovery "whales" schema
+    converted = []
+    for w in wallets:
+        addr = w.get("address") if isinstance(w, dict) else None
+        if not addr:
+            continue
+        converted.append({
+            "label": w.get("name") or w.get("label") or f"TRACKED_{addr[:8]}",
+            "address": addr,
+            "grade": w.get("grade") or "C",
+            "discovered_at": tracker.get("last_updated") or datetime.now(timezone.utc).isoformat() + "Z",
+            "promoted_at": tracker.get("last_updated") or datetime.now(timezone.utc).isoformat() + "Z",
+            "provenance": {"source": "tracker_seed"},
+            "initial_performance": None,
+        })
+
+    save_json(WHALE_WALLETS, {"whales": converted, "migrated_from": str(TRACKER_WALLETS_CONFIG), "migrated_at": datetime.now(timezone.utc).isoformat() + "Z"})
+    _log(f"MIGRATED: initialized active whales from tracker config ({len(converted)} wallets)")
+
+
 def run_discovery():
     _log("=== WHALE DISCOVERY V2 START ===")
-    
+
+    # Ensure schemas are initialized
+    _migrate_tracker_wallets_to_active_if_needed()
+
     # Load current state
     whales = load_json(WHALE_WALLETS, {"whales": []})
     candidates = load_json(CANDIDATE_WALLETS, {"candidates": []})
-    
+
+    # candidate_whales.json might be legacy {} → normalize
+    if not isinstance(candidates, dict) or "candidates" not in candidates:
+        candidates = {"candidates": []}
+
     active_count = len(whales.get("whales", []))
     candidate_count = len(candidates.get("candidates", []))
-    
+
     _log(f"Current state: {active_count} active whales, {candidate_count} candidates")
     
     # 1. Check candidate performance and promote if qualified

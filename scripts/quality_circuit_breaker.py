@@ -197,84 +197,127 @@ def activate_safe_mode(stats: dict):
     now = datetime.now(timezone.utc)
     expiry = now + timedelta(hours=COOLDOWN_HOURS)
     activated_at = now.isoformat()
-    
+
     flag_data = {
-        "mode": "ACTIVE",  # Initial state
+        "mode": "ACTIVE",
         "activated_at": activated_at,
         "expires_at": expiry.isoformat(),
         "reason": "quality_degradation",
         "stats": stats,
-        "sync_cold_path_required": SYNC_COLD_PATH_COUNT
+        # Canonical recovery fields
+        "recovery_required": SYNC_COLD_PATH_COUNT,
+        "recovery_remaining": SYNC_COLD_PATH_COUNT,
+        # Legacy compat (other code may read this)
+        "sync_cold_path_required": SYNC_COLD_PATH_COUNT,
     }
-    
+
     SAFE_MODE_FLAG.write_text(json.dumps(flag_data, indent=2))
-    
+
     # Record activation in persistent history
     record_safe_mode_activation(activated_at)
-    
+
     _log(f"🚨 SAFE MODE ACTIVATED until {expiry.isoformat()}")
     _log(f"Stats: {json.dumps(stats)}")
 
 
-def check_safe_mode_expiry():
+def _parse_iso(ts: str):
+    """Parse ISO timestamp safely (handles trailing 'Z')."""
+    if not ts:
+        return None
+    ts = ts.strip()
+    if ts.endswith("Z"):
+        ts = ts[:-1] + "+00:00"
+    try:
+        return datetime.fromisoformat(ts)
+    except Exception:
+        return None
+
+
+def advance_safe_mode_state():
     """
-    Check if safe mode has expired and transition to RECOVERY mode.
-    
-    State machine:
-    - ACTIVE: block all EXECUTE
-    - RECOVERY: allow trading only after sync_cold_path_required trades pass sync validation
-    - CLEAR: normal trading (flag removed)
+    Two-phase state machine (QCB is the sole owner of safe_mode.flag):
+
+      ACTIVE   → blocks EXECUTE until expires_at; then transitions to RECOVERY
+      RECOVERY → blocks EXECUTE until recovery_remaining reaches 0; then removes flag (CLEAR)
+      CLEAR    → flag removed, normal trading resumes
+
+    Returns: flag_data dict if flag still exists, else None.
     """
     if not SAFE_MODE_FLAG.exists():
-        return
-    
+        return None
+
     try:
         flag_data = json.loads(SAFE_MODE_FLAG.read_text())
-        mode = flag_data.get("mode", "ACTIVE")  # Default to ACTIVE for old flags
-        expires_at = datetime.fromisoformat(flag_data["expires_at"])
-        now = datetime.now(timezone.utc)
-        
-        if mode == "ACTIVE":
-            if now >= expires_at:
-                # Transition to RECOVERY mode if sync_cold_path_required > 0
-                sync_required = flag_data.get("sync_cold_path_required", 0)
-                if sync_required > 0:
-                    flag_data["mode"] = "RECOVERY"
-                    flag_data["recovery_started_at"] = now.isoformat()
-                    flag_data["recovery_remaining"] = sync_required
-                    SAFE_MODE_FLAG.write_text(json.dumps(flag_data, indent=2))
-                    _log(f"⚠️ SAFE MODE → RECOVERY: {sync_required} sync cold path trades required")
-                else:
-                    # No recovery required, clear flag
-                    SAFE_MODE_FLAG.unlink()
-                    _log(f"✅ SAFE MODE EXPIRED at {expires_at.isoformat()}, flag removed (no recovery)")
-            else:
-                remaining = (expires_at - now).total_seconds() / 60
-                _log(f"⏳ SAFE MODE ACTIVE, expires in {remaining:.0f}min")
-        
-        elif mode == "RECOVERY":
-            recovery_remaining = flag_data.get("recovery_remaining", 0)
-            if recovery_remaining <= 0:
-                # Recovery complete, clear flag
-                SAFE_MODE_FLAG.unlink()
-                _log(f"✅ RECOVERY COMPLETE, flag removed")
-            else:
-                _log(f"⚠️ SAFE MODE RECOVERY: {recovery_remaining} sync trades remaining")
-    
     except Exception as e:
-        _log(f"ERROR checking safe mode expiry: {e}")
+        _log(f"ERROR reading safe_mode.flag: {e}")
+        return None
+
+    now = datetime.now(timezone.utc)
+    mode = (flag_data.get("mode") or "ACTIVE").upper()
+
+    # Resolve canonical recovery counters (backward-compat: old flags may lack recovery_*)
+    recovery_required = int(
+        flag_data.get("recovery_required")
+        or flag_data.get("sync_cold_path_required")
+        or SYNC_COLD_PATH_COUNT
+    )
+    recovery_remaining = int(
+        flag_data["recovery_remaining"]
+        if flag_data.get("recovery_remaining") is not None
+        else recovery_required
+    )
+
+    if mode == "ACTIVE":
+        expires_at = _parse_iso(flag_data.get("expires_at"))
+        if expires_at and now < expires_at:
+            remaining_min = (expires_at - now).total_seconds() / 60.0
+            _log(f"⏳ SAFE MODE ACTIVE, expires in {remaining_min:.0f}min")
+            return flag_data  # Still in cooldown, no transition
+
+        # Cooldown complete → transition to RECOVERY (do NOT delete flag)
+        flag_data["mode"] = "RECOVERY"
+        flag_data["recovery_required"] = recovery_required
+        flag_data["recovery_remaining"] = recovery_remaining
+        flag_data["recovery_started_at"] = now.isoformat()
+        flag_data["updated_at"] = now.isoformat()
+        SAFE_MODE_FLAG.write_text(json.dumps(flag_data, indent=2))
+        _log(
+            f"✅ SAFE MODE COOLDOWN COMPLETE → RECOVERY "
+            f"({recovery_remaining}/{recovery_required} required)"
+        )
+        return flag_data
+
+    if mode == "RECOVERY":
+        if recovery_remaining <= 0:
+            try:
+                SAFE_MODE_FLAG.unlink()
+            except Exception as e:
+                _log(f"ERROR removing safe_mode.flag: {e}")
+                return flag_data
+            _log("✅ SAFE MODE RECOVERY COMPLETE, flag removed (CLEAR)")
+            return None
+
+        _log(
+            f"🟡 SAFE MODE RECOVERY: "
+            f"{recovery_remaining}/{recovery_required} sync approvals remaining"
+        )
+        return flag_data
+
+    # Unknown mode: be conservative
+    _log(f"WARNING: unknown safe mode mode={mode!r}. Treating as ACTIVE.")
+    return flag_data
 
 
 def main():
     _log("=" * 60)
     _log("Quality Circuit Breaker START")
     
-    # Check if safe mode should expire
-    check_safe_mode_expiry()
-    
-    # If safe mode already active, skip new check
+    # Advance state machine (ACTIVE → RECOVERY → CLEAR)
+    advance_safe_mode_state()
+
+    # If safe mode is ACTIVE or RECOVERY, do not re-trigger; just manage state
     if SAFE_MODE_FLAG.exists():
-        _log("Safe mode already active, skipping new check")
+        _log("Safe mode ACTIVE/RECOVERY, skipping quality check")
         return
     
     # Check quality degradation

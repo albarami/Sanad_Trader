@@ -65,7 +65,8 @@ def get_state_dir() -> Path:
 # Auto-load on import
 load_env()
 # Re-resolve BASE_DIR after env is loaded (SANAD_HOME may now be set)
-if os.environ.get("SANAD_HOME"):
-    BASE_DIR = Path(os.environ["SANAD_HOME"])
+_sanad_home_env = os.environ.get("SANAD_HOME")
+if _sanad_home_env:
+    BASE_DIR = Path(_sanad_home_env)
     SANAD_HOME = BASE_DIR
     STATE_DIR = BASE_DIR / "state"

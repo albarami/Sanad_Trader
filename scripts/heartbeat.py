@@ -225,24 +225,44 @@ def check_positions(config, portfolio, price_cache):
     take action deterministically.
     """
     alerts = []
-    positions = load_state("positions.json")
+    positions_data = load_state("positions.json")
+
+    # SSOT/state_store returns {"positions": [...]} while JSON fallback is also shaped as {"positions": [...]}.
+    # Backward-compat: accept either a list or the dict wrapper.
+    if isinstance(positions_data, dict):
+        positions = positions_data.get("positions", [])
+    else:
+        positions = positions_data
 
     if not positions or not isinstance(positions, list):
         return {"status": "OK", "detail": "No open positions", "alerts": []}
 
     for pos in positions:
-        if pos.get("status") != "open":
+        # Status can be 'open' (legacy JSON) or 'OPEN' (SQLite/SSOT)
+        if str(pos.get("status", "")).lower() != "open":
             continue
 
-        symbol = pos.get("token", "UNKNOWN")
+        # Normalize symbol fields across legacy JSON + SSOT/SQLite.
+        symbol = (
+            pos.get("token")
+            or pos.get("symbol")
+            or pos.get("token_address")
+            or "UNKNOWN"
+        )
         entry = pos.get("entry_price", 0)
         stop_loss = pos.get("stop_loss", 0)
         take_profit = pos.get("take_profit", 0)
         current = pos.get("current_price", 0)
 
-        # Get latest price from cache if available
-        if symbol in price_cache:
-            current = price_cache[symbol]
+        # Get latest price from cache if available.
+        # price_cache.json (Binance) keys are typically like "BTCUSDT", "SOLUSDT".
+        cache_keys = [symbol]
+        if pos.get("chain") == "binance" and isinstance(symbol, str) and symbol and not symbol.endswith("USDT"):
+            cache_keys.insert(0, f"{symbol}USDT")
+        for k in cache_keys:
+            if k in price_cache:
+                current = price_cache[k]
+                break
 
         if current <= 0 or entry <= 0:
             alerts.append(f"{symbol}: invalid price data (current={current}, entry={entry})")
@@ -722,6 +742,19 @@ def run_heartbeat():
         overall = "WARNING"
     else:
         overall = "OK"
+
+    # Update cron health (this script's own heartbeat) — ensures cron_health.json stays fresh
+    try:
+        cron_state = load_state("cron_health.json") or {}
+        if not isinstance(cron_state, dict):
+            cron_state = {}
+        cron_state["heartbeat"] = {
+            "last_run": now_iso(),
+            "status": "ok" if overall == "OK" else overall.lower(),
+        }
+        save_state("cron_health.json", cron_state)
+    except Exception as e:
+        log(f"WARNING: failed to update cron_health heartbeat entry: {e}")
 
     # Update system status state file
     system_status = {

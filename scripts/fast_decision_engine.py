@@ -290,6 +290,13 @@ def stage_1_hard_safety_gates(signal, timings, start_time):
         timings["stage_1_safety"] = elapsed_ms(stage_start)
         return False, "BLOCK_STABLECOIN_ADDR", {"address": addr}
     
+    # GATE: Pump.fun unverified token (address ends with "pump")
+    # 100% Judge REJECT rate at 99% confidence. No chain-of-custody. No anon pump.fun.
+    # Per IDENTITY.md signal quality rules: "Pump.fun tokens without chain-of-custody → BLOCK"
+    if addr.lower().endswith("pump"):
+        timings["stage_1_safety"] = elapsed_ms(stage_start)
+        return False, "BLOCK_PUMPFUN_UNVERIFIED", {"address": addr}
+
     # GATE: Missing holder data for microcaps (fail-closed)
     # If we don't have holder_count OR top10_pct, assume high risk for non-majors
     holder_count = signal.get("solscan_holder_count") or signal.get("holders") or 0
@@ -619,33 +626,49 @@ def stage_4_policy_engine(decision_packet, portfolio, timings, start_time):
     if safe_mode_flag.exists():
         try:
             flag_data = json.loads(safe_mode_flag.read_text())
-            mode = flag_data.get("mode", "ACTIVE")  # Default to ACTIVE for old flags
-            
+            mode = (flag_data.get("mode") or "ACTIVE").upper()
+            now = datetime.now(timezone.utc)
+
+            # Parse expires_at safely (handles trailing Z)
+            expires_at = None
+            exp = flag_data.get("expires_at")
+            if exp:
+                exp = exp[:-1] + "+00:00" if exp.endswith("Z") else exp
+                try:
+                    expires_at = datetime.fromisoformat(exp)
+                except Exception:
+                    expires_at = None
+
             if mode == "ACTIVE":
-                # Hard block during active safe mode
-                timings["stage_4_policy"] = elapsed_ms(stage_start)
-                return False, -1, {
-                    "gate_name": "SAFE_MODE_ACTIVE",
-                    "reason": "quality_circuit_breaker_active",
-                    "activated_at": flag_data.get("activated_at"),
-                    "expires_at": flag_data.get("expires_at"),
-                    "stats": flag_data.get("stats")
-                }
-            
-            elif mode == "RECOVERY":
-                # Block unless sync cold path validation is implemented
-                # Recovery mode requires pre-trade cold path approval
-                recovery_remaining = flag_data.get("recovery_remaining", 0)
-                if recovery_remaining > 0:
-                    # TODO: Implement pre-trade cold path validation flow
-                    # For now: hard block until recovery_remaining reaches 0 via manual intervention
-                    # Production: enqueue sync cold path analysis, wait for APPROVE, decrement counter
+                # During cooldown: hard-block
+                if expires_at and now < expires_at:
+                    timings["stage_4_policy"] = elapsed_ms(stage_start)
+                    return False, -1, {
+                        "gate_name": "SAFE_MODE_ACTIVE",
+                        "reason": "quality_circuit_breaker_cooldown",
+                        "activated_at": flag_data.get("activated_at"),
+                        "expires_at": flag_data.get("expires_at"),
+                        "stats": flag_data.get("stats"),
+                    }
+                # ACTIVE but expired → be conservative, treat as RECOVERY
+                mode = "RECOVERY"
+
+            if mode == "RECOVERY":
+                remaining = int(
+                    flag_data["recovery_remaining"]
+                    if flag_data.get("recovery_remaining") is not None
+                    else flag_data.get("sync_cold_path_required", 0)
+                )
+                if remaining > 0:
                     timings["stage_4_policy"] = elapsed_ms(stage_start)
                     return False, -2, {
                         "gate_name": "SAFE_MODE_RECOVERY",
                         "reason": "sync_cold_path_required",
-                        "remaining_required": recovery_remaining,
-                        "note": "Pre-trade cold path validation required after quality incident"
+                        "remaining_required": remaining,
+                        "activated_at": flag_data.get("activated_at"),
+                        "expires_at": flag_data.get("expires_at"),
+                        "recovery_started_at": flag_data.get("recovery_started_at"),
+                        "note": "Pre-trade cold path validation required after quality incident",
                     }
         except Exception:
             pass  # Ignore malformed flag, proceed to normal gates
