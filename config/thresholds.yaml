@@ -5,8 +5,8 @@ risk:
   max_drawdown_pct: 0.15
   stop_loss_default_pct: 0.15
   take_profit_default_pct: 0.3
-  max_positions: 10
-  paper_max_positions: 10
+  max_positions: 15
+  paper_max_positions: 15
   live_max_positions: 3
   paper_max_hold_hours: 8
 sanad:
@@ -92,7 +92,7 @@ policy_gates:
   volatility_halt_window_minutes: 30
   exchange_error_rate_pct: 0.05
   exchange_error_window_minutes: 15
-  max_concurrent_positions: 5
+  max_concurrent_positions: 15
 scoring:
   min_trust_score: 35  # EXPERIMENT - lowered from 50 to test borderline tokens
   min_confidence_score: 30  # TEMPORARY - lowered from 45 to unblock signals

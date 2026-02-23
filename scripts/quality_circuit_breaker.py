@@ -199,6 +199,7 @@ def activate_safe_mode(stats: dict):
     activated_at = now.isoformat()
     
     flag_data = {
+        "mode": "ACTIVE",  # Initial state
         "activated_at": activated_at,
         "expires_at": expiry.isoformat(),
         "reason": "quality_degradation",
@@ -217,22 +218,49 @@ def activate_safe_mode(stats: dict):
 
 def check_safe_mode_expiry():
     """
-    Check if safe mode has expired and remove flag if so.
+    Check if safe mode has expired and transition to RECOVERY mode.
+    
+    State machine:
+    - ACTIVE: block all EXECUTE
+    - RECOVERY: allow trading only after sync_cold_path_required trades pass sync validation
+    - CLEAR: normal trading (flag removed)
     """
     if not SAFE_MODE_FLAG.exists():
         return
     
     try:
         flag_data = json.loads(SAFE_MODE_FLAG.read_text())
+        mode = flag_data.get("mode", "ACTIVE")  # Default to ACTIVE for old flags
         expires_at = datetime.fromisoformat(flag_data["expires_at"])
         now = datetime.now(timezone.utc)
         
-        if now >= expires_at:
-            SAFE_MODE_FLAG.unlink()
-            _log(f"✅ SAFE MODE EXPIRED at {expires_at.isoformat()}, flag removed")
-        else:
-            remaining = (expires_at - now).total_seconds() / 60
-            _log(f"⏳ SAFE MODE active, expires in {remaining:.0f}min")
+        if mode == "ACTIVE":
+            if now >= expires_at:
+                # Transition to RECOVERY mode if sync_cold_path_required > 0
+                sync_required = flag_data.get("sync_cold_path_required", 0)
+                if sync_required > 0:
+                    flag_data["mode"] = "RECOVERY"
+                    flag_data["recovery_started_at"] = now.isoformat()
+                    flag_data["recovery_remaining"] = sync_required
+                    SAFE_MODE_FLAG.write_text(json.dumps(flag_data, indent=2))
+                    _log(f"⚠️ SAFE MODE → RECOVERY: {sync_required} sync cold path trades required")
+                else:
+                    # No recovery required, clear flag
+                    SAFE_MODE_FLAG.unlink()
+                    _log(f"✅ SAFE MODE EXPIRED at {expires_at.isoformat()}, flag removed (no recovery)")
+            else:
+                remaining = (expires_at - now).total_seconds() / 60
+                _log(f"⏳ SAFE MODE ACTIVE, expires in {remaining:.0f}min")
+        
+        elif mode == "RECOVERY":
+            recovery_remaining = flag_data.get("recovery_remaining", 0)
+            if recovery_remaining <= 0:
+                # Recovery complete, clear flag
+                SAFE_MODE_FLAG.unlink()
+                _log(f"✅ RECOVERY COMPLETE, flag removed")
+            else:
+                _log(f"⚠️ SAFE MODE RECOVERY: {recovery_remaining} sync trades remaining")
+    
     except Exception as e:
         _log(f"ERROR checking safe mode expiry: {e}")
 

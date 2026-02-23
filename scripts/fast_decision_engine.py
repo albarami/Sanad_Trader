@@ -589,37 +589,34 @@ def stage_4_policy_engine(decision_packet, portfolio, timings, start_time):
     if safe_mode_flag.exists():
         try:
             flag_data = json.loads(safe_mode_flag.read_text())
-            expires_at = datetime.fromisoformat(flag_data["expires_at"])
-            now = datetime.now(timezone.utc)
+            mode = flag_data.get("mode", "ACTIVE")  # Default to ACTIVE for old flags
             
-            if now < expires_at:
-                # Hard block during cooldown period
+            if mode == "ACTIVE":
+                # Hard block during active safe mode
                 timings["stage_4_policy"] = elapsed_ms(stage_start)
                 return False, -1, {
                     "gate_name": "SAFE_MODE_ACTIVE",
-                    "reason": "quality_circuit_breaker_cooldown",
+                    "reason": "quality_circuit_breaker_active",
                     "activated_at": flag_data.get("activated_at"),
                     "expires_at": flag_data.get("expires_at"),
                     "stats": flag_data.get("stats")
                 }
             
-            # Post-expiry recovery: enforce sync_cold_path_required counter
-            sync_required = flag_data.get("sync_cold_path_required", 0)
-            if sync_required > 0:
-                # TODO: Implement pre-trade cold path flow
-                # For now: hard block until counter reaches 0
-                # Production implementation should:
-                #   1. Enqueue pre-trade analysis task
-                #   2. Wait for cold path approval
-                #   3. Decrement counter on APPROVE
-                #   4. Proceed to execute
-                timings["stage_4_policy"] = elapsed_ms(stage_start)
-                return False, -2, {
-                    "gate_name": "SAFE_MODE_RECOVERY",
-                    "reason": "sync_cold_path_required",
-                    "remaining_required": sync_required,
-                    "note": "Pre-trade cold path validation required after quality incident"
-                }
+            elif mode == "RECOVERY":
+                # Block unless sync cold path validation is implemented
+                # Recovery mode requires pre-trade cold path approval
+                recovery_remaining = flag_data.get("recovery_remaining", 0)
+                if recovery_remaining > 0:
+                    # TODO: Implement pre-trade cold path validation flow
+                    # For now: hard block until recovery_remaining reaches 0 via manual intervention
+                    # Production: enqueue sync cold path analysis, wait for APPROVE, decrement counter
+                    timings["stage_4_policy"] = elapsed_ms(stage_start)
+                    return False, -2, {
+                        "gate_name": "SAFE_MODE_RECOVERY",
+                        "reason": "sync_cold_path_required",
+                        "remaining_required": recovery_remaining,
+                        "note": "Pre-trade cold path validation required after quality incident"
+                    }
         except Exception:
             pass  # Ignore malformed flag, proceed to normal gates
     

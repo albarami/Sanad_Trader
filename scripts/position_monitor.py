@@ -602,11 +602,15 @@ def close_position(position, current_price, reason, detail=""):
         except Exception:
             pass
 
+        # Format prices with appropriate precision
+        entry_fmt = f"{entry:.8f}" if entry < 0.0001 else f"{entry:,.4f}"
+        exit_fmt = f"{current_price:.8f}" if current_price < 0.0001 else f"{current_price:,.4f}"
+        
         notifier.send(
             f"{emoji} SELL {position['token']}/USDT\n\n"
             f"Reason: {reason}\n"
-            f"Entry: {entry:,.4f}\n"
-            f"Exit: {current_price:,.4f}\n"
+            f"Entry: {entry_fmt}\n"
+            f"Exit: {exit_fmt}\n"
             f"PnL: {pnl_sign}{pnl_pct*100:.1f}% ({pnl_sign}{net_pnl_usd:.2f})\n"
             f"Hold: {hold_hours:.1f}h\n\n"
             f"Strategy: {strategy_name}\n"
